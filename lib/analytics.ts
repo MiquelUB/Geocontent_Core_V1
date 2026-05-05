@@ -6,10 +6,10 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const prevStart = new Date(startDate.getTime() - diff);
     const prevEnd = new Date(startDate.getTime() - 1);
 
-    // 1. Fetch Users Count
-    const totalMunicipalityUsers = await prisma.profile.count({
+    // 1. Fetch Users Count (V2: model User, no Profile)
+    const totalMunicipalityUsers = await prisma.user.count({
         where: {
-            role: { notIn: ['municipal_admin', 'super_admin', 'admin'] }
+            role: { notIn: ['municipal_admin', 'super_admin'] }
         }
     });
 
@@ -18,7 +18,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         prisma.userUnlock.groupBy({
             by: ['userId'],
             where: {
-                poi: { municipalityId },
+                poi: { routePois: { some: { route: { municipalityId } } } },
                 unlockedAt: { gte: startDate, lte: endDate }
             }
         }),
@@ -41,7 +41,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         prisma.userUnlock.groupBy({
             by: ['userId'],
             where: {
-                poi: { municipalityId },
+                poi: { routePois: { some: { route: { municipalityId } } } },
                 unlockedAt: { gte: prevStart, lte: prevEnd }
             }
         }),
@@ -70,8 +70,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const routeCompletionsInPeriod = await prisma.userRouteProgress.findMany({
         where: {
             route: { municipalityId },
-            completedAt: { gte: startDate, lte: endDate },
-            finalQuizPassed: true
+            completedAt: { gte: startDate, lte: endDate, not: null }
         },
         include: {
             route: { select: { name: true } }
@@ -92,7 +91,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     // 3. Quiz Statistics
     const allUnlocksData = await prisma.userUnlock.findMany({
-        where: { poi: { municipalityId } },
+        where: { poi: { routePois: { some: { route: { municipalityId } } } } },
         include: { poi: { select: { title: true } } }
     });
 
@@ -115,7 +114,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     // 4. Daily Traffic (for the chart) - Real grouping by day
     const allPeriodUnlocks = await prisma.userUnlock.findMany({
         where: {
-            poi: { municipalityId },
+            poi: { routePois: { some: { route: { municipalityId } } } },
             unlockedAt: { gte: startDate, lte: endDate }
         },
         select: { unlockedAt: true, userId: true }

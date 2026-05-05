@@ -1,18 +1,19 @@
 {
   "status": "commited",
-  "type": "frontend",
+  "type": "backend",
   "scope": "codebase",
   "localEndpoint": "http://localhost:3000",
+  "backendAuthType": "public",
   "executionArgs": {
-    "projectName": "Geocontent_Core",
-    "projectPath": "d:\\MK\\MP\\Geocontent_Core",
+    "projectName": "Geocontent_Core_V1",
+    "projectPath": "c:\\Users\\Miquel\\Desktop\\Projecte_Pxx\\Geocontent_Core_V1",
     "testIds": [],
-    "additionalInstruction": "PROJECT IS AT http://localhost:3000. PASSWORD IS 'mistic_master_audit'. SPA ON '/'. USE CATALAN LABELS: 'Inici', 'Explorar', 'Mapa', 'Perfil'. LABEL FOR SEGELLS IS 'Stamps'. WAIT 2s FOR SPLASH. BUTTON IS 'Accedir' (data-testid='admin-gate-submit').",
-    "serverMode": "production",
+    "additionalInstruction": "Verify that the SplashScreen is visible on load and that navigation between 'Inici', 'Explorar', 'Mapa', and 'Perfil' works correctly using the Bottom Navigation bar. Check that the admin gateway at /admin still accepts the legacy testing password 'mistic_master_audit' as a first line of UI defense.",
+    "serverMode": "development",
     "envs": {
-      "API_KEY": "sk-user-B0GPKpIEWrSsXFVQCs9dFUzmt4j5Ws1hXOecpTfFWgEIz4_NHCt1cumNW6CLH4JtjhVYYXW0pZwMhEwgfmPYs0dieBMNbFPfk2zJGbYON25TVsJPjFBovS_2EN2e6CC_4fo"
+      "API_KEY": "sk-user-yaJoFcCYr49hl8dMgwePF3FY0JmeIGOwR2x-myo5ZUmOFehitmh2A2zrT49TsZQXWruLdgvdCh5bWw638-yakLLpsxxgvea-dm5pAFtoqtq77ny8T-PA1ZWnuI4aUU6Idxg"
     }
   },
-  "serverPort": 54455,
-  "proxy": "http://dc807abd-c375-4496-a70f-47b2af6bc359:TXoBX6Cro2CNXlEtjzG7pziZYPj2Nq43@tun.testsprite.com:8080"
+  "serverPort": 54373,
+  "proxy": "http://2f9c102b-ba77-4a74-976f-5ef19e715c39:Pi52WLT6H2gILq5YqNZAD24nDBxtnRbe@tun.testsprite.com:8080"
 }

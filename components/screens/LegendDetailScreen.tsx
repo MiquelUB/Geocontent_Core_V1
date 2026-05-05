@@ -128,10 +128,11 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   const distanceMeters = getNumericDistance(distanceStr);
   const UNLOCK_DISTANCE = 30; // metres
 
-  // Convert Supabase URLs to go through local proxy (fixes CORS in dev)
+  // Proxy URLs per S3 (correcció CORS)
   function proxifyUrl(url: string): string {
     if (!url) return '';
-    if (url.includes('supabase.co/storage/')) {
+    // Les URLs de S3 self-hosted passen pel proxy local
+    if (url.startsWith('http') && !url.startsWith(window?.location?.origin || '')) {
       return `/api/img-proxy?url=${encodeURIComponent(url)}`;
     }
     return url;
@@ -164,7 +165,8 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
     isMasterAdmin || poi.userUnlocks?.some((u: any) => u.userId === currentUser?.id)
   );
 
-  const finalQuizPassed = safeLegend.userRouteProgress?.some((urp: any) => urp.userId === currentUser?.id && urp.finalQuizPassed);
+  // V2: completedAt indica si la ruta ha estat completada (sense finalQuizPassed)
+  const finalQuizPassed = safeLegend.userRouteProgress?.some((urp: any) => urp.userId === currentUser?.id && urp.completedAt != null);
 
   // Parse POIs to calculate numeric raw distances for sorting
   const poisWithDistances = (safeLegend.pois || []).map((poi: any) => {

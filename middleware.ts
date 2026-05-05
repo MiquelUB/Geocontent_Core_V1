@@ -1,61 +1,51 @@
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
-import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { auth } from '@/auth';
+
+/**
+ * Geocontent Core V2: Middleware de Sobirania Tecnològica
+ * 
+ * Gestiona:
+ * 1. Internacionalització (next-intl)
+ * 2. Autenticació Edge-side (Auth.js v5)
+ */
 
 const intlMiddleware = createMiddleware(routing);
 
-export default async function middleware(request: NextRequest) {
-  // 1. Executa la internacionalització primer
-  const response = intlMiddleware(request);
+export default auth((req) => {
+  const isLoggedIn = !!req.auth;
+  const { pathname } = req.nextUrl;
 
-  // Si next-intl necessita fer una redirecció de localització (ex: /admin -> /ca/admin)
-  // respectem aquesta acció i sortim immediatament per evitar trencar el routing.
+  // 1. Execució de la internacionalització
+  const response = intlMiddleware(req);
+
+  // Si next-intl fa una redirecció (ex: /admin -> /ca/admin), la respectem
   if (response.status === 307 || response.status === 308) {
     return response;
   }
 
-  const pathname = request.nextUrl.pathname;
-  
-  // 2. Definició de l'escut. EXCLOEM les rutes de login per evitar el bucle infinit.
-  const isAdminRoute = pathname.includes('/admin') && !pathname.includes('/login');
+  // 2. Protecció de rutes d'administració
+  // Detectem rutes /admin o /api/admin, excloent la pàgina de login per evitar bucles.
+  const isProtectedPath = (pathname.includes('/admin') || pathname.includes('/api/admin')) && !pathname.includes('/login');
 
-  if (isAdminRoute) {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) { return request.cookies.get(name)?.value; },
-          set(name: string, value: string, options: CookieOptions) {
-            request.cookies.set({ name, value, ...options });
-            response.cookies.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            request.cookies.set({ name, value: '', ...options });
-            response.cookies.set({ name, value: '', ...options });
-          },
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Accés denegat. Sessió requerida.' }, { status: 401 });
-      }
-      
-      // Com que hem respectat la redirecció prèvia, aquí sabem segur que hi ha locale (ex: /ca/admin)
-      const locale = pathname.split('/')[1] || 'ca';
-      const loginUrl = new URL(`/${locale}/login`, request.url);
-      return NextResponse.redirect(loginUrl);
+  if (isProtectedPath && !isLoggedIn) {
+    // Si és una crida d'API, retornem 401
+    if (pathname.includes('/api/')) {
+      return Response.json({ success: false, error: 'No autoritzat. Sessió requerida.' }, { status: 401 });
     }
+
+    // Si és una ruta de pàgina, redireccionem al login (mantenint el locale si és possible)
+    const segments = pathname.split('/');
+    const locale = routing.locales.includes(segments[1] as any) ? segments[1] : routing.defaultLocale;
+    const loginUrl = new URL(`/${locale}/login`, req.nextUrl);
+    
+    return Response.redirect(loginUrl);
   }
 
   return response;
-}
+});
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)']
+  // Matcher per a rutes de l'aplicació, excloent fitxers estàtics i assets
+  matcher: ['/((?!api/upload/notify|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)']
 };

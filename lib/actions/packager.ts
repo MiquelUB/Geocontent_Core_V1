@@ -5,8 +5,8 @@ import { packagerQueue } from "../queue/client";
 import { revalidatePath } from "next/cache";
 
 /**
- * Endpoint refactoritzat per al PAS 3.
- * En lloc d'executar la tasca, l'afegeix a la cua de BullMQ i retorna el jobId.
+ * Outbox Pattern: Generació de Paquets Territorials (V2 Sovereign)
+ * Escriu un event a la taula OutboxEvent. El worker Python (ARQ) el processarà.
  */
 export async function generateTerritorialPackageAction(municipalityId: string) {
   try {

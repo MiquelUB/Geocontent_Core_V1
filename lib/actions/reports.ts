@@ -3,11 +3,15 @@
 import { reportQueue } from '@/lib/queue/client';
 import { prisma } from '@/lib/database/prisma';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth-guard';
 // Note: processReport is imported dynamically in the fallback to avoid bundling issues
 
 export async function generateReport(municipalityId: string) {
   console.log(`[generateReport] Request for municipality: ${municipalityId}`);
   try {
+    // SEC-03: Verificar sessió
+    await requireAuth();
+
     if (!municipalityId || municipalityId.length < 32 || municipalityId === 'null') {
       return { success: false, error: "Municipi no vàlid" };
     }
@@ -71,6 +75,9 @@ export async function getReports(municipalityId?: string) {
 
 export async function deleteReport(reportId: string) {
   try {
+    // SEC-03: Verificar sessió
+    await requireAuth();
+
     await prisma.report.delete({
       where: { id: reportId }
     });

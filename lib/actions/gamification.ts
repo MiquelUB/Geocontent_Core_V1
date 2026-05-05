@@ -1,12 +1,11 @@
 'use server'
 
-import { createClient, getSupabaseAdmin } from '@/lib/database/supabase/server'
-import { cookies } from 'next/headers'
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";
 import { getUserProfile } from '@/lib/actions/auth';
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { getPassportData as _getPassportData, getUserScore as _getUserScore } from '../services/queries';
+import { requireAuth } from '@/lib/auth-guard';
 
 // --- SERVER ACTION WRAPPERS (Cervell -> Múscul) ---
 export async function getPassportData(userId: string) {
@@ -18,25 +17,33 @@ export async function getUserScore(userId: string) {
 }
 
 async function updateProfileXpAndLevel(userId: string, points: number) {
-  const profile = await prisma.profile.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { xp: true, level: true }
   });
 
-  if (profile) {
-    const newXp = (profile.xp || 0) + points;
-    // Simple leveling logic: every 500 XP is a level
+  if (user) {
+    const newXp = (user.xp || 0) + points;
+    // Lògica simple de nivell: cada 500 XP un nivell
     const newLevel = Math.floor(newXp / 500) + 1;
 
-    await prisma.profile.update({
+    await prisma.user.update({
       where: { id: userId },
       data: { xp: newXp, level: newLevel }
     });
   }
 }
 
-export async function recordVisit(userId: string, poiId: string) {
+/**
+ * Registra una visita a un POI.
+ * SEC-03: userId derivat de la sessió Auth.js, mai del client.
+ * El paràmetre _clientUserId s'ignora (backward compatibility).
+ */
+export async function recordVisit(_clientUserId: string, poiId: string) {
   try {
+    // SEC-03: El userId REAL prové de la sessió, no del client
+    const userId = await requireAuth();
+
     const poi = await prisma.poi.findUnique({ where: { id: poiId } });
     if (!poi) return { success: false, error: "POI not found" };
 
@@ -46,7 +53,7 @@ export async function recordVisit(userId: string, poiId: string) {
 
     if (existing) return { success: true, message: 'Already visited' };
 
-    // Award 100 XP for unlocking POI
+    // Premi: 100 XP per desbloquejar POI
     const points = 100;
 
     await prisma.userUnlock.create({
@@ -55,15 +62,14 @@ export async function recordVisit(userId: string, poiId: string) {
         poiId,
         unlockedAt: new Date(),
         earnedXp: points,
-        progress: 0.1 // Just visited, quiz not necessarily done
+        quizSolved: false
       }
     });
 
-    // Update Profile XP & Level
+    // Actualitzem perfil
     await updateProfileXpAndLevel(userId, points);
 
-    // Fetch updated for return
-    const updated = await prisma.profile.findUnique({ where: { id: userId }, select: { level: true, xp: true } });
+    const updatedUser = await getUserProfile(userId);
     
     // CHECK ROUTE COMPLETION
     const routePois = await prisma.routePoi.findMany({
@@ -75,9 +81,11 @@ export async function recordVisit(userId: string, poiId: string) {
       await checkAndAwardRouteCompletion(userId, rp.routeId);
     }
 
-    const updatedUser = await getUserProfile(userId);
     return { success: true, user: updatedUser };
-  } catch (err) {
+  } catch (err: any) {
+    if (err.message === 'No autenticat. Sessió requerida.') {
+      return { success: false, error: 'No autenticat.' };
+    }
     console.error('[recordVisit error]', err);
     return { success: false, error: GENERIC_ERROR_MESSAGE };
   }
@@ -100,14 +108,12 @@ async function checkAndAwardRouteCompletion(userId: string, routeId: string) {
     });
 
     if (totalPois > 0 && unlockedPois === totalPois) {
-      // Check if already completed
       const existingProgress = await prisma.userRouteProgress.findUnique({
         where: { userId_routeId: { userId, routeId } }
       });
 
       if (!existingProgress) {
-        // Award 500 XP for completion
-        // Create record
+        // Premi: 500 XP per completar ruta
         await prisma.userRouteProgress.create({
           data: {
             userId,
@@ -116,7 +122,6 @@ async function checkAndAwardRouteCompletion(userId: string, routeId: string) {
           }
         });
 
-        // Award XP
         await updateProfileXpAndLevel(userId, 500);
       }
     }
@@ -127,25 +132,26 @@ async function checkAndAwardRouteCompletion(userId: string, routeId: string) {
 
 export async function getVisitedLegends(userId: string) {
   noStore();
-  const supabase = createClient(await cookies());
-  const { data, error } = await supabase
-    .from('visited_legends')
-    .select(`
-            *,
-            legend:legends(*)
-        `)
-    .eq('user_id', userId)
-    .order('visited_at', { ascending: false });
+  // El model 'visited_legends' era una vista o taula llegada.
+  // En el nou esquema, busquem Unlocks de POIs tipus 'LLEGENDA'
+  try {
+    const unlocks = await prisma.userUnlock.findMany({
+      where: { 
+        userId,
+        poi: { type: 'LLEGENDA' }
+      },
+      include: { poi: true },
+      orderBy: { unlockedAt: 'desc' }
+    });
 
-  if (error) {
-    console.error('Error fetching visited:', error);
+    return unlocks.map(u => ({
+      ...u.poi,
+      visited_at: u.unlockedAt
+    }));
+  } catch (err) {
+    console.error('Error fetching visited legends:', err);
     return [];
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return data.map((item: any) => ({
-    ...item.legend,
-    visited_at: item.visited_at
-  }));
 }
 
 export async function getUserVisits(userId: string) {
@@ -168,15 +174,20 @@ export async function getUserVisits(userId: string) {
       rating: v.quizSolved ? 5 : null 
     }));
   } catch (error) {
-    console.error('Error fetching user visits (unlocks):', error);
+    console.error('Error fetching user visits:', error);
     return [];
   }
 }
 
-
-export async function completePoiQuizAction(poiId: string, userId: string) {
+/**
+ * Completa un quiz de POI.
+ * SEC-03: userId derivat de la sessió Auth.js.
+ * El paràmetre _clientUserId s'ignora (backward compatibility).
+ */
+export async function completePoiQuizAction(poiId: string, _clientUserId: string) {
   try {
-    // 50 XP for correct quiz
+    // SEC-03: El userId REAL prové de la sessió
+    const userId = await requireAuth();
     const points = 50;
 
     const unlock = await prisma.userUnlock.findUnique({
@@ -186,38 +197,37 @@ export async function completePoiQuizAction(poiId: string, userId: string) {
 
     if (unlock?.quizSolved) return { success: true, message: 'Quiz already solved' };
 
-    await prisma.userUnlock.upsert({
+    await prisma.userUnlock.update({
       where: { userId_poiId: { userId, poiId } },
-      create: {
-        userId,
-        poiId,
-        unlockedAt: new Date(),
-        earnedXp: 100 + points, // Unlocked (100) + Quiz (50)
-        progress: 1.0,
-        quizSolved: true
-      },
-      update: {
-        progress: 1.0,
+      data: {
         quizSolved: true,
         earnedXp: { increment: points }
       }
     });
 
-    // Give XP & Level
     await updateProfileXpAndLevel(userId, points);
 
     const updatedUser = await getUserProfile(userId);
     revalidatePath('/profile');
     return { success: true, user: updatedUser };
-  } catch (err) {
+  } catch (err: any) {
+    if (err.message === 'No autenticat. Sessió requerida.') {
+      return { success: false, error: 'No autenticat.' };
+    }
     console.error(err);
     return { success: false, error: GENERIC_ERROR_MESSAGE };
   }
 }
 
-export async function completeFinalRouteQuizAction(routeId: string, userId: string) {
+/**
+ * Completa el quiz final d'una ruta.
+ * SEC-03: userId derivat de la sessió Auth.js.
+ * El paràmetre _clientUserId s'ignora (backward compatibility).
+ */
+export async function completeFinalRouteQuizAction(routeId: string, _clientUserId: string) {
   try {
-    // 1000 XP for final quiz
+    // SEC-03: El userId REAL prové de la sessió
+    const userId = await requireAuth();
     const points = 1000;
 
     await prisma.userRouteProgress.upsert({
@@ -225,20 +235,20 @@ export async function completeFinalRouteQuizAction(routeId: string, userId: stri
       create: {
         userId,
         routeId,
-        finalQuizPassed: true,
         completedAt: new Date()
       },
       update: {
-        finalQuizPassed: true
+        completedAt: new Date()
       }
     });
 
-    // Give XP & Level
     await updateProfileXpAndLevel(userId, points);
-
     revalidatePath('/profile');
     return { success: true };
-  } catch (err) {
+  } catch (err: any) {
+    if (err.message === 'No autenticat. Sessió requerida.') {
+      return { success: false, error: 'No autenticat.' };
+    }
     console.error(err);
     return { success: false, error: GENERIC_ERROR_MESSAGE };
   }

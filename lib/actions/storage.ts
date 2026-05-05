@@ -9,11 +9,17 @@ import fs from 'fs';
 import path from 'path';
 import { uploadToS3 } from "../services/s3";
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
+import { SECURITY_CONFIG } from '@/lib/config/constants';
 
 /**
  * Puja un fitxer a S3/MinIO
  */
 export async function uploadFile(file: File, folder: string = 'geocontent') {
+  // SEC-08: Límit de mida
+  if (file.size > SECURITY_CONFIG.MAX_FILE_SIZE) {
+    throw new Error(`Fitxer massa gran. Màxim ${SECURITY_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.`);
+  }
+
   // Sanitize filename
   const safeName = file.name.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
   const fileName = `${folder}/${uuidv4()}_${safeName}`;
@@ -65,12 +71,17 @@ export async function handleAvatarUploadAction(formData: FormData, userId: strin
 }
 
 /**
- * Processament de vídeo HLS (Usa S3 per al resultat final si cal, 
- * però el worker BullMQ és qui realment ho farà. Aquí només posem en cua).
+ * Processament de vídeo HLS
+ * Puja el raw a S3 i escriu un OutboxEvent per al worker Python (ARQ/FFmpeg).
  */
 export async function addVideoToPoi(poiId: string, formData: FormData) {
   const videoFile = formData.get('video') as File;
   if (!videoFile) return { success: false, error: "No s'ha pujat cap vídeo." };
+
+  // SEC-08: Límit de mida
+  if (videoFile.size > SECURITY_CONFIG.MAX_FILE_SIZE) {
+    return { success: false, error: `Vídeo massa gran. Màxim ${SECURITY_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.` };
+  }
 
   const validMimes = ['video/mp4', 'video/quicktime', 'video/webm'];
   if (!validMimes.includes(videoFile.type)) {

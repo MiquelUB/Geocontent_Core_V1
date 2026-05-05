@@ -1,9 +1,7 @@
-
 import { prisma } from "../database/prisma";
 import { unstable_noStore as noStore } from 'next/cache';
 
 export async function getAppBranding() {
-  // noStore(); // Don't use noStore here to avoid build issues, rely on fetch revalidation if needed
   try {
     const m = await prisma.municipality.findFirst({
       orderBy: { createdAt: 'asc' }
@@ -47,7 +45,7 @@ export async function getAdminLegends() {
     const legends = routes.map((route: any) => ({
       id: route.id,
       name: route.name,
-      municipality_name: route.municipality?.name || 'Senses municipi',
+      municipality_name: route.municipality?.name || 'Sense municipi',
       pois_count: route.routePois?.length || 0,
       total_visits: route.routePois?.reduce((acc: number, rp: any) => acc + (rp.poi?.userUnlocks?.length || 0), 0) || 0,
       created_at: route.createdAt
@@ -84,7 +82,7 @@ export async function getRouteWithPois(routeId: string) {
 export async function getAllProfiles() {
   noStore();
   try {
-    return await prisma.profile.findMany({
+    return await prisma.user.findMany({
       orderBy: { createdAt: 'desc' }
     });
   } catch (err) {
@@ -121,10 +119,9 @@ export async function getLegends() {
 function mapRoute(route: any) {
   const pois = route.routePois?.map((rp: any) => {
     const p = rp.poi;
-    // Extraiem lat/lng si el camp location (geometry) és present
-    // Nota: En Prisma Unsupported, depèn de com es retorni (Buffer o objecte)
-    const lat = p.location?.y ?? p.latitude ?? 0;
-    const lng = p.location?.x ?? p.longitude ?? 0;
+    // En el nou model, lat/lng venen de location (geometry) o camps virtuals
+    const lat = p.latitude ?? 0;
+    const lng = p.longitude ?? 0;
 
     return {
       ...p,
@@ -133,7 +130,7 @@ function mapRoute(route: any) {
       description: p.description || '',
       latitude: lat,
       longitude: lng,
-      image_url: p.appThumbnail || p.images?.[0] || '',
+      image_url: p.appThumbnail || p.carouselImages?.[0] || '',
       orderIndex: rp.orderIndex ?? 0,
       icon: p.icon || null,
       textContent: p.textContent || '',
@@ -141,10 +138,7 @@ function mapRoute(route: any) {
       videoUrls: p.videoUrls || [],
       carouselImages: p.carouselImages || [],
       header16x9: p.header16x9 || '',
-      is_recapture: p.isRecapture || false,
       appThumbnail: p.appThumbnail || '',
-      images: p.images || [],
-      videoMetadata: p.videoMetadata || {},
       manualQuiz: p.manualQuiz,
       type: p.type,
       userUnlocks: p.userUnlocks || [],
@@ -153,34 +147,21 @@ function mapRoute(route: any) {
   }) ?? [];
 
   const firstPoi = pois[0];
-  const muniName = (route.municipality?.name || route.municipality_name || '').replace(/^Ajuntament de /i, '');
-  const title = route.title || route.name || route.slug || 'Sense Títol';
+  const muniName = (route.municipality?.name || '').replace(/^Ajuntament de /i, '');
+  const title = route.name || route.slug || 'Ruta';
 
   return {
     id: route.id,
     title: title,
     description: route.description || '',
     category: route.themeId || '',
-    location_name: muniName || route.location_name || '',
+    location_name: muniName || '',
     latitude: firstPoi?.latitude ?? 0,
     longitude: firstPoi?.longitude ?? 0,
-    image_url: route.thumbnail1x1 || firstPoi?.appThumbnail || firstPoi?.images?.[0] || '',
+    image_url: route.thumbnail1x1 || firstPoi?.appThumbnail || '',
     hero_image_url: route.thumbnail1x1 || firstPoi?.header16x9 || '',
-    audio_url: '',
-    video_url: '',
-    icon: firstPoi?.icon || null,
-    is_active: true,
     poiCount: pois.length,
     pois,
-    thumbnail1x1: route.thumbnail1x1 || '',
-    downloadRequired: route.downloadRequired || false,
-    textContent: '',
-    videoUrls: [],
-    carouselImages: [],
-    header16x9: '',
-    images: [],
-    manualQuiz: null,
-    userUnlocks: [],
     finalQuiz: route.finalQuiz || null,
   };
 }
@@ -214,15 +195,11 @@ export async function getUserScore(userId: string) {
       select: { earnedXp: true, quizSolved: true }
     });
 
-    const routePointsCount = await prisma.userRouteProgress.count({
+    const routeProgress = await prisma.userRouteProgress.findMany({
       where: { userId }
     });
 
-    const finalQuizzesPassedCount = await prisma.userRouteProgress.count({
-      where: { userId, finalQuizPassed: true }
-    });
-
-    const totalScore = unlocks.reduce((acc, curr) => acc + (curr.earnedXp || 0), 0) + (routePointsCount * 500) + (finalQuizzesPassedCount * 1000);
+    const totalScore = unlocks.reduce((acc, curr) => acc + (curr.earnedXp || 0), 0) + (routeProgress.length * 500);
     const solvedQuizzesCount = unlocks.filter(u => u.quizSolved).length;
 
     return {
@@ -239,7 +216,7 @@ export async function getPassportData(userId: string) {
   noStore();
   if (!userId) return [];
 
-  // Protecció de build: importació dinàmica de mòduls de Node
+  // Dinàmic per evitar problemes en build de client-side si es cridés per error
   const path = await import('path');
   const fs = await import('fs');
 
@@ -269,7 +246,6 @@ export async function getPassportData(userId: string) {
     }
 
     const routes = await prisma.route.findMany({
-      where: { routePois: { some: {} } },
       include: {
         routePois: {
           include: {
@@ -277,7 +253,7 @@ export async function getPassportData(userId: string) {
               include: {
                 userUnlocks: {
                   where: { userId },
-                  select: { progress: true, unlockedAt: true, earnedXp: true, quizSolved: true }
+                  select: { unlockedAt: true, earnedXp: true, quizSolved: true }
                 }
               }
             }
@@ -295,9 +271,7 @@ export async function getPassportData(userId: string) {
           id: rp.poi.id,
           title: rp.poi.title,
           isVisited: unlock !== null,
-          isQuizDone: unlock !== null && (unlock.progress ?? 0) >= 1.0,
           quizSolved: unlock?.quizSolved ?? false,
-          progress: unlock?.progress ?? 0,
           unlockedAt: unlock?.unlockedAt ?? null,
           hasQuiz: !!rp.poi.manualQuiz,
         };
@@ -305,8 +279,8 @@ export async function getPassportData(userId: string) {
 
       const totalPois = orderedPois.length;
       const visitedPois = orderedPois.filter(p => p.isVisited).length;
-      const quizDonePois = orderedPois.filter(p => p.isQuizDone).length;
-      const isCompleted = totalPois > 0 && quizDonePois === totalPois;
+      const quizDonePois = orderedPois.filter(p => p.quizSolved).length;
+      const isCompleted = totalPois > 0 && visitedPois === totalPois;
 
       const unlockDates = orderedPois
         .filter(p => p.unlockedAt)
@@ -320,22 +294,14 @@ export async function getPassportData(userId: string) {
       const routeTheme = route.themeId?.toLowerCase() || municipalityBiome;
       const routeBiomePath = biomePathMap[routeTheme] || globalBiomePath;
 
-      let routeStampImages = availableStampImages;
-      if (routeBiomePath !== globalBiomePath) {
-        const routeStampsDir = path.join(process.cwd(), 'public', 'stamps', routeBiomePath);
-        try {
-          routeStampImages = fs.readdirSync(routeStampsDir)
-            .filter((f: string) => /\.(png|jpg|jpeg|webp)$/i.test(f))
-            .sort();
-        } catch {
-          routeStampImages = availableStampImages;
-        }
-      }
-
       const hashCode = route.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-      const imgIndex = routeStampImages.length > 0 ? hashCode % routeStampImages.length : 0;
-      const stampImage = routeStampImages[imgIndex] || routeStampImages[0] || 'bolet.webp';
+      const imgIndex = availableStampImages.length > 0 ? hashCode % availableStampImages.length : 0;
+      const stampImage = availableStampImages[imgIndex] || 'bolet.webp';
       const stampUrl = `/stamps/${routeBiomePath}/${stampImage}`;
+
+      const progress = await prisma.userRouteProgress.findUnique({
+        where: { userId_routeId: { userId, routeId: route.id } }
+      });
 
       return {
         id: route.id,
@@ -347,11 +313,8 @@ export async function getPassportData(userId: string) {
         visitedPois,
         quizDonePois,
         poisProgress: orderedPois,
-        isCompleted,
+        isCompleted: !!progress,
         date: latestDate,
-        finalQuizPassed: (await prisma.userRouteProgress.findUnique({
-          where: { userId_routeId: { userId, routeId: route.id } }
-        }))?.finalQuizPassed ?? false,
       };
     }));
   } catch (err) {
@@ -360,9 +323,6 @@ export async function getPassportData(userId: string) {
   }
 }
 
-/**
- * PAS 4: Helper per a consultes espacials PostGIS
- */
 export async function getPoisWithinRadius(lon: number, lat: number, radiusMeters: number) {
   const pois = await prisma.$queryRaw<any[]>`
     SELECT id, title, ST_AsGeoJSON(location)::jsonb as geojson
@@ -380,9 +340,6 @@ export async function getPoisWithinRadius(lon: number, lat: number, radiusMeters
   }));
 }
 
-/**
- * Helper per actualitzar la ubicació d'un POI (Escritura en camp Unsupported)
- */
 export async function updatePoiLocation(poiId: string, lon: number, lat: number) {
   return await prisma.$executeRaw`
     UPDATE "pois"
@@ -391,9 +348,6 @@ export async function updatePoiLocation(poiId: string, lon: number, lat: number)
   `;
 }
 
-/**
- * Obté l'última telemetria d'un usuari
- */
 export async function getUserLastLocation(userId: string) {
   const result = await prisma.$queryRaw<any[]>`
     SELECT ST_AsGeoJSON(location)::jsonb as geojson, timestamp

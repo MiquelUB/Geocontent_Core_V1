@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/database/prisma';
 import { getExecutiveAnalytics } from '@/lib/analytics';
+import { auth } from '@/auth';
 
 export async function GET(req: Request) {
   try {
+    // SEC-02: Auth guard — dades d'analítica protegides
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'No autoritzat.' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const municipalityId = searchParams.get('municipalityId');
     const startDateParam = searchParams.get('startDate');

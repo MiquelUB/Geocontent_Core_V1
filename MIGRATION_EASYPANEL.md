@@ -1,105 +1,192 @@
-# 🚀 Runbook de Desplegament a Easypanel (PXX Geocontent V2 - Clean Slate)
+# 🚀 Runbook de Desplegament a Easypanel (PXX Geocontent V2 — Clean Slate)
 
-Aquest document detalla el pla d'acció "Clean Slate" per desplegar la nova arquitectura V2 a Easypanel (Hetzner). La V1 es mantindrà independent a Supabase/Vercel com a entorn de demostració, evitant qualsevol arrossegament de deute tècnic.
+> **Última revisió:** 2026-05-05 (Post-auditoria V2 Sovereign)  
+> Aquest document detalla el pla d'acció "Clean Slate" per desplegar l'arquitectura V2 a Easypanel (Hetzner). La V1 queda congelada. Tot el deute tècnic de BullMQ, Supabase i IMAP ha estat eliminat.
+
+---
 
 ## FASE 1: Infraestructura V2 a Easypanel i Volums Persistents
 
-Dins d'Easypanel, has de crear els següents serveis per aïllar la V2. És crític assignar **Volums Persistents** a les bases de dades i aplicar **Seguretat Perimetral** (Zero mapatge de ports externs, accés només via xarxa interna de Docker):
+Dins d'Easypanel, crea els següents serveis aïllats amb **Volums Persistents** i **Seguretat Perimetral** (zero mapatge de ports externs en producció, accés exclusiu via xarxa interna Docker):
 
-1. **PostgreSQL**: Imatge amb suport espacial (`postgis/postgis:15-3.3`). Aquesta base de dades naixerà completament buida. Forçar entorn `LC_ALL=C.UTF-8` per evitar corrupció d'índexs B-Tree per canvis de locale.
-   - *Requisit:* Assignar Volum Persistent. **Important**: La imatge `postgis/postgis` arrenca amb un usuari no-root. Si el volum persistent d'Easypanel/Hetzner es crea com a `root` per defecte, el contenidor fallarà silenciosament en escriure a `/var/lib/postgresql/data`. Assegurar permisos correctes al mapeig host.
-   - *Requisit:* Activar backups diaris automatitzats cap a un object storage remot extern (AWS S3, Cloudflare R2, Hetzner Storage Box). **Prohibit utilitzar el MinIO local d'Easypanel per als dumps (SPOF)**. El format del dump **ha de ser obligatòriament custom (`-Fc`)** per permetre restauracions avançades multithreading i aplicar màxima compressió (`pg_dump -Z 9`) per evitar l'efecte "Bloated Dump" amb els arxius de les interaccions.
-   - *Seguretat:* **No exposar el port 5432**.
-   - *Escalabilitat:* Considerar el desplegament de **PgBouncer** (amb `pool_mode = transaction`) a la mateixa xarxa interna. Configurar l'`auth_query` al PgBouncer apuntant a una funció `SECURITY DEFINER` de PostgreSQL evitant mantenir un `userlist.txt` manual i riscos de seguretat (mai atorgar superusuari a la connexió de PgBouncer):
-     ```sql
-     CREATE OR REPLACE FUNCTION pgbouncer_get_auth(p_usename TEXT)
-     RETURNS TABLE(username TEXT, shadow_pass TEXT) AS $$
-     BEGIN
-         RETURN QUERY SELECT usename::TEXT, passwd::TEXT FROM pg_catalog.pg_shadow WHERE usename = p_usename;
-     END;
-     $$ LANGUAGE plpgsql SECURITY DEFINER;
-     -- pgbouncer.ini: auth_query = SELECT * FROM pgbouncer_get_auth($1)
-     ```
-     Assegurar un `max_client_conn` alt (ex: 1000) per absorbir el paral·lelisme del Worker. *Atenció:* L'App ha de configurar `prepared_statement_cache_size=0` en el driver (ex: `asyncpg`). A més, s'ha de deshabilitar el pooling a l'ORM (`poolclass=NullPool`) i implementar pings/healthchecks al driver (ex: `pool_pre_ping=True`) evitant errors `ECONNRESET` quan PgBouncer tanca connexions per inactivitat. Establir timeous agressius (`server_idle_timeout=10-30s`, `client_idle_timeout=10-30s`) pel SWR del frontend.
-2. **Redis**: Per a les cues en segon pla (BullMQ / Rate Limiting).
-   - *Requisit:* **Sense Volum Persistent**. Redis ha de ser completament efímer. Si el contenidor cau, arrenca en blanc. La font de veritat és exclusivament PostgreSQL. Això evita que el Worker re-processi tasques ja completades si es restaura un dump vell (OOM / zombis).
-   - *Requisit Crític:* Configurar la política de gestió de memòria de Redis estrictament a **`noeviction`**. L'ús de polítiques d'evicció com `volatile-lru` és un error fatal d'arquitectura per a BullMQ perquè corromp les referències internes de les cues (ghost jobs / crashes del Worker). A més, per evitar bloquejar tot el node per un error de memòria, cal configurar **`maxmemory`** al `redis.conf` perquè rebutgi noves connexions amb errors OOM controlats.
-   - *Protecció OOM (BullMQ):* La memòria s'ha de controlar exclusivament a nivell de codi del Worker forçant la purga (`removeOnComplete: 100`, `removeOnFail: 1000`) evitant l'OOM de Redis de manera nativa sense comprometre l'estat. L'idempotència absoluta és requerida.
-3. **MinIO (S3)**: Per a l'emmagatzematge d'assets i paquets (eliminació total de dependència del sistema de fitxers local).
-   - *Requisit:* Assignar Volum Persistent.
-   - *Seguretat:* Configurar polítiques d'accés (buckets públics només per a *assets* del frontend, privats per a documents i backups). No exposar la interfície interna.
-   - *Manteniment:* Establir una **"Lifecycle Rule" de 30 dies** als buckets de backups. **Protecció Crítica Ransomware**: Activar **Object Lock (WORM - Write Once Read Many)** i **Versioning** al bucket remot on s'envien els backups per evitar que un atacant o procés corrupte pugui sobreescriure o esborrar els dumps històrics vàlids.
-4. **App (Backend/Frontend)**: L'aplicació web i la nova API. Aquest és l'únic servei que ha d'exposar ports (ex. 80/443).
-   - *Frontend (SWR + SSR):* Per evitar el *Flash of Empty Content* i la degradació UX, configurar Node.js per realitzar la petició principal en Server-Side Rendering (SSR/RSC) i passar les dades inicials com a `fallbackData` a l'SWR del client. A més, configurar `keepAlive: true` a nivell de client HTTP (Axios/Fetch) a Node.js per reaprofitar connexions TCP. *Crític:* El timeout de l'HTTP Agent del frontend ha de ser inferior al timeout d'inactivitat del backend.
-5. **Worker**: Procés daemon independent connectat a la xarxa interna de Redis per processar les cues (DLQ/Retries).
-   - *Outbox Pattern (Prevenció de Pèrdua):* En cas de redeploy de Redis, les tasques "en vol" es perden si s'injecten directament de l'App. L'App escriurà la intenció a una taula `outbox_events` de Postgres a la mateixa transacció, i un poller les injectarà a Redis. **Crític:** El poller ha d'utilitzar explícitament `FOR UPDATE SKIP LOCKED` al consultar PostgreSQL per evitar condicions de cursa i duplicacions si múltiples rèpliques del Worker operen concurrentment.
-   - *Concurrència:* Si aquest Worker obre connexions a la base de dades concurrentment, **ha de passar per PgBouncer**, igual que l'App (només Alembic evita PgBouncer).
-   - *Resiliència:* Capturar explícitament el senyal **SIGTERM** per executar un *Graceful Shutdown* en cada redeploy.
-   - *Monitorització:* Configurar un webhook per alertar immediatament a l'equip si la **DLQ (Dead Letter Queue)** de Redis reporta un volum > 0.
+### 1. PostgreSQL (PostGIS 16-3.4)
 
-## FASE 2: Injecció de Secrets i Desplegament de l'Esquema (Alembic)
+Imatge: `postgis/postgis:16-3.4`. La base de dades neix completament buida. Forçar `LC_ALL=C.UTF-8` per evitar corrupció d'índexs B-Tree.
 
-L'esquema es desplegarà exclusivament a través de les migracions automàtiques d'Alembic generades a partir del nou SQLModel.
+- **Volum Persistent obligatori.** La imatge PostGIS arrenca amb un usuari no-root. Si el volum d'Easypanel/Hetzner es crea com a `root`, el contenidor fallarà silenciosament en escriure a `/var/lib/postgresql/data`. Assegurar permisos correctes.
+- **Backups diaris automatitzats** cap a object storage extern (AWS S3, Cloudflare R2, Hetzner Storage Box). **Prohibit el MinIO local per als dumps (SPOF)**. Format: `pg_dump -Fc -Z 9` per permetre restauracions multithreading.
+- **Seguretat:** No exposar el port 5432 en producció (només xarxa interna Docker).
+- **Límit de memòria:** 1536MB (OOM Guard per Hetzner Shared).
 
-1. **Injecció de Secrets**: Abans d'aixecar els serveis, configura les variables d'entorn a Easypanel (`DATABASE_URL`, `DATABASE_DIRECT_URL`, credencials IMAP de CDmon, API Keys d'OpenRouter, `ALLOW_MOCK_SEED_DANGER`, `REDIS_URL`). Necessitem dues URL de connexió distintes:
-   ```env
-   # Variables requerides a Easypanel
-   DATABASE_URL="postgresql://user:pass@pgbouncer:6432/geocontent"
-   DATABASE_DIRECT_URL="postgresql://user:pass@postgres:5432/geocontent" # Per a Alembic
-   ```
-2. **Dependències en Cascada a Docker (Healthchecks)**: Configura dependències estrictes a Easypanel evitant pànics de connexió: L'App i el Worker depenen de **PgBouncer** (port 6432), i al seu torn **PgBouncer** depèn de **PostgreSQL** (port 5432). Aquests enllaços han de ser obligatòriament de tipus `condition: service_healthy` evitant llançar PgBouncer quan la base de dades encara està en cold-boot.
-3. **Definició Estricta (SQLModel)**: Totes les restriccions d'integritat (`UNIQUE`, `NOT NULL`) estaran explícitament definides als models de Python.
-4. **Migració Inicial i Lock d'Alembic (Pre-Deploy Hook)**: Executar les migracions a l'arrencada és un anti-patró de disponibilitat. L'execució d'`alembic upgrade head` s'ha de moure al **Pre-Deploy Hook** d'Easypanel, de manera que l'App i Worker només s'aixequin si la migració funciona. Per evitar condicions de cursa si el hook es dispara múltiples cops, s'implementa un **Advisory Lock a nivell de PostgreSQL** dins `env.py`. Utilitza el mode `AUTOCOMMIT` per evitar deadlocks transaccionals:
-   - *Atenció PgBouncer:* L'`env.py` d'Alembic ha de forçar l'ús de la connexió directa ignorant el PgBouncer per evitar bloquejos en DDL (Data Definition Language):
-   ```python
-   # Dins env.py
-   import os
-   from sqlalchemy import engine_from_config, pool, text
+### 2. PgBouncer (Connection Pooler)
 
-   config = context.config
-   direct_url = os.environ.get("DATABASE_DIRECT_URL")
-   if direct_url:
-       config.set_main_option("sqlalchemy.url", direct_url)
+Imatge: `edoburu/pgbouncer:latest`. Mode transacció per maximitzar connexions.
 
-   connectable = engine_from_config(
-       config.get_section(config.config_ini_section),
-       prefix="sqlalchemy.",
-       poolclass=pool.NullPool,
-   )
+- `POOL_MODE: transaction` amb `MAX_CLIENT_CONN: 1000` per absorbir el paral·lelisme del Worker ARQ.
+- L'App (Next.js) i el Motor (FastAPI) connecten **sempre via PgBouncer** (port 6432). Únicament Alembic bypassa PgBouncer via `DATABASE_DIRECT_URL` (port 5432).
+- **Evolució (P1):** Configurar `auth_query` amb `SECURITY DEFINER` per evitar `userlist.txt` manual:
+  ```sql
+  CREATE OR REPLACE FUNCTION pgbouncer_get_auth(p_usename TEXT)
+  RETURNS TABLE(username TEXT, shadow_pass TEXT) AS $$
+  BEGIN
+      RETURN QUERY SELECT usename::TEXT, passwd::TEXT FROM pg_catalog.pg_shadow WHERE usename = p_usename;
+  END;
+  $$ LANGUAGE plpgsql SECURITY DEFINER;
+  -- pgbouncer.ini: auth_query = SELECT * FROM pgbouncer_get_auth($1)
+  ```
+- Deshabilitar el pooling a l'ORM (`poolclass=NullPool`) i configurar healthchecks (`pool_pre_ping=True`). Timeouts agressius: `server_idle_timeout=10-30s`.
 
-   with connectable.connect() as connection:
-       connection.execution_options(isolation_level="AUTOCOMMIT").execute(
-           text("SELECT pg_advisory_lock(hashtext('pxx_geocontent_migrations'));")
-       )
-       try:
-           context.configure(connection=connection, target_metadata=target_metadata)
-           with context.begin_transaction():
-               context.run_migrations()
-       finally:
-           connection.execution_options(isolation_level="AUTOCOMMIT").execute(
-               text("SELECT pg_advisory_unlock(hashtext('pxx_geocontent_migrations'));")
-           )
-   ```
+### 3. Redis (Cues ARQ)
+
+Imatge: `redis:alpine`. Redis és **purament efímer** — la font de veritat és PostgreSQL (taula `OutboxEvent`).
+
+- **Sense Volum Persistent.** Si el contenidor cau, arrenca en blanc. L'Outbox Pattern garanteix que cap tasca es perdi.
+- **Política de memòria: `noeviction`** (obligatori). Polítiques d'evicció com `volatile-lru` corromprien les referències internes d'ARQ.
+- **`maxmemory: 256mb`** per rebutjar noves connexions amb errors OOM controlats en lloc de bloquejar el node sencer.
+- **Límit de memòria Docker:** 256MB.
+
+### 4. MinIO (S3 Self-Hosted)
+
+Imatge: `minio/minio`. Emmagatzematge d'assets, vídeos HLS i paquets territorials.
+
+- **Volum Persistent obligatori.**
+- Buckets públics només per a assets del frontend (`geocontent`), privats per a backups i documents interns.
+- **Lifecycle Rule 30 dies** als buckets de backups.
+- **Protecció Ransomware (P2):** Object Lock WORM + Versioning al bucket extern de backups.
+
+### 5. API Core (FastAPI + ARQ Worker)
+
+Imatge: Build des de `./backend-python`. Motor REST + worker integrat de tasques asíncrones.
+
+- **Responsabilitats:** API REST, processament IA territorial, transcodificació de vídeo (FFmpeg/HLS), generació de paquets territorials.
+- **Connexions:** PostgreSQL via PgBouncer + Redis per a cues ARQ.
+- **Outbox Pattern:** Un poller intern consulta `OutboxEvent` amb `FOR UPDATE SKIP LOCKED` per garantir exactly-once execution en entorns multi-rèplica.
+- **Graceful Shutdown:** Uvicorn gestiona SIGTERM nativament, però s'ha d'assegurar que les tasques ARQ en curs arriben a completar-se abans del shutdown.
+- **Límit de memòria:** 512MB.
+
+### 6. BFF Next.js (Cervell)
+
+Imatge: Build des de `.` (arrel). UI + Server Actions + SSR/RSC.
+
+- **Responsabilitats:** Renderitzat, autenticació (Auth.js v5 Magic Links), Server Actions com a capa de mutació, consultes PostGIS natives.
+- L'App escriu intencions a la taula `OutboxEvent` de PostgreSQL (mateixa transacció) via l'Outbox Pattern. El Motor Python les recull.
+- **SSR/RSC:** Per evitar Flash of Empty Content, les dades inicials es passen com a `fallbackData` a l'SWR del client. Configurar `keepAlive: true` al client HTTP de Node.js.
+- **Límit de memòria:** 1024MB.
+- **Únic servei que exposa ports externs** (3000 → 80/443 via reverse proxy Easypanel).
+
+---
+
+## FASE 2: Injecció de Secrets i Desplegament de l'Esquema
+
+L'esquema es desplega exclusivament a través de migracions Alembic generades des de SQLModel.
+
+### 1. Variables d'Entorn (Configurar a Easypanel)
+
+```env
+# === DATABASE ===
+DATABASE_URL="postgresql://postgres:PASS@pgbouncer:6432/geocontent_db"
+DATABASE_DIRECT_URL="postgresql://postgres:PASS@db:5432/geocontent_db"
+POSTGRES_PASSWORD="password_segura_generada"
+
+# === AUTH.JS V5 ===
+AUTH_SECRET="openssl rand -base64 32"
+NEXTAUTH_URL="https://el-teu-domini.com"
+RESEND_API_KEY="re_xxxxxxxxxxxxxxxxx"
+
+# === INFRASTRUCTURE ===
+REDIS_URL="redis://redis:6379"
+SITE_URL="https://el-teu-domini.com"
+NODE_ENV="production"
+
+# === STORAGE S3 (MinIO) ===
+S3_ENDPOINT="http://minio:9000"
+S3_REGION="eu-central-1"
+S3_BUCKET="geocontent"
+S3_ACCESS_KEY="minio_access_key"
+S3_SECRET_KEY="minio_secret_key"
+NEXT_PUBLIC_STORAGE_URL="https://cdn.el-teu-domini.com"
+
+# === IA TERRITORIAL (Opcional) ===
+OPENROUTER_API_KEY="sk-or-v1-xxxxx"
+AI_MODEL_ID="google/gemini-2.0-flash-001"
+
+# === SEED (Només Dev/Staging) ===
+SUPER_ADMIN_EMAIL="admin@projectexinoxano.com"
+ALLOW_MOCK_SEED_DANGER="false"
+```
+
+### 2. Healthchecks en Cascada (Obligatori)
+
+```
+PostgreSQL (5432) → [service_healthy] → PgBouncer (6432) → [service_started] → API Core + BFF
+Redis (6379) → [service_healthy] → API Core
+API Core (8000) → [service_healthy] → BFF Next.js
+```
+
+### 3. Migració Inicial (Pre-Deploy Hook)
+
+Executar `alembic upgrade head` al Pre-Deploy Hook d'Easypanel. L'`env.py` implementa:
+
+- **Advisory Lock PostgreSQL** (`pg_advisory_lock(hashtext('pxx_geocontent_migrations'))`) per evitar condicions de cursa.
+- **Mode AUTOCOMMIT** per evitar deadlocks transaccionals.
+- **Bypass PgBouncer** automàtic via `DATABASE_DIRECT_URL` (DDL no funciona en mode transacció).
+
+```python
+# env.py (ja implementat)
+direct_url = os.environ.get("DATABASE_DIRECT_URL")
+if direct_url:
+    config.set_main_option("sqlalchemy.url", direct_url)
+
+with connectable.connect() as connection:
+    connection.execution_options(isolation_level="AUTOCOMMIT").execute(
+        text("SELECT pg_advisory_lock(hashtext('pxx_geocontent_migrations'));")
+    )
+    try:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+    finally:
+        connection.execution_options(isolation_level="AUTOCOMMIT").execute(
+            text("SELECT pg_advisory_unlock(hashtext('pxx_geocontent_migrations'));")
+        )
+```
+
+### 4. Row Level Security (RLS)
+
+La migració `init_rls.py` activa RLS a totes les taules core amb polítiques:
+- **`users`:** Accés exclusiu al propi perfil (`current_setting('app.current_user_id')`).
+- **`municipalities`, `routes`, `pois`:** Lectura pública.
+- **`user_unlocks`, `user_route_progress`:** Propietari.
+- **`outbox_events`:** Només system/worker.
+
+---
 
 ## FASE 3: Poblament Inicial (Seed i Fixtures)
 
-L'estratègia de dades per validar el sistema es divideix en:
+### 1. Dades Mestres (Producció)
+Dades oficials (DIBA, Idescat) **pre-processades a un `.sql`** (Data Migration) inclòs dins la imatge Docker. No descarregar via xarxa durant el desplegament.
 
-1. **Dades Mestres (Producció)**: Les dades oficials (DIBA, Idescat) **NO s'han de descarregar via xarxa** en el moment del desplegament per evitar fragilitat d'origen. Han de ser pre-processades a un fitxer `.sql` (Data Migration) o injeccions massives via `seed.json` ja inclosos nativament dins de la imatge Docker de l'App.
-2. **Fixtures de Validació (Dev/Staging)**: L'script `scripts/seed_mock_data.py` injectarà contactes, llicències i interaccions falses per testejar l'arquitectura "Deal-cèntrica".
-   - *Protecció Crítica (Prevenció de Desastres):* L'script requereix imperativament la variable d'entorn `ALLOW_MOCK_SEED_DANGER="true"`. Sense ella, avorta l'execució automàticament.
-3. **Deduplicació i Rendiment de Cerques**:
-   - *Integritat Asíncrona (IMAP):* Evitar *race conditions* durant l'obtenció d'emails descartant comprovacions via codi (SELECT -> INSERT). Cal usar restriccions `UNIQUE` compostes (`message_id_extern`, `content_hash`) a la BD. L'error d'inserció s'ha de tractar com a "Skipped" pel Worker per no provocar retries infinits.
-   - *Full Text Search:* El camp de contingut a `interaccions` s'ha d'optimitzar imperativament amb índexs `GIN` o utilitzar `tsvector` natiu per permetre cerques textuals ràpides i asíncrones sense bloquejar taules senceres.
+### 2. Fixtures de Validació (Dev/Staging)
+`scripts/seed_mock_data.py` injecta contactes, llicències i interaccions falses.
+- **Guard de seguretat:** Requereix `ALLOW_MOCK_SEED_DANGER="true"`. Sense ella, avorta automàticament.
+
+### 3. Cerques Textuals (P2)
+Optimitzar el camp de contingut a `interaccions` amb índexs `GIN` / `tsvector` natiu per cerques ràpides sense bloquejar taules.
+
+---
 
 ## FASE 4: Aïllament i Coexistència
 
-- **V1 (Supabase/Vercel)**: Congelada. Exclusiva per a demos històriques.
-- **V2 (Easypanel)**: Entorn actiu i sobirà.
+| Entorn | Stack | Estat |
+|---|---|---|
+| **V1** (Supabase/Vercel) | Congelada | Exclusiva per demos històriques |
+| **V2** (Easypanel/Hetzner) | Actiu i sobirà | Arquitectura Clean Slate |
+
+---
 
 ## FASE 5: Protocol de Disaster Recovery (DR)
 
-És obligatori testejar regularment la restauració dels backups. Aquí tens l'script bàsic per descarregar l'últim backup des de MinIO i restaurar-lo en un entorn local tolerant als errors de permisos de PostGIS. La connexió al MinIO usa variables d'entorn natives per evitar fugues de credencials a l'historial (`ps aux` / `.bash_history`):
+Testejar la restauració dels backups regularment. Script de restauració:
 
 ```bash
 #!/bin/bash
@@ -109,7 +196,6 @@ set -e
 ENCODED_AK=$(python3 -c "import urllib.parse, os; print(urllib.parse.quote(os.environ.get('REMOTE_S3_ACCESS_KEY', '')))")
 ENCODED_SK=$(python3 -c "import urllib.parse, os; print(urllib.parse.quote(os.environ.get('REMOTE_S3_SECRET_KEY', '')))")
 
-# Ajustar la URL a l'endpoint real de l'emmagatzematge extern
 export MC_HOST_remotes3="https://${ENCODED_AK}:${ENCODED_SK}@s3.eu-central.cloud-provider.com"
 
 # 1. Descarregar l'últim backup des de l'extern
@@ -119,21 +205,47 @@ mc cp remotes3/backups/geocontent_latest.dump ./latest.dump
 dropdb -U postgres geocontent_local --if-exists
 createdb -U postgres geocontent_local
 
-# 3. Preparar extensió espacial prèvia i Recrear l'esquema (CRÍTIC abans de restaurar dades pures)
+# 3. Extensió PostGIS + Esquema via Alembic
 psql -U postgres -d geocontent_local -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-
-# CRÍTIC: Ús de la variable correcta segons env.py
 DATABASE_DIRECT_URL="postgresql://postgres@localhost:5432/geocontent_local" alembic upgrade head
 
-# 4. FIX: Restauració segura amb desactivació temporal de FKs i evitant col·lisions d'Alembic/PostGIS
+# 4. Restauració segura amb desactivació temporal de FKs
 PGOPTIONS='-c session_replication_role=replica' pg_restore -U postgres -d geocontent_local --data-only -O -x -j 4 \
     -T spatial_ref_sys \
     -T alembic_version \
     ./latest.dump || echo "Restauració finalitzada amb warnings menors."
 
-# Nota: L'arquitecte ha de preveure que el dump també contindrà la taula `outbox_events`. El Poller ha de tenir lògica per ignorar esdeveniments antics post-restauració per evitar disparar emails històrics repetits.
-# Nota: S'elimina l'script de resincronització de seqüències atès que les Primary Keys són UUIDs v4, evitant errors PL/pgSQL.
+# NOTA: El dump conté `outbox_events`. El poller ha de tenir lògica per ignorar
+# esdeveniments antics post-restauració per evitar re-disparar tasques històriques.
+# Les Primary Keys són UUIDs v4, no calen resincronitzacions de seqüències.
 ```
 
 ---
-*Preparat per Agent Tecnologia (AnT) - PXX Architectures*
+
+## Annex: Topologia Docker
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Easypanel (Hetzner Shared — OOM Guards actius)                     │
+│                                                                     │
+│  ┌───────────┐    ┌───────────┐    ┌──────────┐    ┌──────────┐    │
+│  │ PostgreSQL│───▶│ PgBouncer │───▶│ API Core │───▶│ BFF      │    │
+│  │ 16+PostGIS│    │ :6432     │    │ FastAPI  │    │ Next.js  │    │
+│  │ :5432     │    │ tx mode   │    │ + ARQ    │    │ :3000    │──▶ 🌐
+│  └─────┬─────┘    └───────────┘    │ :8000    │    └──────────┘    │
+│        │                           └────┬─────┘                     │
+│  ┌─────▼─────┐                    ┌─────▼─────┐                    │
+│  │ pgdata    │                    │   Redis   │                    │
+│  │ (volume)  │                    │   :6379   │                    │
+│  └───────────┘                    │ (efímer)  │                    │
+│                                   └───────────┘                    │
+│  ┌───────────┐                                                     │
+│  │   MinIO   │                                                     │
+│  │   :9000   │                                                     │
+│  │ (volume)  │                                                     │
+│  └───────────┘                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+*Preparat per Agent Tecnologia (AnT) — PXX Architectures. Revisió V2 Sovereign, Maig 2026.*

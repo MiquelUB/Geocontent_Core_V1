@@ -2,63 +2,68 @@ version: "2"
 type: frontend
 tech_stack:
   - TypeScript
-  - Next.js (App Router)
-  - React (SPA Pattern)
+  - Next.js 15+ (App Router)
+  - Auth.js v5 (Magic Links)
+  - Prisma (Postgres + PostGIS)
   - TailwindCSS
-  - shadcn/ui
+  - Redis (Rate Limiting)
   - Framer Motion
-  - Lucide Icons
-routes:
-  - path: /
-    file: app/page.tsx
-    auth_required: false
-    description: "Main Application (SPA). Contains screens Home (Inici), Legends (Explorar), Map (Mapa), Profile (Perfil)."
-  - path: /admin
-    file: app/admin/page.tsx
-    auth_required: false
-    description: "Admin dashboard protected by Master Password gate."
 features:
   - name: App Navigation (SPA)
-    description: "The main app switches screens via a Bottom Navigation bar with icons without full page reloads."
+    description: Single Page App navigation using a Bottom Navigation bar
     files:
       - components/BottomNavigation.tsx
-    entry_route: /
+      - app/page.tsx
     user_interactions:
-      - "Navigate using buttons with labels: 'Inici', 'Explorar', 'Mapa', 'Perfil'"
+      - "Navigate using buttons with labels: Inici, Explorar, Mapa, Perfil"
       - "Wait for SplashScreen (~800ms) before interacting"
-  - name: Admin Dashboard Gateway
-    description: "Accessing administrative tools using master password 'mistic_master_audit'."
+  - name: Admin Dashboard & Security Gate
+    description: Admin access protected by Auth.js v5 session and a legacy master password gate.
     files:
+      - middleware.ts
       - components/admin/AdminSecurityGate.tsx
-    entry_route: /admin
+      - app/admin/page.tsx
+    endpoints:
+      - method: GET
+        path: /api/admin/municipality
+        description: Fetch municipality data for admin
+        auth_required: true
     user_interactions:
-      - "Enter password 'mistic_master_audit' to unlock for testing"
-      - "Click 'Accedir' (data-testid='admin-gate-submit')"
-    auth_required: false
-  - name: User Passport & Gamification
-    description: "View unlocked stamps and player level. Note labels: 'Stamps' is used for tokens."
-    files:
-      - components/passport/PassportGrid.tsx
-      - app/profile/page.tsx
-    entry_route: /
-    user_interactions:
-      - "Navigate to 'Perfil' screen"
-      - "View 'Nivell' (Level) and 'Stamps' (Segells)"
+      - "Unlock Admin gate using legacy password for testing"
+      - "Click Accedir (data-testid='admin-gate-submit')"
   - name: Executive Impact Analytics
-    description: "View KPIs and charts for the territory."
+    description: Admin-facing KPIs and charts for territory impact.
     files:
       - components/admin/ExecutiveReport.tsx
-    entry_route: /admin
-    user_interactions:
-      - "Unlock Admin gate"
-      - "Select 'Informe Executiu' tab"
-    api_calls:
+      - app/api/analytics/executive-report/route.ts
+    endpoints:
       - method: GET
-        endpoint: /api/analytics/executive-report
+        path: /api/analytics/executive-report
+        description: Get executive impact KPIs
+        auth_required: true
+  - name: IA territorial Processing
+    description: IA tools for generating quizzes and routes from territorial data.
+    files:
+      - app/api/ai/generate-quiz/route.ts
+      - app/api/ai/generate-route/route.ts
+    endpoints:
+      - method: POST
+        path: /api/ai/generate-quiz
+        description: Generate quiz using IA
+        auth_required: true
+      - method: POST
+        path: /api/ai/generate-route
+        description: Generate route using IA
+        auth_required: true
+  - name: User Passport & XP Engine
+    description: Gamification system with server-side validation.
+    files:
+      - lib/actions/gamification.ts
+      - app/profile/page.tsx
 known_limitations:
-  - issue: "The app is a Single Page App on path '/'. Routes like '/library' or '/profile' as direct browser URLs might result in 404; use internal navigation."
+  - issue: Direct deep links to /profile or /map might fail (SPA limitation)
     location: app/page.tsx
-    impact: "Tests MUST start at '/' and click the BottomNavigation items."
-  - issue: "Local project is running on PORT 3000."
-    location: testsprite_tests/tmp/config.json
-    impact: "All navigation must use http://localhost:3000."
+    impact: Tests must start at root (/)
+  - issue: Rate limiting active (5 req/5 min for login, 10 req/min for IA)
+    location: lib/services/ratelimit.ts
+    impact: Parallel test execution might trigger rate limits

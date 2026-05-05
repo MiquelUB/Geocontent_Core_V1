@@ -1,74 +1,43 @@
+import { prisma } from '../database/prisma';
 
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-
-// Lazy singletons
-let _connection: any | null = null;
-let _reportQueue: any | null = null;
-let _videoQueue: any | null = null;
-let _packagerQueue: any | null = null;
-
-export async function getConnection() {
-  if (!_connection) {
-    const IORedis = (await import('ioredis')).default;
-    _connection = new IORedis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableOfflineQueue: false,
-      lazyConnect: true,
-    });
-    _connection.on('error', (err: any) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[Redis] Connection error (non-fatal in dev):', err.message);
-      }
-    });
-  }
-  return _connection;
+/**
+ * Outbox Pattern — Client de Cues (V2 Sovereign)
+ * 
+ * Totes les tasques asíncrones s'escriuen a la taula OutboxEvent.
+ * El worker Python (ARQ) les processa via FOR UPDATE SKIP LOCKED.
+ * 
+ * Això substitueix BullMQ i garanteix:
+ * - Zero pèrdues de dades (persistència a PostgreSQL)
+ * - Exactly-once execution
+ * - Resiliència en redeploys de Redis
+ */
+async function addToOutbox(topic: string, name: string, data: any) {
+  return await prisma.outboxEvent.create({
+    data: {
+      topic,
+      payload: { jobName: name, ...data },
+      status: 'PENDING'
+    }
+  });
 }
 
-export async function getReportQueue() {
-  if (!_reportQueue) {
-    const { Queue } = await import('bullmq');
-    const connection = await getConnection();
-    _reportQueue = new Queue('report-generation', { connection });
-  }
-  return _reportQueue;
-}
-
-export async function getVideoQueue() {
-  if (!_videoQueue) {
-    const { Queue } = await import('bullmq');
-    const connection = await getConnection();
-    _videoQueue = new Queue('video-processing', { connection });
-  }
-  return _videoQueue;
-}
-
-export async function getPackagerQueue() {
-  if (!_packagerQueue) {
-    const { Queue } = await import('bullmq');
-    const connection = await getConnection();
-    _packagerQueue = new Queue('territorial-packaging', { connection });
-  }
-  return _packagerQueue;
-}
-
-// Stubs for backwards compatibility (will resolve lazily on use)
 export const reportQueue = { 
-  add: async (name: string, data: any, opts?: any) => {
-    const q = await getReportQueue();
-    return q.add(name, data, opts);
+  add: async (name: string, data: any, _opts?: any) => {
+    console.log(`[Outbox] 📝 Cua REPORT: ${name}`);
+    return addToOutbox('report-generation', name, data);
   }
 };
 
 export const videoQueue = { 
-  add: async (name: string, data: any, opts?: any) => {
-    const q = await getVideoQueue();
-    return q.add(name, data, opts);
+  add: async (name: string, data: any, _opts?: any) => {
+    console.log(`[Outbox] 📝 Cua VIDEO: ${name}`);
+    return addToOutbox('video-processing', name, data);
   }
 };
 
 export const packagerQueue = { 
-  add: async (name: string, data: any, opts?: any) => {
-    const q = await getPackagerQueue();
-    return q.add(name, data, opts);
+  add: async (name: string, data: any, _opts?: any) => {
+    console.log(`[Outbox] 📝 Cua PACKAGER: ${name}`);
+    return addToOutbox('territorial-packaging', name, data);
   }
 };

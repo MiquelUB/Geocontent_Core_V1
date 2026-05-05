@@ -1,29 +1,25 @@
 import { NextResponse } from 'next/server';
 import { updateMunicipalityInternal } from '@/lib/services/municipality-service';
 import { getUserProfileInternal } from '@/lib/services/auth-service';
-import { createClient } from '@/lib/database/supabase/server';
-import { cookies } from 'next/headers';
+import { auth } from '@/auth';
 
 export async function POST(req: Request) {
   try {
-    // 1. Validació Estricta d'Autenticació i Autorització (RBAC)
-    const supabase = createClient(await cookies());
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ success: false, error: "No autoritzat. Sessió invàlida o inexistent." }, { status: 401 });
+    // 1. Autenticació via Auth.js v5 (sessió real, no headers manipulables)
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: "No autoritzat. Sessió requerida." }, { status: 401 });
     }
 
-    const profile = await getUserProfileInternal(user.id);
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.json({ success: false, error: "Permisos insuficients. Requereix rol d'administrador." }, { status: 403 });
+    const profile = await getUserProfileInternal(session.user.id);
+    if (!profile || profile.role !== 'super_admin') {
+      return NextResponse.json({ success: false, error: "Permisos insuficients." }, { status: 403 });
     }
 
     // 2. Processament de les dades
     const body = await req.json();
     const { id, name, logoUrl, themeId, adminMasterPassword, planTier, extraRoutesCount } = body;
 
-    // Strict Validation for Audit TC002
     if (!id || !name) {
       return NextResponse.json({
         success: false,
@@ -36,8 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json(res);
     
   } catch (err: any) {
-    // 4. Emmascarament de l'error per evitar fuites d'informació
-    console.error("[API CRITICAL ERROR] /api/admin/municipality:", err.message);
-    return NextResponse.json({ success: false, error: "S'ha produït un error intern al servidor." }, { status: 500 });
+    console.error("[API ERROR] /api/admin/municipality:", err.message);
+    return NextResponse.json({ success: false, error: "Error intern al servidor." }, { status: 500 });
   }
 }

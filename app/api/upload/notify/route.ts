@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database/prisma';
-import { getVideoQueue } from '@/lib/queue/client';
-import os from 'os';
-import path from 'path';
+import { videoQueue } from '@/lib/queue/client';
 
 /**
  * POST /api/upload/notify
  *
- * Called by the browser AFTER the direct Supabase upload completes.
- * This endpoint:
- *   1. Updates poi.videoUrls with the new public URL (immediate)
- *   2. Enqueues an async BullMQ job for HLS/MP4 transcoding
+ * Cridat pel browser DESPRÉS de la pujada directa a S3.
+ * 1. Actualitza poi.videoUrls amb la URL pública (immediat)
+ * 2. Escriu un OutboxEvent perquè el worker Python (ARQ) faci la transcodificació HLS
  *
  * Body:
  * {
  *   poiId: string,
- *   publicUrl: string,     // Supabase public URL of the raw upload
- *   storagePath: string,   // Internal Supabase path (for worker download)
- *   type: 'snack' | 'dinner',  // Duration-based classification
- *   duration: number,      // seconds (detected by browser via <video>.duration)
+ *   publicUrl: string,       // URL pública S3 del vídeo raw
+ *   storagePath: string,     // Ruta interna S3 (per al worker)
+ *   type: 'snack' | 'dinner',
+ *   duration: number,
  *   fileName: string,
  * }
  */
@@ -31,7 +28,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'poiId and publicUrl are required' }, { status: 400 });
     }
 
-    // 1. Immediately add raw video URL to POI so it's accessible right away
+    // 1. Guardem la URL raw immediatament perquè sigui accessible
     const poi = await prisma.poi.findUnique({ where: { id: poiId }, select: { videoUrls: true } });
     if (!poi) {
       return NextResponse.json({ error: 'POI not found' }, { status: 404 });
@@ -45,36 +42,29 @@ export async function POST(req: NextRequest) {
       data: { videoUrls: updatedUrls },
     });
 
-    // 2. Enqueue video processing job (async — does NOT block this response)
+    // 2. Outbox Pattern: escrivim l'event per al worker Python (ARQ)
     try {
-      const videoQueue = getVideoQueue();
-      const outputDir = path.join(os.tmpdir(), 'geocontent-hls', poiId);
       const safeFileName = (fileName ?? 'video').replace(/[^a-z0-9_-]/gi, '_');
 
       await videoQueue.add('transcode', {
         poiId,
-        publicUrl,          // Worker downloads from here
+        publicUrl,
         storagePath,
-        outputDir,
+        outputDir: `videos/${poiId}`,
         fileName: safeFileName,
         type: type ?? 'dinner',
         duration: duration ?? 0,
-      }, {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: 50,
-        removeOnFail: 20,
       });
 
-      console.log(`[notify] Enqueued ${type ?? 'dinner'} job for POI ${poiId} — ${fileName}`);
-    } catch (queueErr: any) {
-      // Queue failure is non-fatal: raw URL is already saved
-      console.warn('[notify] BullMQ enqueue failed (non-fatal):', queueErr.message);
+      console.log(`[notify] Outbox event creat per POI ${poiId} — ${fileName}`);
+    } catch (outboxErr: any) {
+      // L'error d'Outbox no és fatal: la URL raw ja s'ha guardat
+      console.warn('[notify] Outbox write failed (non-fatal):', outboxErr.message);
     }
 
     return NextResponse.json({
       success: true,
-      message: `URL saved. Transcoding job enqueued as ${type ?? 'dinner'}.`,
+      message: `URL saved. Transcoding queued via Outbox Pattern.`,
     });
   } catch (err: any) {
     console.error('[notify] Unexpected error:', err.message);

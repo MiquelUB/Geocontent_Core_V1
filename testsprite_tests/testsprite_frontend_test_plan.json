@@ -1,669 +1,641 @@
 [
   {
     "id": "TC001",
-    "title": "Deep-linking to /profile shows Not Found behavior (known SPA limitation)",
-    "description": "Verifies that direct navigation to a deep link like /profile results in a Not Found/404 state instead of the SPA screen.",
+    "title": "Switch between main app sections from the splash screen",
+    "description": "This test verifies that a visitor can wait for the splash screen to finish and then switch between the main SPA sections using bottom navigation, with each selected section becoming visible.",
     "category": "App Navigation (SPA)",
-    "priority": "Medium",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/profile\""
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the splash screen to complete"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control for the home section"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"404\" is visible"
+        "description": "Verify the home section is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control for the explore section"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Not Found\" is visible"
+        "description": "Verify the explore section is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control for the map section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the map section is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation control for the profile section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile section is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC002",
-    "title": "Unlock admin dashboard with correct master password",
-    "description": "Verifies that a user can unlock the Admin Dashboard by entering the correct master password and submitting the gate form.",
-    "category": "Admin Dashboard Gateway",
-    "priority": "High",
+    "title": "Reach the admin dashboard after unlocking the legacy gate",
+    "description": "This test verifies that an authenticated admin can load municipality data, unlock the legacy security gate, and access the secured admin dashboard content.",
+    "category": "Admin Dashboard & Security Gate",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/admin\""
-      },
-      {
-        "type": "assertion",
-        "description": "Verify element \"SplashScreen\" is visible"
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for 1 second"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Accedir\" is visible"
+        "description": "Fill in the login field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Type \"mistic_master_audit\" into the password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the admin page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the legacy security password with the correct testing password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the admin gate"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Admin Dashboard\" is visible"
+        "description": "Verify the admin dashboard content is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify municipality data is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC003",
-    "title": "Deny access with wrong master password",
-    "description": "Verifies that an incorrect master password shows an access denied/validation error and the user remains on the security gate.",
-    "category": "Admin Dashboard Gateway",
-    "priority": "High",
+    "title": "Keep the app locked until the splash screen finishes",
+    "description": "This test verifies that the initial splash state blocks normal interaction until loading completes and then allows navigation afterward.",
+    "category": "App Navigation (SPA)",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/admin\""
-      },
-      {
-        "type": "assertion",
-        "description": "Verify element \"SplashScreen\" is visible"
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Wait for 1 second"
+        "description": "Attempt to click the profile navigation control before the splash screen completes"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Accedir\" is visible"
+        "description": "Verify the app remains on the splash/loading state"
       },
       {
         "type": "action",
-        "description": "Type \"wrong_password\" into the password field"
+        "description": "Wait for the splash screen to complete"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Click the navigation control for the profile section"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Access denied\" is visible"
+        "description": "Verify the profile section is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC004",
-    "title": "Deny access when password is empty",
-    "description": "Verifies that submitting the admin gate with an empty password shows validation feedback and does not unlock the dashboard.",
-    "category": "Admin Dashboard Gateway",
-    "priority": "Medium",
+    "title": "Open the app and switch between the main SPA sections",
+    "description": "A public user can launch the app and move through the main bottom navigation sections without leaving the SPA.",
+    "category": "User Passport & XP Engine",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/admin\""
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Wait for 1 second"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Accedir\" is visible"
+        "description": "Wait for the splash screen to finish"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Open the Inici section"
+      },
+      {
+        "type": "action",
+        "description": "Open the Explorar section"
+      },
+      {
+        "type": "action",
+        "description": "Open the Mapa section"
+      },
+      {
+        "type": "action",
+        "description": "Open the Perfil section"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Password\" is visible"
+        "description": "Verify the SPA section content changes as expected"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"required\" is visible"
+        "description": "Verify the profile section is accessible from the main navigation"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC005",
-    "title": "Splash screen transitions to admin gate UI",
-    "description": "Verifies that the SplashScreen appears initially and then the password gate is shown after the splash duration.",
-    "category": "Admin Dashboard Gateway",
-    "priority": "Medium",
+    "title": "Prevent unauthenticated access to the admin dashboard",
+    "description": "This test verifies that a visitor without an authenticated session is blocked from viewing the admin area.",
+    "category": "Admin Dashboard & Security Gate",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/admin\""
+        "description": "Navigate to /admin"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"SplashScreen\" is visible"
-      },
-      {
-        "type": "action",
-        "description": "Wait for 1 second"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Accedir\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify element \"password field\" is visible"
+        "description": "Verify access to the admin area is blocked"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC006",
-    "title": "Press Enter to submit correct password and unlock",
-    "description": "Verifies that pressing Enter after typing the correct master password submits the gate and unlocks the admin dashboard.",
-    "category": "Admin Dashboard Gateway",
-    "priority": "Medium",
+    "title": "Show the executive impact analytics report for an authenticated admin",
+    "description": "This test verifies that an authenticated admin can load and view the executive impact analytics report in the admin dashboard.",
+    "category": "Executive Impact Analytics",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/admin\""
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for 1 second"
+        "description": "Fill in the login field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the admin page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the legacy security password with the correct testing password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the admin gate"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Accedir\" is visible"
-      },
-      {
-        "type": "action",
-        "description": "Type \"mistic_master_audit\" into the password field"
-      },
-      {
-        "type": "action",
-        "description": "Press \"Enter\""
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Admin Dashboard\" is visible"
+        "description": "Verify the executive impact analytics report is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC007",
-    "title": "Remain on gate after wrong password even after retry attempt",
-    "description": "Verifies that after a failed attempt the gate remains usable and a subsequent attempt can be made (still blocked if wrong again).",
-    "category": "Admin Dashboard Gateway",
-    "priority": "Low",
+    "title": "Generate a quiz for use in the app",
+    "description": "An authenticated user can generate quiz content and see it ready for use in the territorial experience.",
+    "category": "IA Territorial Processing",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/admin\""
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for 1 second"
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Type \"wrong_password\" into the password field"
+        "description": "Submit the login form"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Open the quiz generation area"
+      },
+      {
+        "type": "action",
+        "description": "Provide valid territorial input for quiz generation"
+      },
+      {
+        "type": "action",
+        "description": "Request quiz generation"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Access denied\" is visible"
+        "description": "Verify generated quiz content is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Accedir\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify element \"password field\" is visible"
+        "description": "Verify the quiz is ready for use in the app"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC008",
-    "title": "View passport progression and unlocked stamps on Profile",
-    "description": "Verifies that the Profile screen displays the user's level (Nivell) and a stamps (Segells) grid with at least one unlocked stamp visible.",
-    "category": "User Passport & Gamification",
-    "priority": "High",
+    "title": "Open the map section from the SPA shell",
+    "description": "This test verifies that a visitor can reach the map section through the SPA navigation and see the map view inside the app shell.",
+    "category": "App Navigation (SPA)",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/\""
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to finish (~800ms)"
+        "description": "Wait for the splash screen to complete"
       },
       {
         "type": "action",
-        "description": "Click \"Perfil\" in the Bottom Navigation"
+        "description": "Click the navigation control for the map section"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Nivell\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Segells\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the stamps grid is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify at least one unlocked stamp item is visible in the stamps grid"
+        "description": "Verify the map section is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC009",
-    "title": "Profile remains stable while passport content loads after navigation",
-    "description": "Verifies the Profile screen shows the passport section headings and renders the passport area without showing a broken/blank state immediately after navigation.",
-    "category": "User Passport & Gamification",
-    "priority": "Medium",
+    "title": "Generate a route for use in the app",
+    "description": "An authenticated user can generate route content and see it ready for use in the territorial experience.",
+    "category": "IA Territorial Processing",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/\""
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to finish (~800ms)"
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Click \"Perfil\" in the Bottom Navigation"
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the route generation area"
+      },
+      {
+        "type": "action",
+        "description": "Provide valid territorial input for route generation"
+      },
+      {
+        "type": "action",
+        "description": "Request route generation"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Nivell\" is visible"
+        "description": "Verify generated route content is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Segells\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the passport/stamps content area is visible"
+        "description": "Verify the route is ready for use in the territorial experience"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC010",
-    "title": "Retry after a passport fetch failure keeps the user on Profile and shows stamps section",
-    "description": "Verifies that clicking refresh/retry does not navigate away and that the Segells section remains present (even if an error occurs).",
-    "category": "User Passport & Gamification",
-    "priority": "Medium",
+    "title": "Open the profile section from the SPA shell",
+    "description": "This test verifies that a visitor can reach the profile section through the SPA navigation and see the profile view inside the app shell.",
+    "category": "App Navigation (SPA)",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/\""
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to finish (~800ms)"
+        "description": "Wait for the splash screen to complete"
       },
       {
         "type": "action",
-        "description": "Click \"Perfil\" in the Bottom Navigation"
-      },
-      {
-        "type": "action",
-        "description": "Click the refresh or retry control in the passport/stamps section"
+        "description": "Click the navigation control for the profile section"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Segells\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify the page shows the Profile passport area (not a blank screen)"
+        "description": "Verify the profile section is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC011",
-    "title": "Catalan labels for gamification sections are visible on Profile",
-    "description": "Verifies that the gamification UI uses the expected Catalan labels for level and stamps.",
-    "category": "User Passport & Gamification",
-    "priority": "Low",
+    "title": "Earn XP from a valid gamification action",
+    "description": "An authenticated member can submit a valid gamification action and see passport progress and XP update in the profile UI.",
+    "category": "User Passport & XP Engine",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to \"http://localhost:3000/\""
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to finish (~800ms)"
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Click \"Perfil\" in the Bottom Navigation"
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Open the profile section from the SPA"
+      },
+      {
+        "type": "action",
+        "description": "Submit a valid gamification action"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Nivell\" is visible"
+        "description": "Verify updated XP progress is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Segells\" is visible"
+        "description": "Verify updated passport progress is displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC012",
-    "title": "Unlock admin gate and view Executive Report KPIs and charts",
-    "description": "Verifies an admin user can unlock the admin gate and see executive KPIs and charts rendered in the Executive Report tab.",
-    "category": "Executive Impact Analytics",
-    "priority": "High",
+    "title": "Block access to the admin dashboard with an incorrect legacy password",
+    "description": "This test verifies that an authenticated admin cannot enter the protected admin area when the legacy security password is wrong.",
+    "category": "Admin Dashboard & Security Gate",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
+        "description": "Fill in the login field with {{LOGIN_USER}}"
       },
       {
         "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Submit the login form"
       },
       {
         "type": "action",
-        "description": "Click the \"Informe Executiu\" tab"
+        "description": "Open the admin page"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the legacy security password with an incorrect password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the admin gate"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Informe Executiu\" is visible"
+        "description": "Verify the admin gate remains locked"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"KPIs\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify element \"Charts\" is visible"
+        "description": "Verify admin dashboard content is not displayed"
       }
-    ]
+    ],
+    "priority": "High"
   },
   {
     "id": "TC013",
-    "title": "Executive Report tab shows populated state when data loads successfully",
-    "description": "Verifies the Executive Report tab shows populated KPI values and at least one visible chart when the report loads successfully.",
-    "category": "Executive Impact Analytics",
-    "priority": "High",
+    "title": "View the current passport state and XP on the profile page",
+    "description": "An authenticated member can open the profile page and see their current passport progress and XP state.",
+    "category": "User Passport & XP Engine",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
+        "description": "Submit the login form"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
-      },
-      {
-        "type": "action",
-        "description": "Click the \"Informe Executiu\" tab"
+        "description": "Open the profile section from the SPA"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"Executive report KPI value\" is visible"
+        "description": "Verify passport progress is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"Executive report chart\" is visible"
+        "description": "Verify XP progress is displayed"
       }
-    ]
+    ],
+    "priority": "Medium"
   },
   {
     "id": "TC014",
-    "title": "Executive Report shows a loading state before KPIs and charts appear",
-    "description": "Verifies the Executive Report presents a visible loading indicator while data is being fetched before the final populated state renders.",
+    "title": "Keep executive analytics hidden when access is not authorized",
+    "description": "This test verifies that the executive impact analytics report is not shown when an unauthenticated user tries to open the admin experience.",
     "category": "Executive Impact Analytics",
-    "priority": "Medium",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
-      },
-      {
-        "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
-      },
-      {
-        "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
-      },
-      {
-        "type": "action",
-        "description": "Click \"Accedir\""
-      },
-      {
-        "type": "action",
-        "description": "Click the \"Informe Executiu\" tab"
+        "description": "Navigate to /admin"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"Executive report loading indicator\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify element \"Executive report chart\" is visible"
+        "description": "Verify the executive impact analytics report is not displayed"
       }
-    ]
+    ],
+    "priority": "Medium"
   },
   {
     "id": "TC015",
-    "title": "Executive Report remains accessible after switching tabs and returning",
-    "description": "Verifies the Executive Report tab can be left and re-opened without losing access to the KPIs and charts view.",
-    "category": "Executive Impact Analytics",
-    "priority": "Medium",
+    "title": "Open the explore section from the SPA shell",
+    "description": "This test verifies that a visitor can reach the explore section through the SPA navigation and see the explore view inside the app shell.",
+    "category": "App Navigation (SPA)",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
+        "description": "Wait for the splash screen to complete"
       },
       {
         "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
-      },
-      {
-        "type": "action",
-        "description": "Click \"Accedir\""
-      },
-      {
-        "type": "action",
-        "description": "Click the \"Informe Executiu\" tab"
-      },
-      {
-        "type": "action",
-        "description": "Click another admin tab that is visible in the admin navigation"
-      },
-      {
-        "type": "action",
-        "description": "Click the \"Informe Executiu\" tab"
+        "description": "Click the navigation control for the explore section"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"Executive report chart\" is visible"
+        "description": "Verify the explore section is displayed"
       }
-    ]
+    ],
+    "priority": "Medium"
   },
   {
     "id": "TC016",
-    "title": "Admin gate submission works via Enter key on password field",
-    "description": "Verifies the admin can submit the admin gate by pressing Enter after typing the master password.",
-    "category": "Executive Impact Analytics",
-    "priority": "Low",
+    "title": "Open the home section from the SPA shell",
+    "description": "This test verifies that a visitor can return to the home section through the SPA navigation and see the main landing view inside the app shell.",
+    "category": "App Navigation (SPA)",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
+        "description": "Wait for the splash screen to complete"
       },
       {
         "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
-      },
-      {
-        "type": "action",
-        "description": "Press \"Enter\""
+        "description": "Click the navigation control for the home section"
       },
       {
         "type": "assertion",
-        "description": "Verify element \"Admin dashboard\" is visible"
-      },
-      {
-        "type": "action",
-        "description": "Click the \"Informe Executiu\" tab"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Informe Executiu\" is visible"
+        "description": "Verify the home section is displayed"
       }
-    ]
+    ],
+    "priority": "Medium"
   },
   {
     "id": "TC017",
-    "title": "Unlock admin gate and open IA PDF processing tool",
-    "description": "Verifies the admin gate can be unlocked and the IA PDF processing tool can be reached from the admin dashboard.",
-    "category": "IA 'Punt d'Or' PDF Processing (Admin)",
-    "priority": "High",
+    "title": "Block quiz generation without authentication",
+    "description": "A user without a valid session is prevented from generating quiz content.",
+    "category": "IA Territorial Processing",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /api/ai/generate-quiz"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
-      },
-      {
-        "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
-      },
-      {
-        "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Submit the quiz generation request without signing in"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Admin\" is visible"
-      },
-      {
-        "type": "action",
-        "description": "Click on \"IA\" or \"Punt d'Or\" in the admin dashboard navigation"
+        "description": "Verify an access denied response is shown"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"IA\" is visible"
-      },
-      {
-        "type": "assertion",
-        "description": "Verify text \"Upload PDF\" is visible"
+        "description": "Verify quiz generation is blocked"
       }
-    ]
+    ],
+    "priority": "Low"
   },
   {
     "id": "TC018",
-    "title": "Process button blocked when no PDF has been selected",
-    "description": "Verifies the tool prevents processing when the user has not selected a PDF file.",
-    "category": "IA 'Punt d'Or' PDF Processing (Admin)",
-    "priority": "Medium",
+    "title": "Keep passport progress unchanged for an invalid gamification action",
+    "description": "An authenticated member who submits an invalid gamification action sees validation feedback and no passport update.",
+    "category": "User Passport & XP Engine",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Type \"mistic_master_audit\" into the admin password field"
+        "description": "Submit the login form"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Open the profile section from the SPA"
       },
       {
         "type": "action",
-        "description": "Click on \"IA\" or \"Punt d'Or\" in the admin dashboard navigation"
-      },
-      {
-        "type": "action",
-        "description": "Click \"Process\""
+        "description": "Submit an invalid gamification action"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Upload PDF\" is visible"
+        "description": "Verify a validation error is displayed"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Select a PDF\" is visible"
+        "description": "Verify passport progress remains unchanged"
       }
-    ]
+    ],
+    "priority": "Low"
   },
   {
     "id": "TC019",
-    "title": "Admin gate denies access with incorrect master password",
-    "description": "Verifies that entering an incorrect master password does not unlock the admin tools.",
-    "category": "IA 'Punt d'Or' PDF Processing (Admin)",
-    "priority": "High",
+    "title": "Block route generation when the IA limit is exceeded",
+    "description": "An authenticated user sees route generation blocked after the IA request limit is reached.",
+    "category": "IA Territorial Processing",
     "steps": [
       {
         "type": "action",
-        "description": "Navigate to http://localhost:3000/admin"
+        "description": "Navigate to /login"
       },
       {
         "type": "action",
-        "description": "Wait for the SplashScreen to disappear"
+        "description": "Fill in the login credentials with {{LOGIN_USER}} and {{LOGIN_PASSWORD}}"
       },
       {
         "type": "action",
-        "description": "Type \"wrong_password_123\" into the admin password field"
+        "description": "Submit the login form"
       },
       {
         "type": "action",
-        "description": "Click \"Accedir\""
+        "description": "Repeatedly request route generation until the IA request limit is reached"
+      },
+      {
+        "type": "action",
+        "description": "Request route generation again"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Invalid\" is visible"
+        "description": "Verify a rate-limited response is shown"
       },
       {
         "type": "assertion",
-        "description": "Verify text \"Upload PDF\" is not visible"
+        "description": "Verify route generation is blocked"
       }
-    ]
+    ],
+    "priority": "Low"
   }
 ]

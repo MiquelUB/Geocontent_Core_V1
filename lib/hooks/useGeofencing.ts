@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { geofencingService, Location, GeofenceEvent } from '@/lib/services/geofencing-service'
-import { createClient } from '@/lib/database/supabase/client'
 import { circle } from '@turf/turf'
 import { getLegends } from "@/lib/actions/queries";
 
@@ -18,7 +17,6 @@ export function useGeofencing(
   const [activeGeofences, setActiveGeofences] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
 
   // Cargar geocercas sincronizadas con las rutas oficiales
   useEffect(() => {

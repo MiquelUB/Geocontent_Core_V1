@@ -44,7 +44,13 @@ Llegeix AQUEST document abans d'iniciar o proposar qualsevol canvi arquitectòni
 ## 📅 Estat de la Missió (Auditoria de Seguretat i Arquitectura)
 - **Fase P0 (Completada):** Eliminació de backdoors, protecció d'APIs d'admin, middleware guardrail.
 - **Fase P1/P2 (Completada):** Server Actions com a única capa de mutació client, aïllament de dependències de Node.js a `queries.ts`.
-- **Fase V2 "Clean Slate" (Activa):** Hibridació i migració cap a l'arquitectura sobirana a Hetzner. Adopció de Python/FastAPI, restriccions OOM severes, Outbox Pattern, PgBouncer, i ARQ/Redis per a *Heavy Duty Tasks*.
+- **Fase V2 "Clean Slate" (COMPLETADA - MAIG 2026):** Hibridació i blindatge de seguretat. Rate limiting, SSRF Proxy hardening i Zero Trust Identity (Admin via CLI) implementats.
+
+## 🛡️ DIRECTIVES DE SEGURETAT POST-HARDENING
+- **ZERO TRUST IDENTITY:** Prohibit qualsevol mecanisme d'escalada de rols automàtic via HTTP/S. Els rols `super_admin` només es creen via CLI (`scripts/create-admin.ts`).
+- **RATE LIMITING OBLIGATORI:** Tota ruta API d'IA o mutació sensible ha d'invocar `rateLimit()` de `lib/services/ratelimit.ts`.
+- **SSRF PROTECTION:** El proxy d'imatges (`img-proxy`) només pot fer fetch a hostnames de la whitelist de `lib/config/constants.ts`.
+- **BUILD STRICT:** El build a EasyPanel/Next.js ha de fallar si hi ha errors de TS o ESLint (`ignoreBuildErrors: false`).
 
 **CONFIRMACIÓ:** Comença sempre confirmant: *"He revisat el GEMINI.md i validaré que el meu codi compleixi l'arquitectura PXX"*.
 

@@ -1,0 +1,90 @@
+services:
+  # Base de dades sobirana amb PostGIS i pgvector
+  db:
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    container_name: pxx-db
+    restart: always
+    environment:
+      POSTGRES_DB: geocontent_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pxx_db_data:/var/lib/postgresql/data
+    networks:
+      - pxx-internal
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # Motor de cache i cues (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: pxx-redis
+    restart: always
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - pxx_redis_data:/data
+    networks:
+      - pxx-internal
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+
+  # Múscul GIS i IA (FastAPI) - Privat
+  worker:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    container_name: pxx-worker
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/geocontent_db
+      REDIS_URL: redis://redis:6379/0
+      PYTHONUNBUFFERED: 1
+    networks:
+      - pxx-internal
+    # No s'exposen ports públics: només accessible per Next.js via xarxa interna
+    deploy:
+      resources:
+        limits:
+          memory: 1500M
+
+  # Cervell i UI (Next.js) - Públic
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pxx-app
+    restart: always
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/geocontent_db
+      REDIS_URL: redis://redis:6379/0
+      NEXT_PUBLIC_APP_URL: ${SITE_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+    networks:
+      - pxx-internal
+      - pxx-public
+    ports:
+      - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+networks:
+  pxx-internal:
+    driver: bridge
+    internal: true
+  pxx-public:
+    driver: bridge
+
+volumes:
+  pxx_db_data:
+  pxx_redis_data:

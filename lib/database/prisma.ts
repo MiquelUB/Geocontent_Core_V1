@@ -1,7 +1,6 @@
 /**
- * PXX — Prisma Client Singleton
+ * PXX — Prisma Client Singleton (V2 Sovereign)
  * Prevents multiple instances in development (hot reload)
- * Updated for Prisma 7 + Driver Adapter (Supabase/PostgreSQL)
  * Uses a Proxy for fully lazy initialization — safe during Next.js static build.
  */
 
@@ -11,33 +10,24 @@ import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
-  pool: Pool | undefined;
 };
 
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL || "";
-  let finalConnectionString = connectionString;
-
-  if (process.env.NODE_ENV === "development" && connectionString.includes('pooler.supabase.com')) {
-    if (connectionString.includes(':5432')) {
-      const newUrl = connectionString.replace(':5432', ':6543');
-      finalConnectionString = newUrl.includes('?')
-        ? (newUrl.includes('pgbouncer=true') ? newUrl : `${newUrl}&pgbouncer=true`)
-        : `${newUrl}?pgbouncer=true`;
-      console.log(" [Prisma] Dev: Switched to Transaction Pooling (6543)");
-    }
-  }
-
+  
+  // En l'arquitectura sobirana (Hetzner), usem PgBouncer local si cal,
+  // però ja no depenem de les URLs de Supabase Pooler.
   const pool = new Pool({
-    connectionString: finalConnectionString,
-    max: process.env.NODE_ENV === 'development' ? 1 : 10,
+    connectionString: connectionString,
+    max: process.env.NODE_ENV === 'development' ? 2 : 20, // Ajustem segons necessitats Hetzner
     idleTimeoutMillis: 30000
   });
+
   const adapter = new PrismaPg(pool as any);
 
   const client = new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
   return client;
@@ -51,10 +41,15 @@ function getPrisma(): PrismaClient {
   return globalForPrisma.prisma;
 }
 
-// Proxy that defers all access to the real client until first use
+// Proxy que retarda l'accés fins al primer ús
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
-    return (getPrisma() as any)[prop];
+    const p = getPrisma() as any;
+    const value = p[prop];
+    if (typeof value === 'function') {
+      return value.bind(p);
+    }
+    return value;
   },
 });
 

@@ -1,52 +1,7 @@
 [
   {
     "id": "TC001",
-    "title": "post admin municipality with valid data",
-    "description": "Test the POST /api/admin/municipality endpoint with all required fields provided to ensure successful creation or update of municipality settings, expecting a 200 response with success true."
-  },
-  {
-    "id": "TC002",
-    "title": "post admin municipality with missing required field",
-    "description": "Test the POST /api/admin/municipality endpoint with a missing required field such as planTier to verify that the server returns a 500 error with success false and an appropriate error message."
-  },
-  {
-    "id": "TC003",
-    "title": "get analytics executive report success",
-    "description": "Test the GET /api/analytics/executive-report endpoint to fetch aggregated dashboard statistics successfully, expecting a 200 response with success true and data containing user metrics, completions, and heatmap telemetry."
-  },
-  {
-    "id": "TC004",
-    "title": "get analytics executive report with invalid query or aggregation failure",
-    "description": "Test the GET /api/analytics/executive-report endpoint with invalid query parameters or simulate data aggregation failure to verify that the server returns a 400 error with success false and an error message."
-  },
-  {
-    "id": "TC005",
-    "title": "get analytics executive report server error",
-    "description": "Test the GET /api/analytics/executive-report endpoint when a server or data store error occurs to ensure the server returns a 500 error with success false and an error message."
-  },
-  {
-    "id": "TC006",
-    "title": "post ai generate quiz with valid data",
-    "description": "Test the POST /api/ai/generate-quiz endpoint with valid POI text and optionsCount 3 to verify successful generation of a 3-option quiz, expecting a 200 response with success true and quiz details."
-  },
-  {
-    "id": "TC007",
-    "title": "post ai generate quiz with malformed body",
-    "description": "Test the POST /api/ai/generate-quiz endpoint with malformed or incomplete request body to verify that the server returns a 400 error with success false and an appropriate error message."
-  },
-  {
-    "id": "TC008",
-    "title": "post ai generate route with valid pdf",
-    "description": "Test the POST /api/ai/generate-route endpoint with a valid PDF file and routeId to verify successful generation of a full route breakdown, expecting a 200 response with success true and route breakdown details."
-  },
-  {
-    "id": "TC009",
-    "title": "post ai generate route with large pdf timeout",
-    "description": "Test the POST /api/ai/generate-route endpoint with a very large PDF file that exceeds processing time limits to verify that the server returns a 500 or 504 error indicating timeout or processing failure."
-  },
-  {
-    "id": "TC010",
-    "title": "post ai generate route quiz with missing routesummary",
-    "description": "Test the POST /api/ai/generate-route-quiz endpoint with missing routeSummary in the request body to verify that the server returns a 400 error with success false and an appropriate error message."
+    "title": "get_admin_municipality_with_valid_session",
+    "description": "Test GET /api/admin/municipality endpoint with a valid authenticated admin session to verify it returns 200 status and correct municipality data."
   }
 ]

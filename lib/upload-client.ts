@@ -1,13 +1,18 @@
-import { createClient } from '@/lib/database/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
+/**
+ * PAS 1.5: S3 Direct Upload (Client-side)
+ * Demana una URL signada a l'API i puja el fitxer directament a S3.
+ */
+export async function uploadFileClient(file: File, _bucket: string = 'geocontent') {
+    // 1. Demanem la URL signada a la nostra API
+    const response = await fetch(`/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}`);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "No s'ha pogut obtenir la URL de pujada");
+    }
 
-export async function uploadFileClient(file: File, bucket: string = 'geocontent') {
-    const supabase = createClient();
+    const { signedUrl, publicUrl } = await response.json();
 
-    // Sanitize filename: remove spaces and non-standard characters
-    const safeName = file.name.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
-    const fileName = `${uuidv4()}_${safeName}`;
-
+    // 2. Pugem el fitxer directament a S3 mitjançant un PUT
     // Normalize non-standard MIME types
     const MIME_NORMALIZATION: Record<string, string> = {
         'audio/x-m4a': 'audio/mp4',
@@ -18,22 +23,18 @@ export async function uploadFileClient(file: File, bucket: string = 'geocontent'
     };
     const contentType = MIME_NORMALIZATION[file.type] ?? file.type ?? 'application/octet-stream';
 
-    const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(fileName, file, {
-            contentType,
-            cacheControl: '3600',
-            upsert: false
-        });
+    const uploadResponse = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+            'Content-Type': contentType,
+        },
+    });
 
-    if (error) {
-        console.error('[uploadFileClient] Storage Error:', error);
-        throw error;
+    if (!uploadResponse.ok) {
+        throw new Error("Error en la pujada directa a S3");
     }
-
-    const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
 
     return publicUrl;
 }
+

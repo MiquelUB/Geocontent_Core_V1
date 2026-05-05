@@ -1,15 +1,5 @@
-/**
- * PXX API — POIs Endpoint
- * GET /api/pois — List POIs for a specific route
- * 
- * Query params:
- *   ?route_id=<uuid>    — Required: filter by route
- *   ?lang=<ca|es|fr|en> — Language for translated fields
- */
-
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/database/supabase/server";
-import { cookies } from "next/headers";
+import { prisma } from "@/lib/database/prisma";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -23,32 +13,33 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabase = createClient(await cookies());
-  const { data, error } = await supabase
-    .from("pois")
-    .select("*")
-    .eq("route_id", routeId)
-    .order("sort_order", { ascending: true });
+  try {
+    const routePois = await prisma.routePoi.findMany({
+      where: { routeId: routeId },
+      include: {
+        poi: true
+      },
+      orderBy: { orderIndex: 'asc' }
+    });
 
-  if (error) {
+    // Apply i18n translations
+    const localizedData = routePois.map((rp) => {
+      const poi = rp.poi;
+      return {
+        ...poi,
+        title: getTranslation(poi.title, poi.titleTranslations as any, lang),
+        description: getTranslation(poi.description, poi.descriptionTranslations as any, lang),
+        quiz_question: getTranslation(poi.textContent, poi.textContent as any, lang), // El model legacy guardava la pregunta en textContent o similar
+      };
+    });
+
+    return NextResponse.json(localizedData);
+  } catch (error: any) {
     console.error("[API /pois] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  // Apply i18n translations
-  const localizedData = data?.map((poi) => ({
-    ...poi,
-    title: getTranslation(poi.title, poi.title_translations, lang),
-    description: getTranslation(poi.description, poi.description_translations, lang),
-    quiz_question: getTranslation(poi.quiz_question, poi.quiz_question_translations, lang),
-  }));
-
-  return NextResponse.json(localizedData);
 }
 
-/**
- * Helper: Get translated text or fallback to original
- */
 function getTranslation(
   original: string | null,
   translations: Record<string, string> | null,
