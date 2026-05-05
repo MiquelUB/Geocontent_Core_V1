@@ -1,12 +1,24 @@
 version: '3.8'
-
 services:
+  db:
+    image: postgis/postgis:15-3.3
+    deploy:
+      resources:
+        limits:
+          memory: 1536M # PostgreSQL capat a 1.5GB
+    # Nota AnT: Ajusta el fitxer postgresql.conf: shared_buffers = 512MB
+  
   redis:
     image: redis:alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M # Redis capat a 256MB
 
-volumes:
-  redis_data:
+  api_core:
+    build: ./backend-python # FastAPI
+    deploy:
+      resources:
+        limits:
+          memory: 512M # App Core capada a 512MB

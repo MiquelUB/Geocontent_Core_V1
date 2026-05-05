@@ -119,32 +119,40 @@ export async function getLegends() {
 }
 
 function mapRoute(route: any) {
-  const firstPoi = route.routePois?.[0]?.poi;
-  const pois = route.routePois?.map((rp: any) => ({
-    ...rp.poi,
-    id: rp.poi.id,
-    title: rp.poi.title,
-    description: rp.poi.description || '',
-    latitude: rp.poi.latitude,
-    longitude: rp.poi.longitude,
-    image_url: rp.poi.appThumbnail || rp.poi.images?.[0] || '',
-    orderIndex: rp.orderIndex ?? 0,
-    icon: rp.poi.icon || null,
-    textContent: rp.poi.textContent || '',
-    audioUrl: rp.poi.audioUrl || '',
-    videoUrls: rp.poi.videoUrls || [],
-    carouselImages: rp.poi.carouselImages || [],
-    header16x9: rp.poi.header16x9 || '',
-    is_recapture: rp.poi.isRecapture || false,
-    appThumbnail: rp.poi.appThumbnail || '',
-    images: rp.poi.images || [],
-    videoMetadata: rp.poi.videoMetadata || {},
-    manualQuiz: rp.poi.manualQuiz,
-    type: rp.poi.type,
-    userUnlocks: rp.poi.userUnlocks || [],
-    routeId: route.id,
-  })) ?? [];
+  const pois = route.routePois?.map((rp: any) => {
+    const p = rp.poi;
+    // Extraiem lat/lng si el camp location (geometry) és present
+    // Nota: En Prisma Unsupported, depèn de com es retorni (Buffer o objecte)
+    const lat = p.location?.y ?? p.latitude ?? 0;
+    const lng = p.location?.x ?? p.longitude ?? 0;
 
+    return {
+      ...p,
+      id: p.id,
+      title: p.title,
+      description: p.description || '',
+      latitude: lat,
+      longitude: lng,
+      image_url: p.appThumbnail || p.images?.[0] || '',
+      orderIndex: rp.orderIndex ?? 0,
+      icon: p.icon || null,
+      textContent: p.textContent || '',
+      audioUrl: p.audioUrl || '',
+      videoUrls: p.videoUrls || [],
+      carouselImages: p.carouselImages || [],
+      header16x9: p.header16x9 || '',
+      is_recapture: p.isRecapture || false,
+      appThumbnail: p.appThumbnail || '',
+      images: p.images || [],
+      videoMetadata: p.videoMetadata || {},
+      manualQuiz: p.manualQuiz,
+      type: p.type,
+      userUnlocks: p.userUnlocks || [],
+      routeId: route.id,
+    };
+  }) ?? [];
+
+  const firstPoi = pois[0];
   const muniName = (route.municipality?.name || route.municipality_name || '').replace(/^Ajuntament de /i, '');
   const title = route.title || route.name || route.slug || 'Sense Títol';
 
@@ -350,4 +358,50 @@ export async function getPassportData(userId: string) {
     console.error('[getPassportData error]', err);
     return [];
   }
+}
+
+/**
+ * PAS 4: Helper per a consultes espacials PostGIS
+ */
+export async function getPoisWithinRadius(lon: number, lat: number, radiusMeters: number) {
+  const pois = await prisma.$queryRaw<any[]>`
+    SELECT id, title, ST_AsGeoJSON(location)::jsonb as geojson
+    FROM "pois"
+    WHERE ST_DWithin(
+      location,
+      ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326),
+      ${radiusMeters}
+    );
+  `;
+
+  return pois.map(p => ({
+    ...p,
+    location: p.geojson
+  }));
+}
+
+/**
+ * Helper per actualitzar la ubicació d'un POI (Escritura en camp Unsupported)
+ */
+export async function updatePoiLocation(poiId: string, lon: number, lat: number) {
+  return await prisma.$executeRaw`
+    UPDATE "pois"
+    SET location = ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)
+    WHERE id = ${poiId}::uuid;
+  `;
+}
+
+/**
+ * Obté l'última telemetria d'un usuari
+ */
+export async function getUserLastLocation(userId: string) {
+  const result = await prisma.$queryRaw<any[]>`
+    SELECT ST_AsGeoJSON(location)::jsonb as geojson, timestamp
+    FROM "user_telemetry"
+    WHERE user_id = ${userId}::uuid
+    ORDER BY timestamp DESC
+    LIMIT 1;
+  `;
+  
+  return result.length > 0 ? result[0] : null;
 }
