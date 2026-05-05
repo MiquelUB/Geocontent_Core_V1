@@ -1,7 +1,9 @@
 import uuid
 from typing import Optional, List
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Index, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 
 class Tenant(SQLModel, table=True):
     """
@@ -37,6 +39,7 @@ class Interaccio(SQLModel, table=True):
     __tablename__ = "interaccions"
     __table_args__ = (
         UniqueConstraint("message_id_extern", "content_hash", name="uq_interaccio_dedup"),
+        Index("ix_interaccions_contingut_gin", "contingut", postgresql_using="gin", postgresql_ops={"contingut": "gin_trgm_ops"}),
     )
     
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -44,7 +47,7 @@ class Interaccio(SQLModel, table=True):
     
     message_id_extern: Optional[str] = Field(default=None)
     content_hash: Optional[str] = Field(default=None)
-    contingut: str # A nivell de PostgreSQL ha de rebre un índex GIN o ser tsvector
+    contingut: str
     
     creat_el: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
@@ -58,6 +61,6 @@ class OutboxEvent(SQLModel, table=True):
     __tablename__ = "outbox_events"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tipus_event: str = Field(index=True)
-    payload: str
+    payload: dict = Field(sa_column=Column(JSONB))
     estat: str = Field(default="Pendent", index=True) # Pendent, Processat, Error
     creat_el: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
