@@ -1,7 +1,0 @@
-﻿components\admin\ManualPoiForm.tsx:48:  const [latitude, setLatitude] = useState(poi?.latitude?.toString() || '');
-components\admin\ManualPoiForm.tsx:150:    formData.append('latitude', latitude);
-components\admin\ManualPoiForm.tsx:328:              <Label>Latitud</Label>
-components\admin\ManualPoiForm.tsx:329:              <Input type="number" step="0.000001" value={latitude} onChange={(e) => setLatitude(e.target.value)} required />
-components\admin\RoutePoiManager.tsx:13:  latitude: number;
-components\admin\RoutePoiManager.tsx:229:                        {poi.latitude?.toFixed(4) ?? 'ÔÇö'}, {poi.longitude?.toFixed(4) ?? 'ÔÇö'}
-components\admin\RoutePoiManager.tsx:232:                    {(poi.latitude && poi.longitude) ? (

@@ -1,2 +1,0 @@
-﻿9:import iconsMapping from '@/lib/icons-mapping.json';
-47:  const availableFiles = (iconsMapping as any)[biome] || [];

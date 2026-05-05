@@ -1,6 +1,0 @@
-﻿app\[locale]\page.tsx:301:        <Header 
-components\admin\AdminDashboard.tsx:229:      <header
-components\layout\Header.tsx:34:    <header 
-node_modules\@vis.gl\react-maplibre\node_modules\@maplibre\maplibre-gl-style-spec\docs\src\components\app\app.tsx:26:                        <Header />
-node_modules\@vis.gl\react-maplibre\node_modules\@maplibre\maplibre-gl-style-spec\docs\src\components\app\app.tsx:41:            <Header />
-node_modules\@vis.gl\react-maplibre\node_modules\@maplibre\maplibre-gl-style-spec\docs\src\components\header\header.tsx:11:        <header class={style.header}>

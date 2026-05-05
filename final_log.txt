@@ -1,4 +1,0 @@
-﻿1479f68 fix: resolve conflict on hexagonal parsing
-48d4b7f fix: manual POI form duplicate latitude fix and layout styling tweaks
-891004a fix: restore LegendDetailScreen.tsx to fix syntax error on broken div tags
-6fb4914 fix: apply inline styles fallback for layout rendering stability without high-level config imports

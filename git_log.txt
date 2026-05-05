@@ -1,5 +1,0 @@
-﻿bfa5530 fix: allow language dropdown to extend outside header bounds
-6786f12 style: apply dark brown text in header for interior biome
-5283656 style: fix header layout, brand display and remove confusing logout
-238bd6d fix: prevent infinite loading if branding fails
-9cc9feb style: remove debug banner and sync version to v1.1.0

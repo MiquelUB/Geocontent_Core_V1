@@ -1,5 +1,0 @@
-﻿components\screens\HomeScreen.tsx:35:function getPoiIconSrc(poi: any, globalBiome?: string) {
-components\screens\HomeScreen.tsx:189:                    const iconSrc = getPoiIconSrc(p, brand?.themeId);
-components\screens\LegendDetailScreen.tsx:38:function getPoiIconSrc(poi: any, parentRoute: any, globalBiome?: string) {
-components\screens\MapScreen.tsx:36:function getPoiIconSrc(poi: any, globalBiome?: string) {
-components\screens\MapScreen.tsx:248:                  const iconSrc = getPoiIconSrc(poi, brand?.themeId);

@@ -1,1 +1,0 @@
-﻿38:function getPoiIconSrc(poi: any, parentRoute: any, globalBiome?: string) {

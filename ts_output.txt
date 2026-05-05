@@ -1,9 +1,0 @@
-﻿lib/database/prisma.ts(36,32): error TS2345: Argument of type 'Pool' is not assignable to parameter of type 'Pool | PoolConfig'.
-  Type 'import("D:/ProjectXX/Geocontent_Core/node_modules/@types/pg/index").Pool' is not assignable to type 'import("D:/ProjectXX/Geocontent_Core/node_modules/@prisma/adapter-pg/node_modules/@types/pg/index").Pool'.
-    The types of 'options.Client' are incompatible between these types.
-      Type '(new () => import("D:/ProjectXX/Geocontent_Core/node_modules/@types/pg/index").ClientBase) | undefined' is not assignable to type '(new () => import("D:/ProjectXX/Geocontent_Core/node_modules/@prisma/adapter-pg/node_modules/@types/pg/index").ClientBase) | undefined'.
-        Type 'new () => import("D:/ProjectXX/Geocontent_Core/node_modules/@types/pg/index").ClientBase' is not assignable to type 'new () => import("D:/ProjectXX/Geocontent_Core/node_modules/@prisma/adapter-pg/node_modules/@types/pg/index").ClientBase'.
-          Construct signature return types 'ClientBase' and 'ClientBase' are incompatible.
-            The types returned by 'connect()' are incompatible between these types.
-              Type 'Promise<ClientBase>' is not assignable to type 'Promise<void>'.
-                Type 'ClientBase' is not assignable to type 'void'.
