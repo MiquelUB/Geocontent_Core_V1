@@ -1,13 +1,16 @@
 # STAGE 1: Builder
 FROM node:20-alpine AS builder
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+# 1. Instal·lem ignorant els scripts automàtics (així no peta Prisma)
+RUN npm install --legacy-peer-deps --ignore-scripts
 
+# 2. Copiem toooot el codi del projecte (incloent-hi la carpeta prisma/)
 COPY . .
-# Generació de Prisma amb motors binaris explícits
+
+# 3. Generem el client de Prisma manualment ara que ja té el schema.prisma
 RUN npx prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
