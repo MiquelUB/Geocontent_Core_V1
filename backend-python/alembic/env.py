@@ -56,12 +56,10 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    # Llegim DATABASE_DIRECT_URL o, si no hi és, directament DATABASE_URL
-    direct_url = os.environ.get("DATABASE_DIRECT_URL") or os.environ.get("DATABASE_URL")
-    
-    if direct_url:
-        # Escapem els '%' automàticament per evitar l'error del configparser
-        escaped_url = direct_url.replace('%', '%%')
+    # 1. Agafem la URL i escapem els caràcters especials (%) automàticament
+    url = os.environ.get("DATABASE_DIRECT_URL") or os.environ.get("DATABASE_URL")
+    if url:
+        escaped_url = url.replace('%', '%%')
         config.set_main_option("sqlalchemy.url", escaped_url)
 
     connectable = engine_from_config(
@@ -70,6 +68,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
+    # 2. Ens connectem SENSE els bloquejos AUTOCOMMIT problemàtics
     with connectable.connect() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata
