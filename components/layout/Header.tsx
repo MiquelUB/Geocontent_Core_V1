@@ -1,8 +1,8 @@
 'use client'
 
-import { createClient } from '@/lib/database/supabase/client'
 import { useRouter } from '@/i18n/routing'
 import LanguageSelector from '@/components/LanguageSelector'
+import { signOut } from 'next-auth/react'
 
 interface HeaderProps {
   visitedCount?: number
@@ -15,10 +15,9 @@ interface HeaderProps {
 
 export default function Header({ visitedCount = 0, unvisitedCount = 0, nearbyCount = 0, onNavigate, onOpenHelp, brand }: HeaderProps) {
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await signOut({ redirect: false })
     localStorage.removeItem("core_user")
     router.push('/login')
   }

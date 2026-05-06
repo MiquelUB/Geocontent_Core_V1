@@ -1,6 +1,9 @@
 # STAGE 1: Builder
 FROM node:20-alpine AS builder
-RUN apk add --no-cache openssl libc6-compat
+RUN apk add --no-cache openssl libc6-compat chromium nss
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 WORKDIR /app
 
 COPY package.json package-lock.json ./
