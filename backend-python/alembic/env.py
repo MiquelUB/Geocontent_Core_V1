@@ -55,15 +55,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    direct_url = os.environ.get("DATABASE_DIRECT_URL")
+    """Run migrations in 'online' mode."""
+    # Llegim DATABASE_DIRECT_URL o, si no hi és, directament DATABASE_URL
+    direct_url = os.environ.get("DATABASE_DIRECT_URL") or os.environ.get("DATABASE_URL")
+    
     if direct_url:
-        # Escapem els '%' perquè configparser no falli en llegir la contrasenya
+        # Escapem els '%' automàticament per evitar l'error del configparser
         escaped_url = direct_url.replace('%', '%%')
         config.set_main_option("sqlalchemy.url", escaped_url)
 
@@ -74,21 +71,12 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        # Aïllament AUTOCOMMIT per al lock per evitar deadlocks transaccionals
-        connection.execution_options(isolation_level="AUTOCOMMIT").execute(
-            text("SELECT pg_advisory_lock(hashtext('pxx_geocontent_migrations'));")
+        context.configure(
+            connection=connection, target_metadata=target_metadata
         )
-        try:
-            context.configure(
-                connection=connection, target_metadata=target_metadata
-            )
 
-            with context.begin_transaction():
-                context.run_migrations()
-        finally:
-            connection.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("SELECT pg_advisory_unlock(hashtext('pxx_geocontent_migrations'));")
-            )
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
