@@ -5,19 +5,17 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 
-# 1. Li diem a Prisma que no intenti generar el client durant el npm install
-ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
+# 1. COPIEM LA CARPETA PRISMA ABANS DE L'INSTALL
+COPY prisma ./prisma/
 
-# 2. Instal·lem de forma normal però tolerant conflictes de dependències
+# 2. Instal·lem les dependències. Ara el teu postinstall funcionarà perquè ja té el schema!
 RUN npm install --legacy-peer-deps
 
-# 3. Copiem tot el codi font
+# 3. Copiem la resta del codi font
 COPY . .
 
-# 4. Ara sí, generem el client de Prisma
+# 4. Generem la resta i compilem
 RUN npx prisma generate
-
-# 5. Compilem el frontend de Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
