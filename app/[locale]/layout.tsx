@@ -196,7 +196,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${geistSans.className} antialiased`}
         style={themeStyles}
       >
         <NextIntlClientProvider messages={messages}>
