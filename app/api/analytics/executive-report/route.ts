@@ -26,44 +26,39 @@ export async function GET(req: Request) {
 
     const analytics = await getExecutiveAnalytics(municipalityId, startDate, endDate);
 
-    // 4. Heatmap Data (Telemetry) & Map Center
-    const municipalityRoutes = await prisma.route.findMany({
-      where: { municipalityId },
-      select: { id: true }
-    });
-    const routeIds = municipalityRoutes.map(r => r.id);
+    // 4. Heatmap Data (Telemetry) - Extracció mitjançant PostGIS
+    const telemetry = await prisma.$queryRaw<any[]>`
+      SELECT 
+        ST_X(location::geometry) as longitude, 
+        ST_Y(location::geometry) as latitude, 
+        timestamp
+      FROM user_telemetry
+      WHERE timestamp >= ${startDate} AND timestamp <= ${endDate}
+      AND user_id IN (SELECT id FROM users WHERE municipality_id = ${municipalityId}::uuid)
+      LIMIT 2000
+    `;
 
-    const telemetry = await prisma.userTelemetry.findMany({
-      where: {
-        timestamp: { gte: startDate, lte: endDate },
-        routeId: { in: routeIds }
-      },
-      take: 2000,
-      select: { latitude: true, longitude: true, timestamp: true }
-    });
-
-    // Calculate Center
-    const municipalityPois = await prisma.poi.findMany({
-      where: { municipalityId },
-      select: { latitude: true, longitude: true },
-      take: 50 // Limit for performance
-    });
+    // 5. Calculate Center from POIs using PostGIS
+    const municipalityPois = await prisma.$queryRaw<any[]>`
+      SELECT 
+        ST_X(location::geometry) as longitude, 
+        ST_Y(location::geometry) as latitude
+      FROM pois
+      WHERE id IN (
+        SELECT poi_id FROM route_pois rp
+        JOIN routes r ON rp.route_id = r.id
+        WHERE r.municipality_id = ${municipalityId}::uuid
+      )
+      LIMIT 50
+    `;
 
     let mapCenter = [1.13404, 42.44391]; // Default to Rialp center [Lng, Lat]
-
-    // Attempt to get center from organization if possible
-    const org = await prisma.organization.findFirst({
-      select: { centerLatitude: true, centerLongitude: true }
-    });
-    if (org?.centerLatitude && org?.centerLongitude) {
-      mapCenter = [org.centerLongitude, org.centerLatitude];
-    }
 
     if (municipalityPois.length > 0) {
       const validPois = municipalityPois.filter(p => p.latitude && p.longitude);
       if (validPois.length > 0) {
-        const avgLat = validPois.reduce((s, p) => s + p.latitude!, 0) / validPois.length;
-        const avgLng = validPois.reduce((s, p) => s + p.longitude!, 0) / validPois.length;
+        const avgLat = validPois.reduce((s, p) => s + (p.latitude as number), 0) / validPois.length;
+        const avgLng = validPois.reduce((s, p) => s + (p.longitude as number), 0) / validPois.length;
         mapCenter = [avgLng, avgLat];
       }
     }
