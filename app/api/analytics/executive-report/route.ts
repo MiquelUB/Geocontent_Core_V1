@@ -36,7 +36,7 @@ export async function GET(req: Request) {
     const telemetry = await prisma.userTelemetry.findMany({
       where: {
         timestamp: { gte: startDate, lte: endDate },
-        route_id: { in: routeIds }
+        routeId: { in: routeIds }
       },
       take: 2000,
       select: { latitude: true, longitude: true, timestamp: true }

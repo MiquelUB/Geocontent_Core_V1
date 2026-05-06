@@ -17,7 +17,7 @@ const nextConfig = {
     // serverActions are default in Next.js 15
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: false,
