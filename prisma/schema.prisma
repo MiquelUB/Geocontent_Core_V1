@@ -6,7 +6,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [postgis(version: "3"), uuid_ossp(map: "uuid-ossp")]
+  extensions = [postgis, postgis_topology, postgis_tiger_geocoder, uuid_ossp(map: "uuid-ossp")]
 }
 
 // --- MODELS D'USUARI I AUTH ---
