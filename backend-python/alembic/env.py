@@ -63,7 +63,9 @@ def run_migrations_online() -> None:
     """
     direct_url = os.environ.get("DATABASE_DIRECT_URL")
     if direct_url:
-        config.set_main_option("sqlalchemy.url", direct_url)
+        # Escapem els '%' perquè configparser no falli en llegir la contrasenya
+        escaped_url = direct_url.replace('%', '%%')
+        config.set_main_option("sqlalchemy.url", escaped_url)
 
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
