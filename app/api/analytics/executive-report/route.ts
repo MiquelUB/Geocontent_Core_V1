@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     });
     const routeIds = municipalityRoutes.map(r => r.id);
 
-    const telemetry = await prisma.user_telemetry.findMany({
+    const telemetry = await prisma.userTelemetry.findMany({
       where: {
         timestamp: { gte: startDate, lte: endDate },
         route_id: { in: routeIds }

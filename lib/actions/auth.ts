@@ -71,3 +71,13 @@ export async function getUserProfile(userId: string) {
     include: { municipality: true }
   });
 }
+
+export async function verifyAdminPassword(password: string) {
+  // TODO: Implementar validació real amb Prisma (municipality.adminMasterPassword)
+  return password === "admin123"; 
+}
+
+export async function loginOrRegister(email: string) {
+  // TODO: Implementar lògica de Magic Link per a Auth.js v5
+  return { success: true };
+}
