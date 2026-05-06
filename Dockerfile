@@ -4,15 +4,20 @@ RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# 1. Instal·lem ignorant els scripts automàtics (així no peta Prisma)
-RUN npm install --legacy-peer-deps --ignore-scripts
 
-# 2. Copiem toooot el codi del projecte (incloent-hi la carpeta prisma/)
+# 1. Li diem a Prisma que no intenti generar el client durant el npm install
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
+
+# 2. Instal·lem de forma normal però tolerant conflictes de dependències
+RUN npm install --legacy-peer-deps
+
+# 3. Copiem tot el codi font
 COPY . .
 
-# 3. Generem el client de Prisma manualment ara que ja té el schema.prisma
+# 4. Ara sí, generem el client de Prisma
 RUN npx prisma generate
 
+# 5. Compilem el frontend de Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
