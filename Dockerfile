@@ -34,6 +34,7 @@ RUN adduser --system --uid 1001 nextjs
 
 # Copiar la carpeta prisma per a migracions i schema en runtime
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./
 
 # Copiar assets amb permisos correctes (Correcció EACCES)
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
