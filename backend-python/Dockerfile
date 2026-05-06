@@ -1,8 +1,8 @@
 FROM python:3.12-slim
 
 # Evitar que Python generi fitxers .pyc i forçar output en temps real
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
