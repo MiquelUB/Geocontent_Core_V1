@@ -10,7 +10,7 @@ export interface TerritorialPackage {
     iconsMappingUrl: string; // URL a l'sprite o JSON d'icones
   };
   cartography: {
-    vectorTileUrl: string; // URL al .pmtiles de Supabase Storage (< 30MB)
+    vectorTileUrl: string; // URL al .pmtiles de l'emmagatzematge S3 (< 30MB)
     styleUrl: string; // JSON d'estils Mapbox/MapLibre GL compatible
   };
   routes: OfflineRoute[];

@@ -3,7 +3,7 @@ const createNextIntlPlugin = require("next-intl/plugin");
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig = {
-  serverExternalPackages: ["pdf-parse", "puppeteer"],
+  serverExternalPackages: ["pdf-parse", "puppeteer", "bullmq"],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.openstreetmap.org' },
@@ -15,6 +15,9 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     externalDir: true,
+    serverActions: {
+      allowedOrigins: ['pxxv-pxx-frontend.80opze.easypanel.host', 'localhost:3000']
+    }
   },
   eslint: {
     ignoreDuringBuilds: true,

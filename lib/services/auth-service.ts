@@ -2,7 +2,7 @@ import { prisma } from '@/lib/database/prisma';
 
 /**
  * Obté el perfil de l'usuari des de la base de dades local (Easypanel)
- * Substitueix la lògica de Supabase Admin.
+ * Motor d'autenticació sobirà.
  */
 export async function getUserProfileInternal(userId: string) {
   if (!userId) return null;

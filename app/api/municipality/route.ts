@@ -14,7 +14,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: "Missing municipality ID" }, { status: 400 });
         }
 
-        // Use Prisma to avoid Supabase RLS or field mapping issues
+        // Use Prisma directly for consistency with core architecture
         // Prisma uses camelCase for the schema fields
         const brand = await prisma.municipality.findUnique({
             where: { id },

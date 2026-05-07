@@ -140,7 +140,7 @@ export default function Home() {
           console.log("Auth callback detected, loading profile for:", uid);
           try {
             const { getUserProfile } = await import("@/lib/actions/auth");
-            // Retry fins a 3 vegades: Supabase pot tardar un instant a crear el perfil
+            // Retry fins a 3 vegades per assegurar la persistència del perfil a la BD
             let profile = null;
             for (let attempt = 0; attempt < 3 && !profile; attempt++) {
               if (attempt > 0) {

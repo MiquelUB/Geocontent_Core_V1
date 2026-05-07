@@ -17,7 +17,7 @@ function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL || "";
   
   // En l'arquitectura sobirana (Hetzner), usem PgBouncer local si cal,
-  // però ja no depenem de les URLs de Supabase Pooler.
+  // però ja no depenem de les URLs de l'antic Pooler.
   const pool = new Pool({
     connectionString: connectionString,
     max: process.env.NODE_ENV === 'development' ? 2 : 20, // Ajustem segons necessitats Hetzner
