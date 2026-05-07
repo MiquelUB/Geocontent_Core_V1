@@ -1,40 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database/prisma';
 import { videoQueue } from '@/lib/queue/client';
+import { auth } from '@/auth';
 
 /**
  * POST /api/upload/notify
- *
- * Cridat pel browser DESPRÉS de la pujada directa a S3.
- * 1. Actualitza poi.videoUrls amb la URL pública (immediat)
- * 2. Escriu un OutboxEvent perquè el worker Python (ARQ) faci la transcodificació HLS
- *
- * Body:
- * {
- *   poiId: string,
- *   publicUrl: string,       // URL pública S3 del vídeo raw
- *   storagePath: string,     // Ruta interna S3 (per al worker)
- *   type: 'snack' | 'dinner',
- *   duration: number,
- *   fileName: string,
- * }
  */
 export async function POST(req: NextRequest) {
   try {
+    // 1. SEC-01: Zero Trust Session Guard
+    const session = await auth();
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await req.json();
     const { poiId, publicUrl, storagePath, type, duration, fileName } = body;
 
-    if (!poiId || !publicUrl) {
-      return NextResponse.json({ error: 'poiId and publicUrl are required' }, { status: 400 });
+    // 2. Validació d'entrada bàsica
+    if (!poiId || !publicUrl || !storagePath) {
+      return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    // 1. Guardem la URL raw immediatament perquè sigui accessible
-    const poi = await prisma.poi.findUnique({ where: { id: poiId }, select: { videoUrls: true } });
+    // 3. SEC-07: Verificar que la URL prové del nostre S3
+    const s3Endpoint = process.env.S3_ENDPOINT || '';
+    if (!publicUrl.startsWith(s3Endpoint)) {
+        console.warn(`[notify] Suspicious URL blocked: ${publicUrl}`);
+        return NextResponse.json({ error: 'Forbidden: Invalid source URL' }, { status: 403 });
+    }
+
+    // 4. Validar existència del POI
+    const poi = await prisma.poi.findUnique({ 
+        where: { id: poiId }, 
+        select: { id: true, videoUrls: true } 
+    });
+    
     if (!poi) {
       return NextResponse.json({ error: 'POI not found' }, { status: 404 });
     }
 
-    const currentUrls: string[] = (poi.videoUrls as string[]) ?? [];
+    // 5. Actualització de dades (Impedir injeccions massives)
+    const currentUrls: string[] = Array.isArray(poi.videoUrls) ? poi.videoUrls : [];
+    if (currentUrls.includes(publicUrl)) {
+        return NextResponse.json({ success: true, message: 'URL already registered' });
+    }
+    
     const updatedUrls = [...currentUrls, publicUrl].slice(0, 3); // Max 3 videos
 
     await prisma.poi.update({
@@ -42,7 +52,7 @@ export async function POST(req: NextRequest) {
       data: { videoUrls: updatedUrls },
     });
 
-    // 2. Outbox Pattern: escrivim l'event per al worker Python (ARQ)
+    // 6. Outbox Pattern: Transcodificació asíncrona (Múscul Python)
     try {
       const safeFileName = (fileName ?? 'video').replace(/[^a-z0-9_-]/gi, '_');
 
@@ -58,16 +68,15 @@ export async function POST(req: NextRequest) {
 
       console.log(`[notify] Outbox event creat per POI ${poiId} — ${fileName}`);
     } catch (outboxErr: any) {
-      // L'error d'Outbox no és fatal: la URL raw ja s'ha guardat
       console.warn('[notify] Outbox write failed (non-fatal):', outboxErr.message);
     }
 
     return NextResponse.json({
       success: true,
-      message: `URL saved. Transcoding queued via Outbox Pattern.`,
+      message: `URL saved and queued for processing.`,
     });
   } catch (err: any) {
     console.error('[notify] Unexpected error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

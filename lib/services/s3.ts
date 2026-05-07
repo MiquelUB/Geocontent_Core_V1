@@ -67,12 +67,14 @@ export async function deleteFromS3(key: string) {
 }
 
 /**
- * Genera una URL signada per a descàrrega
+ * Genera una URL signada per a descàrrega (PUT upload)
+ * Inclou el ContentType per obligar el client a respectar el format validat pel servidor.
  */
-export async function getSignedUrl(key: string, expiresIn = 3600) {
+export async function getSignedUrl(key: string, expiresIn = 3600, contentType?: string) {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
+    ContentType: contentType, // Crític: el client haurà d'enviar aquest header exactament
   });
 
   return await s3GetSignedUrl(s3Client, command, { expiresIn });

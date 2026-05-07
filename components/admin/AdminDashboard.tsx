@@ -60,7 +60,6 @@ export default function AdminDashboard({
   const adminTheme = getAdminTheme(brand?.themeId || municipalityTheme);
   const [activeTab, setActiveTab] = useState<'rutes' | 'usuaris' | 'executiu' | 'config'>('rutes');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
   // 🔄 Sync state with initialBrand when server re-renders (router.refresh())
   useEffect(() => {
@@ -92,12 +91,6 @@ export default function AdminDashboard({
   const [reports, setReports] = useState<any[]>(initialReports);
 
   useEffect(() => {
-    // Check if administrative session unlocked
-    const isUnlocked = sessionStorage.getItem('admin_master_unlocked');
-    if (isUnlocked === 'true') {
-      setIsAdminUnlocked(true);
-    }
-
     async function fetchData() {
       // Si no tenim dades inicials o volem refrescar, les tornem a carregar solo si necesario
       if (legends.length === 0) {
@@ -242,21 +235,6 @@ export default function AdminDashboard({
     }
   }
 
-  if (!isAdminUnlocked) {
-    return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-6">
-        <AdminSecurityGate
-          title="Accés al Panell de Control"
-          description={`Introduïu la contrasenya mestra del consistori per gestionar els continguts.`}
-          onSuccess={() => {
-            setIsAdminUnlocked(true);
-            sessionStorage.setItem('admin_master_unlocked', 'true');
-          }}
-          verifyFn={async (pass) => verifyAdminPassword(municipalityId || '', pass)}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 p-8 font-sans">

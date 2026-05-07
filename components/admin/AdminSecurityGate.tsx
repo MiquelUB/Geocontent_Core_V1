@@ -8,13 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Lock, Loader2 } from "lucide-react";
 
 interface AdminSecurityGateProps {
-    onSuccess: (password: string) => void;
     title: string;
     description: string;
     verifyFn: (password: string) => Promise<{ success: boolean; error?: string }>;
 }
 
-export default function AdminSecurityGate({ onSuccess, title, description, verifyFn }: AdminSecurityGateProps) {
+export default function AdminSecurityGate({ title, description, verifyFn }: AdminSecurityGateProps) {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -26,9 +25,7 @@ export default function AdminSecurityGate({ onSuccess, title, description, verif
 
         try {
             const result = await verifyFn(password);
-            if (result.success) {
-                onSuccess(password);
-            } else {
+            if (!result.success) {
                 setError(result.error || 'Contrasenya incorrecta');
             }
         } catch (err) {

@@ -1,26 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getSignedUrl } from '@/lib/services/s3';
+import { auth } from '@/auth';
+
+// SEC-12: Whitelist de formats permesos per pujada directa
+const ALLOWED_UPLOAD_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'video/mp4',
+    'video/quicktime',
+    'application/pdf'
+];
 
 /**
-  * GET /api/upload/signed-url?fileName=video.mp4&bucket=geocontent&contentType=video/mp4
-  *
-  * Returns a short-lived signed upload URL so the browser can PUT
-  * the file directly to S3 Storage — bypassing Next.js completely.
-  *
-  * Next.js never receives the file bytes. Memory footprint: ~0.
+  * GET /api/upload/signed-url?fileName=video.mp4&contentType=video/mp4
   */
 export async function GET(req: NextRequest) {
   try {
+    // 1. SEC-01: Zero Trust Session Guard
+    const session = await auth();
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
     const fileName = searchParams.get('fileName') ?? 'upload';
+    const contentType = searchParams.get('contentType') ?? 'application/octet-stream';
+
+    // 2. SEC-12: Validació de format abans de signar
+    if (!ALLOWED_UPLOAD_TYPES.includes(contentType)) {
+        return NextResponse.json({ error: 'Forbidden: Invalid MIME type' }, { status: 415 });
+    }
     
     // Sanitize filename: remove spaces and non-standard characters
     const safeName = fileName.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
     const storagePath = `${uuidv4()}_${safeName}`;
 
-    // Request a signed upload URL (expires in 15 minutes)
-    const signedUrl = await getSignedUrl(storagePath, 900);
+    // 3. Request a signed upload URL (expires in 15 minutes)
+    // Passem el contentType per incloure'l a la política de S3 (opcional segons client S3)
+    const signedUrl = await getSignedUrl(storagePath, 900, contentType);
 
     // Calculate public URL based on endpoint and bucket
     const s3Endpoint = (process.env.S3_ENDPOINT || '').replace(/\/$/, '');
@@ -34,7 +53,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('[signed-url] Unexpected error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 

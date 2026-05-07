@@ -4,7 +4,7 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
-import { signIn as authSignIn, signOut as authSignOut } from "@/auth";
+import { signIn as authSignIn, signOut as authSignOut, auth } from "@/auth";
 import { rateLimit } from '@/lib/services/ratelimit';
 import { SECURITY_CONFIG } from '@/lib/config/constants';
 
@@ -44,6 +44,11 @@ export async function logout() {
  */
 export async function registerUser(name: string, email: string) {
   try {
+    const session = await auth();
+    if (!session || (session.user as any).role !== 'admin') {
+      return { success: false, error: "Accés denegat. Només administradors." };
+    }
+
     const user = await prisma.user.upsert({
       where: { email: email.toLowerCase() },
       update: {
@@ -71,6 +76,33 @@ export async function getUserProfile(userId: string) {
     where: { id: userId },
     include: { municipality: true }
   });
+}
+
+/**
+ * Desbloqueja el Dashboard d'Administració mitjançant una cookie segura
+ */
+export async function unlockAdminDashboard(municipalityId: string, password: string) {
+  try {
+    const res = await verifyAdminPassword(municipalityId, password);
+    
+    if (res.success) {
+      const cookieStore = await cookies();
+      cookieStore.set('admin_master_unlocked', 'true', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 3600 // 1 hora
+      });
+      
+      revalidatePath('/admin');
+      return { success: true };
+    }
+    
+    return { success: false, error: res.error || 'Contrasenya incorrecta' };
+  } catch (err) {
+    console.error("Error unlocking admin dashboard:", err);
+    return { success: false, error: 'Error del servidor' };
+  }
 }
 
 export async function verifyAdminPassword(municipalityId: string, password: string) {

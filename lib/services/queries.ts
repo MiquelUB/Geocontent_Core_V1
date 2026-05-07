@@ -5,7 +5,14 @@ import { unstable_noStore as noStore } from 'next/cache';
 export async function getAppBranding() {
   try {
     const m = await prisma.municipality.findFirst({
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        themeId: true,
+        customColors: true,
+      }
     });
     return m;
   } catch (e) {
@@ -18,6 +25,11 @@ export async function getMunicipalities() {
   noStore();
   try {
     return await prisma.municipality.findMany({
+      select: {
+        id: true,
+        name: true,
+        themeId: true,
+      },
       orderBy: { name: 'asc' }
     });
   } catch (err) {
@@ -84,6 +96,13 @@ export async function getAllProfiles() {
   noStore();
   try {
     return await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        image: true,
+        createdAt: true,
+        // EXCLUÏM camps sensibles com email, emailVerified, etc.
+      },
       orderBy: { createdAt: 'desc' }
     });
   } catch (err) {

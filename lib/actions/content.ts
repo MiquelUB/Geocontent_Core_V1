@@ -11,6 +11,7 @@ import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { uploadFile } from './storage';
 import { autoTranslateAction } from './ai';
 import { getDefaultMunicipalityId, getRouteWithPois as _getRouteWithPois } from '../services/queries';
+import { auth } from "@/auth";
 
 // Server Action Wrapper per a Client Components
 export async function getRouteWithPois(routeId: string) {
@@ -82,6 +83,9 @@ export async function updateMunicipality(id: string, name: string, logoUrl?: str
 
 export async function createLegend(formData: FormData) {
   try {
+    const session = await auth();
+    if (!session) return { success: false, error: "Sessió requerida." };
+
     const validated = CreateLegendSchema.parse(Object.fromEntries(formData.entries()));
 
     const routeThumbnailFile = formData.get('thumbnail_file') as File || null
@@ -172,6 +176,9 @@ export async function createRoute(formData: FormData) {
   }
 
   try {
+    const session = await auth();
+    if (!session) return { success: false, error: "Sessió requerida." };
+
     const limits = await checkPlanLimits(municipalityId);
     if (!limits.isWithinRouteLimit) {
       return {
@@ -298,6 +305,9 @@ export async function deleteLegend(id: string, municipalityId?: string) {
 
 export async function createPoi(formData: FormData) {
   try {
+    const session = await auth();
+    if (!session) return { success: false, error: "Sessió requerida." };
+
     const validated = CreatePoiSchema.parse(Object.fromEntries(formData.entries()));
     const { title, description, latitude, longitude, route_id, text_content, video_urls, carousel_images, icon } = validated;
 
