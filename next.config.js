@@ -14,7 +14,7 @@ const nextConfig = {
   },
   reactStrictMode: true,
   experimental: {
-    // serverActions are default in Next.js 15
+    externalDir: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -22,10 +22,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externalDir = true;
-    }
+  webpack: (config) => {
     return config;
   },
   output: 'standalone',

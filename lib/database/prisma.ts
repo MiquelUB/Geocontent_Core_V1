@@ -1,3 +1,4 @@
+import 'server-only';
 /**
  * PXX — Prisma Client Singleton (V2 Sovereign)
  * Prevents multiple instances in development (hot reload)

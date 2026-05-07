@@ -1,3 +1,4 @@
+import 'server-only';
 import { prisma } from "../database/prisma";
 import { unstable_noStore as noStore } from 'next/cache';
 
