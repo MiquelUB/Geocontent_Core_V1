@@ -22,6 +22,8 @@ const newsreader = Newsreader({
 });
 
 import { getTranslations } from 'next-intl/server';
+import { notFound } from "next/navigation";
+import { routing } from "@/i18n/routing";
 
 export async function generateMetadata({ 
   params 
@@ -29,6 +31,12 @@ export async function generateMetadata({
   params: Promise<{ locale: string }> 
 }): Promise<Metadata> {
   const { locale } = await params;
+
+  // VALIDACIÓ CRUCIAL: Aturem l'enviament de capçaleres si el locale no és vàlid
+  if (!routing.locales.includes(locale as any)) {
+    notFound();
+  }
+
   const t = await getTranslations({ locale, namespace: 'meta' });
   
   let brand = null;
@@ -125,8 +133,6 @@ function hexToHsl(hex: string) {
 
 import { getMessages } from "next-intl/server";
 import { NextIntlClientProvider } from "next-intl";
-import { notFound } from "next/navigation";
-import { routing } from "@/i18n/routing";
 
 export default async function RootLayout({
   children,
