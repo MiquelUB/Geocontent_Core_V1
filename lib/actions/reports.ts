@@ -1,4 +1,8 @@
-'use server'
+'use server';
+
+export const runtime = 'nodejs';
+
+
 
 import { reportQueue } from '@/lib/queue/client';
 import { prisma } from '@/lib/database/prisma';

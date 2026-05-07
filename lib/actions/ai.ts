@@ -1,5 +1,9 @@
 'use server';
 
+export const runtime = 'nodejs';
+
+
+
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 // All heavy/Node dependencies (OpenAI, pdf-parse) are dynamically imported inside actions.
 
