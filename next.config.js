@@ -22,6 +22,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externalDir = true;
+    }
+    return config;
+  },
   output: 'standalone',
 };
 
