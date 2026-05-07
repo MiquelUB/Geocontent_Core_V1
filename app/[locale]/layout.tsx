@@ -32,9 +32,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
 
-  // VALIDACIÓ CRUCIAL: Aturem l'enviament de capçaleres si el locale no és vàlid
+  // Si el locale no és vàlid, retornem metadades buides.
+  // El notFound() es gestiona NOMÉS al RootLayout per evitar ERR_HTTP_HEADERS_SENT.
   if (!routing.locales.includes(locale as any)) {
-    notFound();
+    return {};
   }
 
   const t = await getTranslations({ locale, namespace: 'meta' });
