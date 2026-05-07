@@ -32,10 +32,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
 
-  // Si el locale no és vàlid, retornem metadades buides.
-  // El notFound() es gestiona NOMÉS al RootLayout per evitar ERR_HTTP_HEADERS_SENT.
+  // Ens assegurem de llançar notFound() AQUÍ abans que Next.js comenci a enviar capçaleres (HTTP 200).
   if (!routing.locales.includes(locale as any)) {
-    return {};
+    notFound();
   }
 
   const t = await getTranslations({ locale, namespace: 'meta' });
