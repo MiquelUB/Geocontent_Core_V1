@@ -3,9 +3,6 @@ import React from 'react';
 export default function GlobalNotFound() {
   return (
     <html lang="ca">
-      <head>
-        <title>Pàgina no trobada</title>
-      </head>
       <body style={{ 
         display: 'flex', 
         flexDirection: 'column', 
