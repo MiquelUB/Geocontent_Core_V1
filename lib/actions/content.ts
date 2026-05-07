@@ -1,6 +1,5 @@
 'use server'
 
-export const runtime = 'nodejs';
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";
@@ -114,8 +113,7 @@ export async function createLegend(formData: FormData) {
           slug: title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') + '-' + Date.now(),
           description,
           themeId,
-          thumbnail1x1: routeThumbnail || null,
-          downloadRequired: formData.get('download_required') === 'true'
+          thumbnail1x1: routeThumbnail || null
         }
       });
 
@@ -123,12 +121,8 @@ export async function createLegend(formData: FormData) {
 
       const poi = await tx.poi.create({
         data: {
-          municipalityId,
           title: title,
           description,
-          latitude: latitude || 0,
-          longitude: longitude || 0,
-          images: appThumbnail ? [appThumbnail] : [],
           audioUrl: audio_url,
           videoUrls: video_url ? [video_url] : [],
           textContent: text_content,
@@ -198,7 +192,6 @@ export async function createRoute(formData: FormData) {
         municipalityId,
         themeId: category as any,
         thumbnail1x1: thumbnail1x1 || null,
-        downloadRequired,
         finalQuiz: finalQuizInfo,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -260,7 +253,6 @@ export async function updateRoute(id: string, formData: FormData) {
         municipalityId: locationMuniId || muniId || undefined,
         themeId: category as any,
         thumbnail1x1: thumbnail1x1 || null,
-        downloadRequired,
         finalQuiz: finalQuizInfo || undefined,
         updatedAt: new Date()
       }
@@ -378,12 +370,8 @@ export async function createPoi(formData: FormData) {
     const result = await prisma.$transaction(async (tx) => {
       const poi = await tx.poi.create({
         data: {
-          municipalityId,
           title,
           description,
-          latitude,
-          longitude,
-          images: appThumbnail ? [appThumbnail] : [],
           audioUrl,
           videoUrls: finalVideoUrls,
           textContent: text_content,
@@ -486,14 +474,11 @@ export async function updatePoi(id: string, formData: FormData) {
 
     await prisma.poi.update({
       where: { 
-        id,
-        municipalityId: muniId || undefined 
+        id
       },
       data: {
         title,
         description,
-        latitude,
-        longitude,
         audioUrl,
         videoUrls,
         textContent,
@@ -502,8 +487,7 @@ export async function updatePoi(id: string, formData: FormData) {
         carouselImages: finalCarouselImages,
         icon,
         manualQuiz,
-        type: type ? (type as any) : undefined,
-        images: appThumbnail ? [appThumbnail] : undefined,
+        type: type ? (type as any) : undefined
       }
     });
 

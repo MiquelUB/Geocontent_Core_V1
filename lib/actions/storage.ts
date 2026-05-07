@@ -1,6 +1,5 @@
 'use server';
 
-export const runtime = 'nodejs';
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";
@@ -31,7 +30,14 @@ export async function uploadFile(file: File, folder: string = 'geocontent') {
     const buffer = Buffer.from(arrayBuffer);
     
     // Pugem directament a S3/MinIO
-    const publicUrl = await uploadToS3(buffer, fileName, file.type);
+    await uploadToS3(buffer, fileName, file.type);
+    
+    // Construct and return the public URL
+    const bucket = process.env.S3_BUCKET || "geocontent";
+    const endpoint = process.env.S3_ENDPOINT || "http://localhost:9000";
+    // Si estem darrera un proxy o domini públic s'hauria de fer servir NEXT_PUBLIC_S3_PUBLIC_URL si existeix
+    const publicEndpoint = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || endpoint;
+    const publicUrl = `${publicEndpoint}/${bucket}/${fileName}`;
     
     return publicUrl;
   } catch (err: any) {

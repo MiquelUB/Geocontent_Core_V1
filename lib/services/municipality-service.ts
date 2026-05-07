@@ -13,7 +13,6 @@ export async function updateMunicipalityInternal(id: string, name: string, logoU
         themeId: themeId || undefined,
         adminMasterPassword: adminMasterPassword || undefined,
         planTier: planTier || undefined,
-        extraRoutesCount: extraRoutesCount !== undefined ? extraRoutesCount : undefined,
         updatedAt: new Date()
       }
     });

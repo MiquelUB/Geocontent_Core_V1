@@ -1,6 +1,5 @@
 'use server';
 
-export const runtime = 'nodejs';
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";

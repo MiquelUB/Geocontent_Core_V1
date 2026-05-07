@@ -1,6 +1,5 @@
 'use server';
 
-export const runtime = 'nodejs';
 
 import { prisma } from "../database/prisma";
 import { packagerQueue } from "../queue/client";

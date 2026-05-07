@@ -1,38 +1,40 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
+import { NextResponse, type NextRequest } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
-export async function middleware(request: NextRequest) {
-  // 1. Intercepció primerenca: Resolució de cookies SENSE tocar Prisma/Postgres
-  // Auth.js pot utilitzar diferents noms de cookies segons l'entorn i la versió
-  const token = 
-    request.cookies.get('next-auth.session-token')?.value || 
-    request.cookies.get('__Secure-next-auth.session-token')?.value ||
-    request.cookies.get('authjs.session-token')?.value ||
-    request.cookies.get('__Secure-authjs.session-token')?.value;
+export default async function middleware(request: NextRequest) {
+  // 1. Inicialitzem la resposta i resolem la internacionalització (SENSE mutar estats de sessió encara)
+  let response = intlMiddleware(request);
 
-  const { pathname } = request.nextUrl;
-  
-  // 2. Protecció de rutes d'administració
-  const isProtectedPath = (pathname.includes('/admin') || pathname.includes('/api/admin')) && !pathname.includes('/login');
-
-  if (isProtectedPath && !token) {
-    if (pathname.includes('/api/')) {
-      return NextResponse.json({ success: false, error: 'No autoritzat. Sessió requerida.' }, { status: 401 });
-    }
-
-    const segments = pathname.split('/');
-    const locale = routing.locales.includes(segments[1] as any) ? segments[1] : routing.defaultLocale;
-    const loginUrl = new URL(`/${locale}/login`, request.nextUrl);
-    
-    return NextResponse.redirect(loginUrl);
+  if (response.status === 307 || response.status === 308) {
+    return response;
   }
 
-  // 3. Inicialització de la resposta i execució de next-intl
-  return intlMiddleware(request);
+  const pathname = request.nextUrl.pathname;
+  const isAdminRoute = (pathname.includes('/admin') || pathname.includes('/api/admin')) && !pathname.includes('/login');
+
+  // 2. Protecció de rutes d'administració (Edge-safe, llegint cookies directament)
+  if (isAdminRoute) {
+    const token = 
+      request.cookies.get('next-auth.session-token')?.value || 
+      request.cookies.get('__Secure-next-auth.session-token')?.value ||
+      request.cookies.get('authjs.session-token')?.value ||
+      request.cookies.get('__Secure-authjs.session-token')?.value;
+
+    if (!token) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Accés denegat. Sessió requerida.' }, { status: 401 });
+      }
+      
+      const locale = pathname.split('/')[1] || routing.defaultLocale;
+      const loginUrl = new URL(`/${locale}/login`, request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  return response;
 }
 
 export const config = {

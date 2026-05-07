@@ -1,6 +1,5 @@
 'use server';
 
-export const runtime = 'nodejs';
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";
@@ -74,12 +73,20 @@ export async function getUserProfile(userId: string) {
   });
 }
 
-export async function verifyAdminPassword(password: string) {
-  // TODO: Implementar validació real amb Prisma (municipality.adminMasterPassword)
-  return password === "admin123"; 
+export async function verifyAdminPassword(municipalityId: string, password: string) {
+  try {
+    const muni = await prisma.municipality.findUnique({ where: { id: municipalityId } });
+    if (!muni) return { success: false, error: "Municipality not found" };
+    if (muni.adminMasterPassword && muni.adminMasterPassword !== password) {
+      return { success: false, error: "Invalid password" };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: "Database error" };
+  }
 }
 
-export async function loginOrRegister(email: string) {
+export async function loginOrRegister(name: string, email: string) {
   // TODO: Implementar lògica de Magic Link per a Auth.js v5
-  return { success: true };
+  return { success: true, user: { name, email } };
 }

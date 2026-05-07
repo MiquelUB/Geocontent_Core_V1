@@ -151,7 +151,7 @@ export async function processReport(reportId: string, municipalityId: string) {
       where: { id: reportId },
       data: {
         status: 'FAILED',
-        error: error.message || "Descripció de l'error no disponible"
+        data: { error: error.message || "Descripció de l'error no disponible" } as any
       }
     });
     return { success: false, error: error.message };

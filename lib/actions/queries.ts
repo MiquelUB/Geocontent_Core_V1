@@ -1,6 +1,5 @@
 'use server'
 
-export const runtime = 'nodejs';
 
 import * as queryService from '../services/queries';
 
