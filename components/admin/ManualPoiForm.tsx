@@ -6,11 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload } from "lucide-react";
+import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles } from "lucide-react";
 import iconsMapping from '@/lib/icons-mapping.json';
 import { getAdminTheme } from "@/lib/adminTheme";
 import { compressImage } from "@/lib/imageOptimization";
 import { uploadFileClient } from "@/lib/upload-client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { autoTranslateAction, translateFieldsAction } from '@/lib/actions/ai';
+import { generatePoiAudiosAction } from '@/lib/actions/audio';
+
+const SUPPORTED_LOCALES = [
+  { id: 'ca', name: 'Català', flag: '🇦🇩' },
+  { id: 'es', name: 'Castellà', flag: '🇪🇸' },
+  { id: 'en', name: 'Anglès', flag: '🇬🇧' },
+  { id: 'fr', name: 'Francès', flag: '🇫🇷' },
+];
 
 const BIOME_MAP: Record<string, string> = {
   mountain: 'Montanya',
@@ -41,16 +51,34 @@ const MAX_VIDEO_SIZE_MB = 10; // Reduït per evitar 413, recomanem usar VideoUpl
 
 export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes = [], defaultRouteId, municipalityTheme }: ManualPoiFormProps) {
   const activeTheme = getAdminTheme(municipalityTheme);
-  const [title, setTitle] = useState(poi?.title || '');
-  const [description, setDescription] = useState(poi?.description || '');
+  
+  // States for multi-language fields
+  const [titles, setTitles] = useState<Record<string, string>>(() => {
+    if (poi?.titleTranslations && Object.keys(poi.titleTranslations).length > 0) return poi.titleTranslations;
+    return { ca: poi?.title || '', es: '', en: '', fr: '' };
+  });
+  
+  const [descriptions, setDescriptions] = useState<Record<string, string>>(() => {
+    if (poi?.descriptionTranslations && Object.keys(poi.descriptionTranslations).length > 0) return poi.descriptionTranslations;
+    return { ca: poi?.description || '', es: '', en: '', fr: '' };
+  });
+
+  const [textContents, setTextContents] = useState<Record<string, string>>(() => {
+    if (poi?.textContentTranslations && Object.keys(poi.textContentTranslations).length > 0) return poi.textContentTranslations;
+    return { ca: poi?.textContent || '', es: '', en: '', fr: '' };
+  });
+
+  const [activeLocale, setActiveLocale] = useState('ca');
+  
   const [routeId, setRouteId] = useState(poi?.routeId || defaultRouteId || '');
-  const [textContent, setTextContent] = useState(poi?.textContent || '');
   const [latitude, setLatitude] = useState(poi?.latitude?.toString() || '');
   const [longitude, setLongitude] = useState(poi?.longitude?.toString() || '');
   const [icon, setIcon] = useState(poi?.icon || '');
   const [poiType, setPoiType] = useState(poi?.type || 'CIVIL');
   const [manualQuiz, setManualQuiz] = useState<any>(poi?.manualQuiz || null);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const [appThumbnail, setAppThumbnail] = useState(poi?.appThumbnail || '');
   const [header16x9, setHeader16x9] = useState(poi?.header16x9 || '');
@@ -110,6 +138,54 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
 
+  const handleAutoTranslate = async () => {
+    if (!titles.ca) {
+      alert("Cal un títol en català per traduir.");
+      return;
+    }
+    setIsTranslating(true);
+    try {
+      const res = await translateFieldsAction({
+        title: titles.ca,
+        description: descriptions.ca,
+        textContent: textContents.ca
+      });
+      if (res.success) {
+        setTitles(prev => ({ ...prev, ...res.data.title }));
+        setDescriptions(prev => ({ ...prev, ...res.data.description }));
+        setTextContents(prev => ({ ...prev, ...res.data.textContent }));
+      } else {
+        alert("Error en la traducció: " + res.error);
+      }
+    } catch (err) {
+      console.error("Translation Error:", err);
+      alert("Error de connexió en la traducció");
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleGenerateAudios = async () => {
+    if (!poi?.id) {
+      alert("Primer has de guardar el punt per generar els àudios.");
+      return;
+    }
+    setIsGeneratingAudio(true);
+    try {
+      const res = await generatePoiAudiosAction(poi.id);
+      if (res.success) {
+        alert("Àudios generats correctament per a tots els idiomes!");
+      } else {
+        alert("Error generant àudios: " + res.error);
+      }
+    } catch (err) {
+      console.error("Audio Generation Error:", err);
+      alert("Error de connexió en la generació d'àudios");
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
   const handleAddCarouselImage = () => {
 
     if (carouselImages.length >= 4) return;
@@ -144,9 +220,16 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     setUploadStatus("Comprimint i pujant arxius...");
 
     const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('text_content', textContent);
+    // We send the primary title/description/text for backward compatibility or default display
+    formData.append('title', titles.ca || titles[Object.keys(titles)[0]] || '');
+    formData.append('description', descriptions.ca || '');
+    formData.append('text_content', textContents.ca || '');
+    
+    // We send the full translation objects as JSON
+    formData.append('title_translations', JSON.stringify(titles));
+    formData.append('description_translations', JSON.stringify(descriptions));
+    formData.append('text_content_translations', JSON.stringify(textContents));
+
     formData.append('latitude', latitude);
     formData.append('longitude', longitude);
     formData.append('icon', icon);
@@ -236,15 +319,138 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="poiTitle" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-stone-400" />
-              Títol del Punt
-            </Label>
-            <Input id="poiTitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Església de Sant Joan" required />
+          <Tabs value={activeLocale} onValueChange={setActiveLocale} className="w-full">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex flex-col gap-1">
+                <Label className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-stone-400" />
+                  Contingut Multilingüe
+                </Label>
+                {poi?.id && (
+                  <div className="flex gap-2 mt-1">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-6 text-[9px] border-primary/30 text-primary hover:bg-primary/5"
+                      disabled={isTranslating}
+                      onClick={async () => {
+                        setIsTranslating(true);
+                        await autoTranslateAction('poi', poi.id);
+                        window.location.reload();
+                      }}
+                    >
+                      {isTranslating ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : "🤖"} Auto-Traduir
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-6 text-[9px] border-purple-300 text-purple-600 hover:bg-purple-50"
+                      disabled={isGeneratingAudio}
+                      onClick={async () => {
+                        setIsGeneratingAudio(true);
+                        const res = await generatePoiAudiosAction(poi.id);
+                        if (res.success) window.location.reload();
+                        else alert(res.error);
+                        setIsGeneratingAudio(false);
+                      }}
+                    >
+                      {isGeneratingAudio ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Music className="w-3 h-3 mr-1" />} Audioguies IA
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <TabsList className="bg-stone-100/50 h-8 p-1">
+                {SUPPORTED_LOCALES.map(loc => (
+                  <TabsTrigger key={loc.id} value={loc.id} className="text-[10px] px-2 h-6">
+                    {loc.flag} <span className="ml-1 hidden sm:inline">{loc.id.toUpperCase()}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            {SUPPORTED_LOCALES.map(loc => (
+              <TabsContent key={loc.id} value={loc.id} className="space-y-4 mt-0 border-l-2 border-primary/20 pl-4 py-2">
+                <div className="grid gap-2">
+                  <Label htmlFor={`title-${loc.id}`} className="text-xs font-bold text-stone-600">
+                    Títol ({loc.name}) {loc.id === 'ca' && <span className="text-red-500">*</span>}
+                  </Label>
+                  <Input 
+                    id={`title-${loc.id}`} 
+                    value={titles[loc.id] || ''} 
+                    onChange={(e) => setTitles({...titles, [loc.id]: e.target.value})} 
+                    placeholder={`Ex: Església de Sant Joan (${loc.id.toUpperCase()})`} 
+                    required={loc.id === 'ca'} 
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor={`desc-${loc.id}`} className="text-xs font-bold text-stone-600">
+                    Descripció Breu ({loc.name})
+                  </Label>
+                  <Textarea 
+                    id={`desc-${loc.id}`} 
+                    value={descriptions[loc.id] || ''} 
+                    onChange={(e) => setDescriptions({...descriptions, [loc.id]: e.target.value})} 
+                    className="min-h-[60px] text-sm"
+                    placeholder={`Resum en ${loc.name}...`}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor={`textContent-${loc.id}`} className="text-xs font-bold text-stone-600">
+                    Text Històric / Curiositats ({loc.name})
+                  </Label>
+                  <Textarea 
+                    id={`textContent-${loc.id}`} 
+                    value={textContents[loc.id] || ''} 
+                    onChange={(e) => setTextContents({...textContents, [loc.id]: e.target.value})} 
+                    className="min-h-[120px] text-sm font-light leading-relaxed" 
+                    placeholder={`Escu lo que la IA farà servir per explicar aquest punt en ${loc.name}...`}
+                  />
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+
+          {/* Botons d'IA per a Text i Àudio */}
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-stone-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="bg-stone-50 border-stone-200 text-stone-600 hover:bg-white hover:text-primary transition-all text-[11px] h-9"
+              onClick={handleAutoTranslate}
+              disabled={isTranslating || !titles.ca}
+            >
+              {isTranslating ? (
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-3 h-3 mr-2 text-amber-500" />
+              )}
+              {isTranslating ? 'Traduint...' : 'Auto-Tradueix'}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="bg-stone-50 border-stone-200 text-stone-600 hover:bg-white hover:text-primary transition-all text-[11px] h-9"
+              onClick={handleGenerateAudios}
+              disabled={isGeneratingAudio || !poi?.id}
+              title={!poi?.id ? "Guarda el punt primer per generar àudios" : ""}
+            >
+              {isGeneratingAudio ? (
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+              ) : (
+                <Music className="w-3 h-3 mr-2 text-indigo-500" />
+              )}
+              {isGeneratingAudio ? 'Generant...' : 'Audioguies IA'}
+            </Button>
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2 pt-2 border-t border-stone-100">
             <Label htmlFor="routeId" className="flex items-center gap-2">
               <FolderIcon className="w-4 h-4 text-stone-400" />
               Assignar a Carpeta (Ruta) <span className="text-red-500">*</span>
@@ -263,12 +469,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             </select>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="desc">Descripció Breu</Label>
-            <Textarea id="desc" value={description} onChange={(e) => setDescription(e.target.value)} className="min-h-[80px]" />
-          </div>
-
-          <div className="grid gap-2">
+          <div className="grid gap-2 pt-2 border-t border-stone-100">
             <Label htmlFor="poiType">Categoria</Label>
             <select
               id="poiType"
@@ -318,10 +519,6 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             <p className="text-[10px] text-stone-400 italic px-1">Tria el símbol que apareixerà al mapa per aquest punt.</p>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="textContent">Text Històric</Label>
-            <Textarea id="textContent" value={textContent} onChange={(e) => setTextContent(e.target.value)} className="min-h-[150px]" />
-          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
@@ -459,14 +656,19 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           type="button"
           variant="outline"
           size="sm"
-          disabled={isGeneratingQuiz || !textContent || !title}
+          disabled={isGeneratingQuiz || !textContents[activeLocale] || !titles[activeLocale]}
           onClick={async () => {
             setIsGeneratingQuiz(true);
             try {
               const res = await fetch('/api/ai/generate-quiz', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content: textContent, type: poiType })
+                body: JSON.stringify({ 
+                  title: titles[activeLocale] || titles.ca, 
+                  content: textContents[activeLocale] || textContents.ca, 
+                  type: poiType,
+                  locale: activeLocale 
+                })
               });
               const data = await res.json();
               if (data.success && data.quiz) {
@@ -485,7 +687,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
         >
           {isGeneratingQuiz ? 'Generant...' : (manualQuiz ? 'Regenerar Quiz amb IA' : 'Generar Quiz amb IA')}
         </Button>
-        {!textContent && <p className="text-[10px] text-amber-600">⚠️ Cal omplir el 'Text Històric' per generar el quiz.</p>}
+        {!textContents.ca && <p className="text-[10px] text-amber-600">⚠️ Cal omplir el 'Text Històric' en català (base) per generar el quiz.</p>}
       </div>
 
       <div className="space-y-4 pt-4 border-t border-stone-100">

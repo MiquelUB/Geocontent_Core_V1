@@ -40,7 +40,14 @@ export async function generateReport(municipalityId: string) {
         reportId: report.id,
         municipalityId
       });
-      console.log(`[generateReport] Added to queue`);
+      console.log(`[generateReport] Added to Outbox`);
+
+      // 🚀 Execució directa (Next.js Background Task)
+      import('../services/reportProcessor').then(m => {
+        m.processReport(report.id, municipalityId).catch(err => {
+          console.error("[generateReport] Error en processament directe:", err);
+        });
+      });
     } catch (queueError: any) {
       console.warn("[generateReport] Queue error (Redis down). Falling back to direct process (Dev Mode).");
       // Fallback: Trigger immediately but don't await (background task)

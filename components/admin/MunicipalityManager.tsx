@@ -31,7 +31,7 @@ export default function MunicipalityManager({ municipalityId }: { municipalityId
         const target = muniId ? munis.find(m => m.id === muniId) : munis[0];
         if (target) {
           setName(target.name);
-          setLogoUrl(target.logoUrl || '');
+          setLogoUrl((target as any).logoUrl || '');
           setThemeId((target as any).themeId || 'mountain');
           setAdminMasterPassword((target as any).adminMasterPassword || '');
           setPlanTier((target as any).planTier || 'roure');

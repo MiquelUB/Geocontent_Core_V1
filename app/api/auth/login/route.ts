@@ -10,13 +10,13 @@ import { NextResponse } from 'next/server';
 export async function POST() {
   return NextResponse.json(
     { 
-      error: 'Login amb password desactivat. Usa /auth/signin per accedir amb Magic Link.',
-      redirect: '/auth/signin' 
+      error: 'Login amb password desactivat. Usa /login per accedir amb Magic Link.',
+      redirect: '/login' 
     }, 
     { status: 410 } // 410 Gone
   );
 }
 
 export async function GET() {
-  return NextResponse.redirect(new URL('/auth/signin', process.env.NEXTAUTH_URL || 'http://localhost:3000'));
+  return NextResponse.redirect(new URL('/login', process.env.NEXTAUTH_URL || 'http://localhost:3000'));
 }

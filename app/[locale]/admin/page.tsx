@@ -3,7 +3,7 @@ import { getReports } from "@/lib/actions/reports";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminSecurityGate from "@/components/admin/AdminSecurityGate";
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { redirect } from "@/i18n/routing";
 import { cookies } from "next/headers";
 import { unlockAdminDashboard } from "@/lib/actions/auth";
 
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage() {
   // 1. Validació de Sessió Auth.js (Capa 1)
   const session = await auth();
-  if (!session) redirect("/auth/signin");
+  if (!session) redirect({ href: "/login", locale: "ca" });
 
   // 2. Validació de Cookie de Seguretat Mestra (Capa 2 - Server Gate)
   const cookieStore = await cookies();

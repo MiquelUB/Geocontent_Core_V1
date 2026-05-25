@@ -10,8 +10,8 @@ interface Poi {
   id: string;
   title: string;
   description?: string | null;
-  latitude: number;
-  longitude: number;
+  latitude?: number | null;
+  longitude?: number | null;
   appThumbnail?: string | null;
   header16x9?: string | null;
   audioUrl?: string | null;
@@ -49,7 +49,11 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
     setIsLoading(true);
     try {
       const route = await getRouteWithPois(routeId);
-      setPois(route?.pois ?? []);
+      const mappedPois = route?.routePois?.map(rp => ({
+        ...rp.poi,
+        orderIndex: rp.orderIndex
+      })) ?? [];
+      setPois(mappedPois);
       setRouteStatus((route as any)?.status || 'DRAFT');
       setFinalQuiz((route as any)?.finalQuiz || null);
     } finally {

@@ -6,54 +6,47 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  directUrl  = env("DATABASE_DIRECT_URL")
-  extensions = [postgis, postgis_topology, postgis_tiger_geocoder, uuid_ossp(map: "uuid-ossp")]
+  extensions = [postgis, postgis_tiger_geocoder, postgis_topology, uuid_ossp(map: "uuid-ossp")]
 }
 
-// --- MODELS D'USUARI I AUTH ---
-
 model User {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email           String    @unique
-  emailVerified   DateTime? @map("email_verified")
-  password        String?
-  username        String?
-  image           String?   // Camp estàndard d'Auth.js
-  avatarUrl       String?   @map("avatar_url")
-  role            UserRole  @default(tourist)
-  xp              Int       @default(0)
-  level           Int       @default(1)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  
-  municipalityId  String?   @map("municipality_id") @db.Uuid
-  municipality    Municipality? @relation(fields: [municipalityId], references: [id])
-  
-  unlocks         UserUnlock[]
-  routeProgress   UserRouteProgress[]
-  telemetry       UserTelemetry[]
-  accounts        Account[]
-  sessions        Session[]
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email          String              @unique
+  emailVerified  DateTime?           @map("email_verified")
+  passwordHash   String?             @map("password_hash")
+  username       String?
+  image          String?
+  avatarUrl      String?             @map("avatar_url")
+  role           UserRole            @default(TOURIST)
+  xp             Int                 @default(0)
+  level          Int                 @default(1)
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  municipalityId String?             @map("municipality_id") @db.Uuid
+  accounts       Account[]
+  sessions       Session[]
+  routeProgress  UserRouteProgress[]
+  telemetry      UserTelemetry[]
+  unlocks        UserUnlock[]
+  municipality   Municipality?       @relation(fields: [municipalityId], references: [id])
 
   @@map("users")
 }
 
 model Account {
-  id                 String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String  @map("user_id") @db.Uuid
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String  @map("user_id") @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -78,9 +71,6 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-
-// --- MODELS DE NEGOCI ---
-
 model Municipality {
   id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                String
@@ -92,13 +82,11 @@ model Municipality {
   planTier            String    @default("basic") @map("plan_tier")
   themeId             String?   @default("mountain") @map("theme_id")
   adminMasterPassword String?   @map("admin_master_password")
-  
   lastPublishedAt     DateTime? @map("last_published_at")
   packagingStatus     String    @default("IDLE") @map("packaging_status")
-  
+  reports             Report[]
   routes              Route[]
   users               User[]
-  reports             Report[]
 
   @@map("municipalities")
 }
@@ -119,52 +107,51 @@ model Route {
   finalQuiz               Json?               @map("final_quiz")
   createdAt               DateTime            @default(now()) @map("created_at")
   updatedAt               DateTime            @default(now()) @updatedAt @map("updated_at")
-  
-  municipality            Municipality?       @relation(fields: [municipalityId], references: [id])
+  audioTranslations       Json                @default("{}") @map("audio_translations")
   routePois               RoutePoi[]
+  municipality            Municipality?       @relation(fields: [municipalityId], references: [id])
   userProgress            UserRouteProgress[]
 
   @@map("routes")
 }
 
 model Poi {
-  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title                    String
-  description              String?
-  titleTranslations        Json         @default("{}") @map("title_translations")
-  descriptionTranslations  Json         @default("{}") @map("description_translations")
-  
-  // Camp PostGIS Natiu (Point, 4326)
-  location                 Unsupported("geometry(Point, 4326)")?
-  
-  audioUrl                 String?      @map("audio_url")
-  videoUrls                String[]     @default([]) @map("video_urls")
-  textContent              String?      @map("text_content")
-  appThumbnail             String?      @map("app_thumbnail")
-  header16x9               String?      @map("header_16x9")
-  carouselImages           String[]     @default([]) @map("carousel_images")
-  icon                     String?
-  type                     PoiType?
-  manualQuiz               Json?        @map("manual_quiz")
-  createdAt                DateTime     @default(now()) @map("created_at")
-  updatedAt                DateTime     @default(now()) @updatedAt @map("updated_at")
-  
-  routePois                RoutePoi[]
-  userUnlocks              UserUnlock[]
-  visits                   PoiVisits[]
+  id                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title                     String
+  description               String?
+  titleTranslations         Json                     @default("{}") @map("title_translations")
+  descriptionTranslations   Json                     @default("{}") @map("description_translations")
+  location                  Unsupported("geometry")?
+  latitude                  Float?
+  longitude                 Float?
+  audioUrl                  String?                  @map("audio_url")
+  videoUrls                 String[]                 @default([]) @map("video_urls")
+  textContent               String?                  @map("text_content")
+  appThumbnail              String?                  @map("app_thumbnail")
+  header16x9                String?                  @map("header_16x9")
+  carouselImages            String[]                 @default([]) @map("carousel_images")
+  icon                      String?
+  type                      PoiType?
+  manualQuiz                Json?                    @map("manual_quiz")
+  createdAt                 DateTime                 @default(now()) @map("created_at")
+  updatedAt                 DateTime                 @default(now()) @updatedAt @map("updated_at")
+  textContentTranslations Json                     @default("{}") @map("text_content_translations")
+  audioTranslations       Json                     @default("{}") @map("audio_translations")
+  visits                    PoiVisits[]
+  routePois                 RoutePoi[]
+  userUnlocks               UserUnlock[]
 
   @@index([location], type: Gist)
   @@map("pois")
 }
 
 model RoutePoi {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  routeId    String   @map("route_id") @db.Uuid
-  poiId      String   @map("poi_id") @db.Uuid
-  orderIndex Int      @default(0) @map("order_index")
-  
-  route      Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  poi        Poi      @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  routeId    String @map("route_id") @db.Uuid
+  poiId      String @map("poi_id") @db.Uuid
+  orderIndex Int    @default(0) @map("order_index")
+  poi        Poi    @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  route      Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
   @@unique([routeId, poiId])
   @@map("route_pois")
@@ -176,23 +163,21 @@ model UserUnlock {
   unlockedAt DateTime @default(now()) @map("unlocked_at")
   earnedXp   Int      @map("earned_xp")
   quizSolved Boolean  @default(false) @map("quiz_solved")
-  
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   poi        Poi      @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, poiId])
   @@map("user_unlocks")
 }
 
 model UserRouteProgress {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  routeId         String    @map("route_id") @db.Uuid
-  completedAt     DateTime? @map("completed_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  route           Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  routeId     String    @map("route_id") @db.Uuid
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  route       Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, routeId])
   @@map("user_route_progress")
@@ -206,22 +191,17 @@ model PoiVisits {
   exitTime        DateTime? @map("exit_time")
   durationSeconds Int?      @map("duration_seconds")
   rating          Int?      @default(0)
-  
   poi             Poi       @relation(fields: [poiId], references: [id], onDelete: Cascade)
 
   @@map("poi_visits")
 }
 
 model UserTelemetry {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String?  @map("user_id") @db.Uuid
-  
-  // Camp PostGIS Natiu (Point, 4326)
-  location  Unsupported("geometry(Point, 4326)")
-  
-  timestamp DateTime @default(now())
-  
-  user      User?    @relation(fields: [userId], references: [id])
+  id        String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String?                 @map("user_id") @db.Uuid
+  location  Unsupported("geometry")
+  timestamp DateTime                @default(now())
+  user      User?                   @relation(fields: [userId], references: [id])
 
   @@index([location], type: Gist)
   @@map("user_telemetry")
@@ -251,12 +231,29 @@ model AiUsageLog {
   @@map("ai_usage_logs")
 }
 
-// --- ENUMS ---
+model OutboxEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  topic     String   @map("tipus_event")
+  payload   Json
+  status    String   @default("PENDING") @map("estat")
+  createdAt DateTime @default(now()) @map("creat_el")
+
+  @@map("outbox_events")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
 
 enum UserRole {
-  tourist
-  municipal_admin
-  super_admin
+  TOURIST
+  ADMIN
+  SUPER_ADMIN
 }
 
 enum ThemeId {
@@ -296,15 +293,3 @@ enum ReportStatus {
   COMPLETED
   FAILED
 }
-
-model OutboxEvent {
-
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  topic           String    @map("tipus_event")
-  payload         Json
-  status          String    @default("PENDING") @map("estat")
-  createdAt       DateTime  @default(now()) @map("creat_el")
-
-  @@map("outbox_events")
-}
-

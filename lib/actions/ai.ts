@@ -1,8 +1,5 @@
 'use server';
 
-
-
-
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 // All heavy/Node dependencies (OpenAI, pdf-parse) are dynamically imported inside actions.
 
@@ -52,7 +49,7 @@ export async function generateRouteFromDocumentAction(formData: FormData) {
       Cada element patrimonial, museu, edifici o punt d'interès singular ha de ser un POI independent. No agrupis en un sol POI tot el que hi ha en un nucli de població. Un poble amb castell, església i museu genera 3 POIs separats. El nucli de població és el contenidor (camp "nucleus"), no el POI en si mateix.
 
       ASSIGNACIÓ DE CATEGORIES — REGLES ESTRICTES:
-      - "patrimoni_civil": castells, fortificacions, cases senyorials, museus de memòria, centres històrics, espais civils de qualsevol tipus.
+      - "patrimoni_civil": castells, fortificacions, houses senyorials, museus de memòria, centres històrics, espais civils de qualsevol tipus.
       - "patrimoni_religiós": exclusivament esglésies, ermites, monestirs i elements de culte religiós.
       - "etnografia": museus i espais vinculats a oficis, cultura popular, tradicions i modos de vida tradicionals.
       - "natura": espais naturals, rutes de paisatge, elements geogràfics destacats.
@@ -123,7 +120,6 @@ export async function generateRouteFromDocumentAction(formData: FormData) {
       }
     `;
 
-    const pdfParse = require('pdf-parse');
     const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
@@ -216,5 +212,38 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     console.log(`[autoTranslateAction] Success for ${type} (${id})`);
   } catch (err) {
     console.error(`[autoTranslateAction] Error en ${type} ${id}:`, err);
+  }
+}
+
+export async function translateFieldsAction(fields: Record<string, string>) {
+  try {
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY || "sk-placeholder",
+    });
+
+    const systemPrompt = `
+      Ets un expert en traducció de continguts turístics per a rutes de patrimoni. 
+      Tradueix les claus d'aquest contingut al Castellà (es), Anglès (en) i Francès (fr).
+      ESTRICTES NORMES:
+      1. Mantén el to narratiu del territori.
+      2. Noms propis de municipis, rius i muntanyes NO es tradueixen jamai.
+      3. Retorna un JSON on cada clau original té un objecte amb 'es', 'en' i 'fr'.
+      Exemple sortida: { "title": { "es": "...", "en": "...", "fr": "..." } }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: "qwen/qwen-turbo",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(fields) }],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+    });
+
+    const res = JSON.parse(completion.choices[0].message.content || '{}');
+    return { success: true, data: res };
+  } catch (error: any) {
+    console.error("Translation Action Error:", error);
+    return { success: false, error: error.message };
   }
 }

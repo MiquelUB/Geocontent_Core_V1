@@ -83,7 +83,7 @@ Si el punt és 'Llegenda', el to ha de ser místic. Actualment el to és: ${tone
 Format JSON: { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }`;
 
     const completion = await client.chat.completions.create({
-      model: process.env.AI_MODEL_ID || "qwen/qwen-2.5-72b-instruct",
+      model: process.env.AI_MODEL_ID || "google/gemini-2.0-flash-001",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Punt: ${title}\nContingut: ${content}` }
@@ -92,7 +92,8 @@ Format JSON: { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }`;
       temperature: 0.3,
     });
 
-    return JSON.parse(completion.choices[0]?.message?.content || "{}");
+    const resultText = completion.choices[0]?.message?.content || "{}";
+    return JSON.parse(resultText);
   } catch (error) {
     console.error("Error generating poi quiz:", error);
     return null;

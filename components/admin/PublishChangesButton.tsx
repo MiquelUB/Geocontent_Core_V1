@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  CloudArrowUpIcon, 
-  CheckCircleIcon, 
-  ArrowPathIcon,
-  ExclamationCircleIcon 
-} from '@heroicons/react/24/outline';
+  CloudUpload, 
+  CheckCircle2, 
+  RefreshCw,
+  AlertCircle 
+} from 'lucide-react';
 import { 
   checkPendingChanges, 
   queueTerritorialPackageAction, 
@@ -81,28 +81,28 @@ export function PublishChangesButton({ municipalityId }: PublishChangesButtonPro
       case 'PROCESSING':
         return (
           <>
-            <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" />
+            <RefreshCw className="w-5 h-5 animate-spin mr-2" />
             <span>Generant Paquet...</span>
           </>
         );
       case 'SUCCESS':
         return (
           <>
-            <CheckCircleIcon className="w-5 h-5 mr-2 text-green-400" />
+            <CheckCircle2 className="w-5 h-5 mr-2 text-green-400" />
             <span>Publicat correctament</span>
           </>
         );
       case 'ERROR':
         return (
           <>
-            <ExclamationCircleIcon className="w-5 h-5 mr-2 text-red-400" />
+            <AlertCircle className="w-5 h-5 mr-2 text-red-400" />
             <span>Error. Reintenta</span>
           </>
         );
       default:
         return (
           <>
-            <CloudArrowUpIcon className="w-5 h-5 mr-2" />
+            <CloudUpload className="w-5 h-5 mr-2" />
             <span>{hasChanges ? 'Publicar Canvis Offline' : 'Tot actualitzat'}</span>
           </>
         );

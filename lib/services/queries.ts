@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from "../database/prisma";
+import { withRLS } from "../database/prisma-rls";
 import { unstable_noStore as noStore } from 'next/cache';
 
 export async function getAppBranding() {
@@ -11,7 +12,6 @@ export async function getAppBranding() {
         name: true,
         logoUrl: true,
         themeId: true,
-        customColors: true,
       }
     });
     return m;
@@ -58,6 +58,7 @@ export async function getAdminLegends() {
     const legends = routes.map((route: any) => ({
       id: route.id,
       name: route.name,
+      title: route.name, // UI compat
       municipality_name: route.municipality?.name || 'Sense municipi',
       pois_count: route.routePois?.length || 0,
       total_visits: route.routePois?.reduce((acc: number, rp: any) => acc + (rp.poi?.userUnlocks?.length || 0), 0) || 0,
@@ -98,10 +99,12 @@ export async function getAllProfiles() {
     return await prisma.user.findMany({
       select: {
         id: true,
-        name: true,
-        image: true,
+        username: true,
+        email: true,
+        avatarUrl: true,
+        role: true,
+        level: true,
         createdAt: true,
-        // EXCLUÏM camps sensibles com email, emailVerified, etc.
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -148,6 +151,9 @@ function mapRoute(route: any) {
       id: p.id,
       title: p.title,
       description: p.description || '',
+      titleTranslations: p.titleTranslations || {},
+      descriptionTranslations: p.descriptionTranslations || {},
+      textContentTranslations: p.textContentTranslations || {},
       latitude: lat,
       longitude: lng,
       image_url: p.appThumbnail || p.carouselImages?.[0] || '',
@@ -163,6 +169,7 @@ function mapRoute(route: any) {
       type: p.type,
       userUnlocks: p.userUnlocks || [],
       routeId: route.id,
+      audioTranslations: p.audioTranslations || {},
     };
   }) ?? [];
 
@@ -174,6 +181,9 @@ function mapRoute(route: any) {
     id: route.id,
     title: title,
     description: route.description || '',
+    nameTranslations: route.nameTranslations || {},
+    descriptionTranslations: route.descriptionTranslations || {},
+    audioTranslations: route.audioTranslations || {},
     category: route.themeId || '',
     location_name: muniName || '',
     latitude: firstPoi?.latitude ?? 0,
@@ -210,12 +220,13 @@ export async function getDefaultMunicipalityTheme(): Promise<string> {
 export async function getUserScore(userId: string) {
   noStore();
   try {
-    const unlocks = await prisma.userUnlock.findMany({
+    const rls = withRLS(userId);
+    const unlocks = await rls.userUnlock.findMany({
       where: { userId },
       select: { earnedXp: true, quizSolved: true }
     });
 
-    const routeProgress = await prisma.userRouteProgress.findMany({
+    const routeProgress = await rls.userRouteProgress.findMany({
       where: { userId }
     });
 
@@ -241,7 +252,8 @@ export async function getPassportData(userId: string) {
   const fs = await import('fs');
 
   try {
-    const municipality = await prisma.municipality.findFirst({
+    const rls = withRLS(userId);
+    const municipality = await rls.municipality.findFirst({
       select: { themeId: true }
     });
     const municipalityBiome = (municipality as any)?.themeId || 'mountain';
@@ -265,7 +277,7 @@ export async function getPassportData(userId: string) {
       availableStampImages = ['bolet.webp'];
     }
 
-    const routes = await prisma.route.findMany({
+    const routes = await rls.route.findMany({
       include: {
         routePois: {
           include: {
@@ -319,7 +331,7 @@ export async function getPassportData(userId: string) {
       const stampImage = availableStampImages[imgIndex] || 'bolet.webp';
       const stampUrl = `/stamps/${routeBiomePath}/${stampImage}`;
 
-      const progress = await prisma.userRouteProgress.findUnique({
+      const progress = await rls.userRouteProgress.findUnique({
         where: { userId_routeId: { userId, routeId: route.id } }
       });
 
@@ -369,7 +381,7 @@ export async function updatePoiLocation(poiId: string, lon: number, lat: number)
 }
 
 export async function getUserLastLocation(userId: string) {
-  const result = await prisma.$queryRaw<any[]>`
+  const result = await withRLS(userId).$queryRaw<any[]>`
     SELECT ST_AsGeoJSON(location)::jsonb as geojson, timestamp
     FROM "user_telemetry"
     WHERE user_id = ${userId}::uuid

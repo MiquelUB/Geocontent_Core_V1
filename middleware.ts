@@ -1,43 +1,36 @@
-// middleware.ts
-import createMiddleware from 'next-intl/middleware';
+import NextAuth from "next-auth"
+import { authConfig } from "./auth.config"
+import { NextResponse } from "next/server"
 import { routing } from './i18n/routing';
-import { NextResponse, type NextRequest } from 'next/server';
+import createMiddleware from 'next-intl/middleware';
 
+const { auth } = NextAuth(authConfig)
 const intlMiddleware = createMiddleware(routing);
 
-export default async function middleware(request: NextRequest) {
-  // 1. Inicialitzem la internacionalització
-  const response = intlMiddleware(request);
+export default auth((req) => {
+  const pathname = req.nextUrl.pathname;
+  
+  const isLoggedIn = !!req.auth;
+  const role = req.auth?.user?.role;
+  const isTargetingAdmin = pathname.includes('/admin');
+  const isLoginPage = pathname.includes('/admin/login');
 
-  if (response.status === 307 || response.status === 308) {
-    return response;
-  }
-
-  const pathname = request.nextUrl.pathname;
-  const isAdminRoute = pathname.includes('/admin') && !pathname.includes('/login');
-
-  // 2. Protecció Edge-Safe (SENSE connexions a BD)
-  if (isAdminRoute) {
-    // Validem exclusivament la presència de la cookie d'Auth.js o del sistema custom
-    const hasSession = 
-      request.cookies.has('authjs.session-token') || 
-      request.cookies.has('__Secure-authjs.session-token') ||
-      request.cookies.has('admin_session');
-
-    if (!hasSession) {
-      if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Accés denegat. Sessió requerida.' }, { status: 401 });
-      }
-      
+  if (isTargetingAdmin && !isLoginPage) {
+    if (!isLoggedIn) {
       const locale = pathname.split('/')[1] || routing.defaultLocale;
-      const loginUrl = new URL(`/${locale}/login`, request.url);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL(`/${locale}/admin/login`, req.url));
+    }
+    
+    if (role === 'TOURIST') {
+      const locale = pathname.split('/')[1] || routing.defaultLocale;
+      return NextResponse.redirect(new URL(`/${locale}`, req.url));
     }
   }
 
-  return response;
-}
+  return intlMiddleware(req);
+})
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|manifest.json|.*\\..*).*)']
-};
+  // Matcher que exclou fitxers estàtics i rutes d'API
+  matcher: ['/((?!api|reports|_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|pdf)$).*)'],
+}

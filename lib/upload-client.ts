@@ -3,16 +3,6 @@
  * Demana una URL signada a l'API i puja el fitxer directament a S3.
  */
 export async function uploadFileClient(file: File, _bucket: string = 'geocontent') {
-    // 1. Demanem la URL signada a la nostra API
-    const response = await fetch(`/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}`);
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "No s'ha pogut obtenir la URL de pujada");
-    }
-
-    const { signedUrl, publicUrl } = await response.json();
-
-    // 2. Pugem el fitxer directament a S3 mitjançant un PUT
     // Normalize non-standard MIME types
     const MIME_NORMALIZATION: Record<string, string> = {
         'audio/x-m4a': 'audio/mp4',
@@ -22,6 +12,17 @@ export async function uploadFileClient(file: File, _bucket: string = 'geocontent
         'image/jpg': 'image/jpeg',
     };
     const contentType = MIME_NORMALIZATION[file.type] ?? file.type ?? 'application/octet-stream';
+
+    // 1. Demanem la URL signada a la nostra API
+    const response = await fetch(`/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(contentType)}`);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "No s'ha pogut obtenir la URL de pujada");
+    }
+
+    const { signedUrl, publicUrl } = await response.json();
+
+    // 2. Pugem el fitxer directament a S3 mitjançant un PUT
 
     const uploadResponse = await fetch(signedUrl, {
         method: 'PUT',

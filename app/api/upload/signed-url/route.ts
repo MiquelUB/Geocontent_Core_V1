@@ -26,7 +26,19 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const fileName = searchParams.get('fileName') ?? 'upload';
-    const contentType = searchParams.get('contentType') ?? 'application/octet-stream';
+    let contentType = searchParams.get('contentType');
+
+    if (!contentType || contentType === 'application/octet-stream') {
+        const ext = fileName.split('.').pop()?.toLowerCase();
+        if (ext === 'png') contentType = 'image/png';
+        else if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+        else if (ext === 'webp') contentType = 'image/webp';
+        else if (ext === 'mp4') contentType = 'video/mp4';
+        else if (ext === 'mov') contentType = 'video/quicktime';
+        else if (ext === 'pdf') contentType = 'application/pdf';
+    }
+    if (!contentType) contentType = 'application/octet-stream';
+
 
     // 2. SEC-12: Validació de format abans de signar
     if (!ALLOWED_UPLOAD_TYPES.includes(contentType)) {
@@ -41,10 +53,10 @@ export async function GET(req: NextRequest) {
     // Passem el contentType per incloure'l a la política de S3 (opcional segons client S3)
     const signedUrl = await getSignedUrl(storagePath, 900, contentType);
 
-    // Calculate public URL based on endpoint and bucket
-    const s3Endpoint = (process.env.S3_ENDPOINT || '').replace(/\/$/, '');
-    const bucket = process.env.S3_BUCKET || 'geocontent';
-    const publicUrl = `${s3Endpoint}/${bucket}/${storagePath}`;
+    // Calculate public URL based on virtual-hosted style (preferred by AWS)
+    const bucket = process.env.S3_BUCKET || 'pxx-core-v1';
+    const region = process.env.S3_REGION || 'eu-north-1';
+    const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${storagePath}`;
 
     return NextResponse.json({
       signedUrl,        // Browser PUTs here directly

@@ -31,7 +31,6 @@ export async function checkPlanLimits(municipalityId: string) {
     where: { id: municipalityId },
     select: {
       planTier: true,
-      extraRoutesCount: true,
       _count: {
         select: {
           routes: true,
@@ -52,7 +51,7 @@ export async function checkPlanLimits(municipalityId: string) {
   const config = PLAN_LIMITS[tier] || PLAN_LIMITS.roure;
 
   const currentRoutes = municipality._count.routes;
-  const totalAllowedRoutes = config.maxRoutes + (municipality.extraRoutesCount || 0);
+  const totalAllowedRoutes = config.maxRoutes;
 
   return {
     isWithinRouteLimit: currentRoutes < totalAllowedRoutes,
@@ -61,7 +60,7 @@ export async function checkPlanLimits(municipalityId: string) {
     maxPoisPerRoute: config.maxPoisPerRoute,
     tier,
     planName: config.name,
-    extraRoutes: municipality.extraRoutesCount || 0
+    extraRoutes: 0
   };
 }
 

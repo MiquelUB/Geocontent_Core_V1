@@ -9,7 +9,8 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     // 1. Fetch Users Count (V2: model User, no Profile)
     const totalMunicipalityUsers = await prisma.user.count({
         where: {
-            role: { notIn: ['municipal_admin', 'super_admin'] }
+            municipalityId,
+            role: { notIn: ['ADMIN', 'SUPER_ADMIN'] }
         }
     });
 
@@ -122,7 +123,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     const dailyTraffic: Record<string, Set<string>> = {};
     // Initialize all days in the range
-    let curr = new Date(startDate);
+    const curr = new Date(startDate);
     while (curr <= endDate) {
         const dayLabel = curr.toLocaleDateString('ca-ES', { weekday: 'short' });
         dailyTraffic[dayLabel] = new Set();

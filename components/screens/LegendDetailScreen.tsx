@@ -79,17 +79,18 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   // Fallback for missing legend data with localization
   const safeLegend = {
     ...legend,
-    title: getLocalizedContent(legend, 'title', locale) || t('notFound'),
+    title: getLocalizedContent(legend, 'title', locale) || getLocalizedContent(legend, 'name', locale) || t('notFound'),
     description: getLocalizedContent(legend, 'description', locale) || "",
+    textContent: getLocalizedContent(legend, 'textContent', locale) || "",
     image: legend?.image || legend?.image_url || "",
     location: getLocalizedContent(legend, 'location', locale) || t('unknown'),
     categoryLabel: getLocalizedContent(legend, 'categoryLabel', locale) || t('unknown'),
     coordinates: { lat, lng },
     videoUrls: legend?.videoUrls || (legend?.video_url ? [legend.video_url] : []),
-    audioUrl: legend?.audioUrl || legend?.audio || legend?.audio_url, // Added audioUrl fallback
+    audioUrl: getLocalizedContent(legend, 'audio', locale) || legend?.audioUrl || legend?.audio || legend?.audio_url, 
     manualQuiz: legend?.manualQuiz,
     userUnlocks: legend?.userUnlocks || [],
-    routeName: getLocalizedContent(legend, 'route_name', locale) || legend?.routeName
+    routeName: getLocalizedContent(legend, 'route_name', locale) || getLocalizedContent(legend, 'name', locale) || legend?.routeName
   };
 
   const [isPlaying, setIsPlaying] = useState(false);

@@ -7,11 +7,14 @@ import { PxxConfig } from "@/projects/active/config";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false, // Desactivat per evitar avisos de preload no utilitzat
+  display: "swap",
 });
 
 const newsreader = Newsreader({
@@ -171,7 +174,7 @@ export default async function RootLayout({
   } as React.CSSProperties;
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning={true}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -206,6 +209,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${geistSans.className} antialiased`}
         style={themeStyles}
+        suppressHydrationWarning={true}
       >
         <NextIntlClientProvider messages={messages}>
           {children}

@@ -2,6 +2,7 @@
 
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
+import { cookies } from 'next/headers'
 import { prisma } from "../database/prisma";
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { signIn as authSignIn, signOut as authSignOut, auth } from "@/auth";
@@ -57,7 +58,7 @@ export async function registerUser(name: string, email: string) {
       create: {
         email: email.toLowerCase(),
         username: name,
-        role: 'tourist', // <-- Hardcoded. Zero trust.
+        role: 'TOURIST', // <-- Hardcoded. Zero trust.
         xp: 0,
         level: 1
       }
@@ -118,7 +119,7 @@ export async function verifyAdminPassword(municipalityId: string, password: stri
   }
 }
 
-export async function loginOrRegister(name: string, email: string) {
+export async function loginOrRegister(name: string, email: string): Promise<{success: boolean, user?: any, error?: string}> {
   // TODO: Implementar lògica de Magic Link per a Auth.js v5
   return { success: true, user: { name, email } };
 }

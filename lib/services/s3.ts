@@ -3,15 +3,25 @@ import { getSignedUrl as s3GetSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Upload } from "@aws-sdk/lib-storage";
 import { PassThrough } from "stream";
 
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT,
-  region: process.env.S3_REGION || "us-east-1",
+const s3Region = process.env.S3_REGION || 'eu-north-1';
+const s3Endpoint = process.env.S3_ENDPOINT;
+
+// Si l'endpoint és d'AWS (conté amazonaws.com), és millor no passar-lo explícitament 
+// i deixar que the SDK calculi el regional endpoint correcte.
+const clientConfig: any = {
+  region: s3Region,
   credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || "",
-    secretAccessKey: process.env.S3_SECRET_KEY || "",
+    accessKeyId: process.env.S3_ACCESS_KEY || '',
+    secretAccessKey: process.env.S3_SECRET_KEY || '',
   },
-  forcePathStyle: true, // Necessari per a MinIO
-});
+  forcePathStyle: false, // Recomanat per AWS S3
+};
+
+if (s3Endpoint && !s3Endpoint.includes('amazonaws.com')) {
+  clientConfig.endpoint = s3Endpoint;
+}
+
+const s3Client = new S3Client(clientConfig);
 
 const BUCKET = process.env.S3_BUCKET || "geocontent";
 

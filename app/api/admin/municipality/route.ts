@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     const profile = await getUserProfileInternal(session.user.id);
-    if (!profile || profile.role !== 'super_admin') {
+    if (!profile || profile.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ success: false, error: "Permisos insuficients." }, { status: 403 });
     }
 

@@ -587,7 +587,10 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                                                     size="sm"
                                                     variant="ghost"
                                                     disabled={report.status !== 'COMPLETED'}
-                                                    onClick={() => window.open(report.resultUrl, '_blank')}
+                                                    onClick={() => {
+                                                        const url = report.resultUrl.startsWith('http') ? report.resultUrl : `${window.location.origin}${report.resultUrl}`;
+                                                        window.open(url, '_blank');
+                                                    }}
                                                     className="text-stone-400 hover:text-stone-800 h-8"
                                                 >
                                                     <Download className="w-4 h-4 mr-2" />

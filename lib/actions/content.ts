@@ -32,6 +32,12 @@ const CreateLegendSchema = z.object({
   text_content: z.string().optional(),
   carousel_images: z.string().optional().transform(val => {
     try { return val ? JSON.parse(val) : [] } catch { return [] }
+  }),
+  title_translations: z.string().optional().transform(val => {
+    try { return val ? JSON.parse(val) : {} } catch { return {} }
+  }),
+  description_translations: z.string().optional().transform(val => {
+    try { return val ? JSON.parse(val) : {} } catch { return {} }
   })
 });
 
@@ -52,7 +58,16 @@ const CreatePoiSchema = z.object({
   carousel_images: z.string().optional().transform(val => {
     try { return val ? JSON.parse(val) : [] } catch { return [] }
   }),
-  icon: z.string().optional()
+  icon: z.string().optional(),
+  title_translations: z.string().optional().transform(val => {
+    try { return val ? JSON.parse(val) : {} } catch { return {} }
+  }),
+  description_translations: z.string().optional().transform(val => {
+    try { return val ? JSON.parse(val) : {} } catch { return {} }
+  }),
+  text_content_translations: z.string().optional().transform(val => {
+    try { return val ? JSON.parse(val) : {} } catch { return {} }
+  })
 });
 
 // --- Funcions de Municipis ---
@@ -100,7 +115,7 @@ export async function createLegend(formData: FormData) {
     const audio_url = audioFile?.size > 0 ? await uploadFile(audioFile) : (formData.get('audio_url') as string || '')
     const video_url = videoFile?.size > 0 ? await uploadFile(videoFile) : (formData.get('video_url') as string || '')
 
-    const { title, description, category, latitude, longitude, route_id, text_content, carousel_images } = validated;
+    const { title, description, category, latitude, longitude, route_id, text_content, carousel_images, title_translations, description_translations } = validated;
 
     const validThemes: any = ['mountain', 'coast', 'city', 'interior', 'bloom'];
     let themeId = category?.toLowerCase() as any;
@@ -114,8 +129,10 @@ export async function createLegend(formData: FormData) {
         data: {
           municipalityId,
           name: title,
+          nameTranslations: title_translations as any,
           slug: title.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '') + '-' + Date.now(),
           description,
+          descriptionTranslations: description_translations as any,
           themeId,
           thumbnail1x1: routeThumbnail || null
         }
@@ -126,10 +143,13 @@ export async function createLegend(formData: FormData) {
       const poi = await tx.poi.create({
         data: {
           title: title,
+          titleTranslations: title_translations as any,
           description,
+          descriptionTranslations: description_translations as any,
           audioUrl: audio_url,
           videoUrls: video_url ? [video_url] : [],
           textContent: text_content,
+          textContentTranslations: {}, // Por defecto vacío en leyenda
           appThumbnail,
           header16x9,
           carouselImages: carousel_images as string[]
@@ -175,6 +195,16 @@ export async function createRoute(formData: FormData) {
     try { finalQuizInfo = JSON.parse(finalQuizRaw); } catch (e) { }
   }
 
+  // Traducciones
+  let nameTranslations = {};
+  let descTranslations = {};
+  try {
+    const nt = formData.get('name_translations') as string;
+    const dt = formData.get('description_translations') as string;
+    if (nt) nameTranslations = JSON.parse(nt);
+    if (dt) descTranslations = JSON.parse(dt);
+  } catch (e) { }
+
   try {
     const session = await auth();
     if (!session) return { success: false, error: "Sessió requerida." };
@@ -194,8 +224,10 @@ export async function createRoute(formData: FormData) {
       data: {
         id,
         name,
+        nameTranslations: nameTranslations as any,
         slug,
         description,
+        descriptionTranslations: descTranslations as any,
         municipalityId,
         themeId: category as any,
         thumbnail1x1: thumbnail1x1 || null,
@@ -247,6 +279,16 @@ export async function updateRoute(id: string, formData: FormData) {
     try { finalQuizInfo = JSON.parse(finalQuizRaw); } catch (e) { }
   }
 
+  // Traducciones
+  let nameTranslations = undefined;
+  let descTranslations = undefined;
+  try {
+    const nt = formData.get('name_translations') as string;
+    const dt = formData.get('description_translations') as string;
+    if (nt) nameTranslations = JSON.parse(nt);
+    if (dt) descTranslations = JSON.parse(dt);
+  } catch (e) { }
+
   try {
     await prisma.route.update({
       where: { 
@@ -256,7 +298,9 @@ export async function updateRoute(id: string, formData: FormData) {
       },
       data: {
         name,
+        nameTranslations: nameTranslations as any,
         description,
+        descriptionTranslations: descTranslations as any,
         municipalityId: locationMuniId || muniId || undefined,
         themeId: category as any,
         thumbnail1x1: thumbnail1x1 || null,
@@ -309,7 +353,7 @@ export async function createPoi(formData: FormData) {
     if (!session) return { success: false, error: "Sessió requerida." };
 
     const validated = CreatePoiSchema.parse(Object.fromEntries(formData.entries()));
-    const { title, description, latitude, longitude, route_id, text_content, video_urls, carousel_images, icon } = validated;
+    const { title, description, latitude, longitude, route_id, text_content, video_urls, carousel_images, icon, title_translations, description_translations, text_content_translations } = validated;
 
     const appThumbFile = formData.get('app_thumbnail_file') as File || null
     const headerFile = formData.get('header_file') as File || null
@@ -381,10 +425,15 @@ export async function createPoi(formData: FormData) {
       const poi = await tx.poi.create({
         data: {
           title,
+          titleTranslations: title_translations as any,
           description,
+          descriptionTranslations: description_translations as any,
+          latitude,
+          longitude,
           audioUrl,
           videoUrls: finalVideoUrls,
           textContent: text_content,
+          textContentTranslations: text_content_translations as any,
           type: validated.type ? (validated.type as any) : null,
           manualQuiz: validated.manual_quiz,
           appThumbnail,
@@ -476,6 +525,19 @@ export async function updatePoi(id: string, formData: FormData) {
   }
 
   try {
+    // Traducciones
+    let titleTranslations = undefined;
+    let descriptionTranslations = undefined;
+    let textContentTranslations = undefined;
+    try {
+      const tt = formData.get('title_translations') as string;
+      const dt = formData.get('description_translations') as string;
+      const tct = formData.get('text_content_translations') as string;
+      if (tt) titleTranslations = JSON.parse(tt);
+      if (dt) descriptionTranslations = JSON.parse(dt);
+      if (tct) textContentTranslations = JSON.parse(tct);
+    } catch (e) { }
+
     const type = formData.get('type') as string;
     const manualQuizStr = formData.get('manual_quiz') as string;
     const muniId = formData.get('municipality_id') as string;
@@ -488,10 +550,15 @@ export async function updatePoi(id: string, formData: FormData) {
       },
       data: {
         title,
+        titleTranslations: titleTranslations as any,
         description,
+        descriptionTranslations: descriptionTranslations as any,
+        latitude,
+        longitude,
         audioUrl,
         videoUrls,
         textContent,
+        textContentTranslations: textContentTranslations as any,
         appThumbnail,
         header16x9,
         carouselImages: finalCarouselImages,

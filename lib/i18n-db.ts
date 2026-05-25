@@ -9,26 +9,39 @@ type SupportedLocale = 'ca' | 'es' | 'en' | 'fr';
 export function getLocalizedContent(row: any, field: string, locale: string): string {
   if (!row) return '';
 
-  // 1. Intentar columna específica per idioma (estil skill: title_ca, title_es...)
-  const columnLocalized = row[`${field}_${locale}`];
-  if (columnLocalized !== undefined && columnLocalized !== null) return columnLocalized;
+  const getField = (f: string) => {
+    // 1. Intentar columna específica per idioma (ex: title_ca)
+    const columnLocalized = row[`${f}_${locale}`];
+    if (columnLocalized !== undefined && columnLocalized !== null && columnLocalized !== '') return columnLocalized;
 
-  // 2. Intentar objecte JSONB de traduccions (estil flexible: title_translations o titleTranslations)
-  const translations = row[`${field}_translations`] || row[`${field}Translations` || `${field}Translation` ];
-  if (translations && typeof translations === 'object') {
-    const jsonLocalized = translations[locale];
-    if (jsonLocalized) return jsonLocalized;
-    
-    const jsonFallback = translations['ca'];
-    if (jsonFallback) return jsonFallback;
+    // 2. Intentar objecte JSONB de traduccions (ex: titleTranslations)
+    const translations = row[`${f}_translations`] || row[`${f}Translations`] || row[`${f}Translation` ];
+    if (translations && typeof translations === 'object') {
+      const jsonLocalized = translations[locale];
+      if (jsonLocalized) return jsonLocalized;
+      
+      const jsonFallback = translations['ca'];
+      if (jsonFallback) return jsonFallback;
+    }
+
+    // 3. Fallback a la columna de l'idioma base (Català)
+    const columnFallback = row[`${f}_ca`];
+    if (columnFallback !== undefined && columnFallback !== null && columnFallback !== '') return columnFallback;
+
+    // 4. Fallback final al camp base sense sufix
+    return row[f] || '';
+  };
+
+  let result = getField(field);
+
+  // Fallback entre camps comuns (title <-> name)
+  if (!result || result === '') {
+    if (field === 'title') result = getField('name');
+    else if (field === 'name') result = getField('title');
+    else if (field === 'location') result = getField('location_name');
   }
 
-  // 3. Fallback a la columna de l'idioma base (Català)
-  const columnFallback = row[`${field}_ca`];
-  if (columnFallback !== undefined && columnFallback !== null) return columnFallback;
-
-  // 4. Fallback final al camp base sense sufix
-  return row[field] || '';
+  return result || '';
 }
 
 /**

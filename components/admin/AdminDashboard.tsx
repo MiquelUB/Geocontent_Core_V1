@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon } from "lucide-react";
-import { verifyAdminPassword, verifySuperAdminPassword } from "@/lib/actions/auth";
+import { verifyAdminPassword } from "@/lib/actions/auth";
 import { createRoute, updateRoute, deleteLegend, createPoi, updatePoi, addPoiToRoute } from "@/lib/actions/content";
 import { getAdminLegends, getRouteWithPois, getAllProfiles } from "@/lib/actions/queries";
 import { getReports } from "@/lib/actions/reports";

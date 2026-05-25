@@ -23,12 +23,12 @@ async function main() {
     const user = await prisma.user.upsert({
       where: { email: email.toLowerCase() },
       update: {
-        role: 'super_admin',
+        role: 'SUPER_ADMIN',
       },
       create: {
         email: email.toLowerCase(),
         username: email.split('@')[0],
-        role: 'super_admin',
+        role: 'SUPER_ADMIN',
         xp: 1000,
         level: 10
       }

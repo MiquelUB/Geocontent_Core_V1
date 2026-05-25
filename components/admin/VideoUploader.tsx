@@ -95,7 +95,7 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
       // ── Step 2: Get Supabase signed upload URL ──────────────────────────
       setState({ phase: 'signing' });
       const sigRes = await fetch(
-        `/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}&bucket=geocontent`
+        `/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}&bucket=geocontent&contentType=${encodeURIComponent(file.type || 'video/mp4')}`
       );
       if (!sigRes.ok) throw new Error('No s\'ha pogut obtenir la URL signada.');
       const { signedUrl, publicUrl, storagePath } = await sigRes.json();
