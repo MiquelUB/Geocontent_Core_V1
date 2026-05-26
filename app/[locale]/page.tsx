@@ -212,33 +212,30 @@ export default function Home() {
   }, []);
 
 
+  const [splashTimeoutElapsed, setSplashTimeoutElapsed] = useState(false);
+
   const handleNavigate = (screen: string, data?: any) => {
     setNavigationData(data);
     setCurrentScreen(screen);
   };
 
   const handleSplashComplete = useCallback(() => {
-    // If data is still loading, wait (splash will retry via its own loop)
-    if (!isLoaded && !errorType) {
-      console.log("Splash finished but data not ready. currentScreen:", currentScreen, "isLoaded:", isLoaded);
-      // Fallback: if after 5 seconds of splash we still haven't loaded, force it
-      setTimeout(() => {
-        if (!isLoaded) {
-          console.log("Forcing isLoaded=true after timeout safety");
-          setIsLoaded(true);
-        }
-      }, 2000);
-      return;
-    }
+    setSplashTimeoutElapsed(true);
+  }, []);
 
-    if (errorType) {
-      setCurrentScreen("error");
-    } else if (currentUser || process.env.NEXT_PUBLIC_AUDIT_MODE === 'true') {
-      setCurrentScreen("home");
-    } else {
-      setCurrentScreen("login");
+  // Transition out of splash screen when both the minimum duration has elapsed AND data has loaded
+  useEffect(() => {
+    if (currentScreen === "splash" && splashTimeoutElapsed && isLoaded) {
+      console.log("Both splash duration and database initialization finished. Transitioning screen.");
+      if (errorType) {
+        setCurrentScreen("error");
+      } else if (currentUser || process.env.NEXT_PUBLIC_AUDIT_MODE === 'true') {
+        setCurrentScreen("home");
+      } else {
+        setCurrentScreen("login");
+      }
     }
-  }, [isLoaded, errorType, currentUser]);
+  }, [splashTimeoutElapsed, isLoaded, currentScreen, errorType, currentUser]);
 
   const handleLoginSuccess = (user: any) => {
     setCurrentUser(user);
