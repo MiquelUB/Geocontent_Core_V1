@@ -346,6 +346,8 @@ export async function getPassportData(userId: string) {
         quizDonePois,
         poisProgress: orderedPois,
         isCompleted: !!progress,
+        rating: progress?.rating ?? 0,
+        comment: progress?.comment ?? "",
         date: latestDate,
       };
     }));

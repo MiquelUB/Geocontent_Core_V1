@@ -150,7 +150,7 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
                     </div>
 
                     {/* Stamps Grid Container */}
-                    <PassportGrid initialStamps={passportData} />
+                    <PassportGrid initialStamps={passportData} currentUser={currentUser} />
                 </div>
 
 

@@ -175,6 +175,8 @@ model UserRouteProgress {
   userId      String    @map("user_id") @db.Uuid
   routeId     String    @map("route_id") @db.Uuid
   completedAt DateTime? @map("completed_at")
+  rating      Int?      @default(0)
+  comment     String?
   createdAt   DateTime  @default(now()) @map("created_at")
   route       Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -254,3 +254,39 @@ export async function completeFinalRouteQuizAction(routeId: string, _clientUserI
     return { success: false, error: GENERIC_ERROR_MESSAGE };
   }
 }
+
+/**
+ * Permet a l'usuari valorar una ruta completada (afegir estrelles i comentari).
+ */
+export async function rateRouteAction(userId: string, routeId: string, rating: number, comment: string) {
+  try {
+    if (!userId || !routeId) {
+      return { success: false, error: "Dades incompletes." };
+    }
+
+    const cleanRating = Math.min(Math.max(rating, 0), 5);
+
+    const progress = await prisma.userRouteProgress.upsert({
+      where: {
+        userId_routeId: { userId, routeId }
+      },
+      update: {
+        rating: cleanRating,
+        comment: comment || ""
+      },
+      create: {
+        userId,
+        routeId,
+        rating: cleanRating,
+        comment: comment || "",
+        completedAt: new Date()
+      }
+    });
+
+    revalidatePath('/profile');
+    return { success: true, progress };
+  } catch (err: any) {
+    console.error('[rateRouteAction error]', err);
+    return { success: false, error: "Error desant la valoració." };
+  }
+}
