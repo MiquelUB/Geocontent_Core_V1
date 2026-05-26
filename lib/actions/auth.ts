@@ -144,8 +144,9 @@ export async function loginOrRegister(name: string, email: string): Promise<{suc
       }
     });
     return { success: true, user };
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error in loginOrRegister:", err);
-    return { success: false, error: "Error en desar l'usuari a la base de dades." };
+    const detailedError = err instanceof Error ? err.message : String(err);
+    return { success: false, error: `Error DB: ${detailedError}` };
   }
 }
