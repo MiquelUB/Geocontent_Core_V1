@@ -59,6 +59,15 @@ def run_migrations_online() -> None:
     # 1. Agafem la URL i escapem els caràcters especials (%) automàticament
     url = os.environ.get("DATABASE_DIRECT_URL") or os.environ.get("DATABASE_URL")
     if url:
+        # Netegem paràmetres específics de Prisma (com pgbouncer=true) que psycopg2 no entén
+        if "pgbouncer" in url:
+            from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+            u = urlparse(url)
+            query = dict(parse_qsl(u.query))
+            query.pop("pgbouncer", None)
+            u = u._replace(query=urlencode(query))
+            url = urlunparse(u)
+
         escaped_url = url.replace('%', '%%')
         config.set_main_option("sqlalchemy.url", escaped_url)
 
