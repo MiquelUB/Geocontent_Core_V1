@@ -110,7 +110,7 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
                     </div>
                     <div className="mt-4 text-center">
                         <h1 className="font-serif text-3xl font-bold text-[#1e2b25] dark:text-white leading-tight">
-                            {currentUser?.username || t('anonymous')}
+                            {currentUser?.username || currentUser?.name || (currentUser?.email ? currentUser.email.split('@')[0] : t('anonymous'))}
                         </h1>
                         <p className="font-serif italic text-primary text-lg mt-1">
                             {getRank(currentUser?.level || 1)}

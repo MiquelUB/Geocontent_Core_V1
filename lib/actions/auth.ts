@@ -120,6 +120,23 @@ export async function verifyAdminPassword(municipalityId: string, password: stri
 }
 
 export async function loginOrRegister(name: string, email: string): Promise<{success: boolean, user?: any, error?: string}> {
-  // TODO: Implementar lògica de Magic Link per a Auth.js v5
-  return { success: true, user: { name, email } };
+  try {
+    const user = await prisma.user.upsert({
+      where: { email: email.toLowerCase() },
+      update: {
+        username: name
+      },
+      create: {
+        email: email.toLowerCase(),
+        username: name,
+        role: 'TOURIST',
+        xp: 0,
+        level: 1
+      }
+    });
+    return { success: true, user };
+  } catch (err) {
+    console.error("Error in loginOrRegister:", err);
+    return { success: false, error: "Error en desar l'usuari a la base de dades." };
+  }
 }
