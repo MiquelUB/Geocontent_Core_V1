@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage() {
   // 1. Validació de Sessió Auth.js (Capa 1)
   const session = await auth();
-  if (!session) redirect({ href: "/login", locale: "ca" });
+  if (!session) redirect({ href: "/admin/login", locale: "ca" });
 
   // 2. Validació de Cookie de Seguretat Mestra (Capa 2 - Server Gate)
   const cookieStore = await cookies();
