@@ -12,17 +12,20 @@ export default auth((req) => {
   
   const isLoggedIn = !!req.auth;
   const role = req.auth?.user?.role;
-  const isTargetingAdmin = pathname.includes('/admin');
-  const isLoginPage = pathname.includes('/admin/login');
+  
+  const segments = pathname.split('/');
+  const locale = routing.locales.includes(segments[1] as any) ? segments[1] : routing.defaultLocale;
 
-  if (isTargetingAdmin && !isLoginPage) {
+  // Comprovar si conté /admin (sense comptar el segment de locale si hi és)
+  const isAdminPath = segments.includes('admin');
+  const isLoginPage = segments.includes('login') && isAdminPath;
+
+  if (isAdminPath && !isLoginPage) {
     if (!isLoggedIn) {
-      const locale = pathname.split('/')[1] || routing.defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}/admin/login`, req.url));
     }
     
     if (role === 'TOURIST') {
-      const locale = pathname.split('/')[1] || routing.defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}`, req.url));
     }
   }

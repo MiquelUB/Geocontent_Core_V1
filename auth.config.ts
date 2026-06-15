@@ -30,15 +30,7 @@ export const authConfig = {
       }
       return session;
     },
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isAdminPath = nextUrl.pathname.includes("/admin");
-      const isLoginPage = nextUrl.pathname.includes("/admin/login");
-      
-      if (isAdminPath && !isLoginPage) {
-        if (isLoggedIn && auth?.user?.role !== "TOURIST") return true;
-        return false; // Redirigeix al login si no és admin o no està loguejat
-      }
+    authorized() {
       return true;
     },
   },
