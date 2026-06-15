@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
-import { ArrowLeft, Settings, Edit, Trophy, ChevronRight } from "lucide-react";
+import { ArrowLeft, Settings, Edit, Trophy, ChevronRight, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { PassportGrid } from "@/components/passport/PassportGrid";
 import { handleAvatarUploadAction } from "@/lib/actions/storage";
 import { getPassportData, getUserScore } from "@/lib/actions/gamification";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 interface ProfileScreenProps {
     onNavigate: (screen: string, data?: any) => void;
@@ -151,6 +152,61 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
 
                     {/* Stamps Grid Container */}
                     <PassportGrid initialStamps={passportData} currentUser={currentUser} />
+
+                    {/* Helper tip */}
+                    <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-primary/5 rounded-xl py-2.5 px-3 border border-primary/10">
+                        <span className="text-amber-500">💡</span>
+                        <span>Fes clic a un segell completat per valorar la ruta i escriure el teu comentari.</span>
+                    </div>
+                </div>
+
+                {/* 📝 OPINIONS I COMENTARIS DELS USUARIS */}
+                <div className="px-4 mt-6">
+                    <h3 className="font-serif text-2xl font-bold text-[#1e2b25] dark:text-white italic mb-3">Les Teves Opinions</h3>
+                    {passportData.filter((s: any) => s.isCompleted && (s.rating > 0 || s.comment)).length === 0 ? (
+                        <div className="bg-white dark:bg-white/5 rounded-2xl p-6 border border-primary/10 text-center">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                                Encara no has afegit cap valoració o comentari.
+                            </p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                                Completa rutes i fes clic sobre els seus segells daurats per opinar-hi!
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {passportData
+                                .filter((s: any) => s.isCompleted && (s.rating > 0 || s.comment))
+                                .map((stamp: any) => (
+                                    <div key={stamp.id} className="bg-white dark:bg-[#1e2a22] rounded-2xl p-4 border border-primary/10 shadow-[0_2px_8px_-2px_rgba(86,143,114,0.1)]">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h4 className="font-serif font-bold text-sm text-[#1e2b25] dark:text-white line-clamp-1">{stamp.name}</h4>
+                                            <div className="flex gap-0.5">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <Star
+                                                        key={star}
+                                                        className={cn(
+                                                            "w-3.5 h-3.5",
+                                                            star <= stamp.rating
+                                                                ? "text-amber-500 fill-amber-500"
+                                                                : "text-gray-300 dark:text-gray-700"
+                                                        )}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        {stamp.comment ? (
+                                            <p className="text-xs text-gray-600 dark:text-gray-300 italic">
+                                                &ldquo;{stamp.comment}&rdquo;
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                                Sense comentari escrit
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                        </div>
+                    )}
                 </div>
 
 

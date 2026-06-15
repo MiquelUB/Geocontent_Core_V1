@@ -290,3 +290,25 @@ export async function rateRouteAction(userId: string, routeId: string, rating: n
     return { success: false, error: "Error desant la valoració." };
   }
 }
+
+/**
+ * Obté el progrés (incloent valoració i comentari) d'una ruta per a un usuari.
+ */
+export async function getUserRouteProgressAction(userId: string, routeId: string) {
+  try {
+    if (!userId || !routeId) {
+      return { success: false, error: "Dades incompletes." };
+    }
+
+    const progress = await prisma.userRouteProgress.findUnique({
+      where: {
+        userId_routeId: { userId, routeId }
+      }
+    });
+
+    return { success: true, progress };
+  } catch (err: any) {
+    console.error('[getUserRouteProgressAction error]', err);
+    return { success: false, error: "Error en carregar el progrés." };
+  }
+}

@@ -6,7 +6,7 @@ import { ImageWithFallback } from "../figma/ImageWithFallback";
 import ImageSlider from "../ui/ImageSlider";
 import HlsVideoPlayer from "../ui/HlsVideoPlayer";
 import { motion, useScroll, useTransform } from "motion/react";
-import { recordVisit } from "@/lib/actions/gamification";
+import { recordVisit, getUserRouteProgressAction, rateRouteAction } from "@/lib/actions/gamification";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { CheckCircle2 } from "lucide-react";
 import PoiQuiz from "../quiz/PoiQuiz";
@@ -98,6 +98,12 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   const [userRating, setUserRating] = useState(0);
   const [showFinalQuiz, setShowFinalQuiz] = useState(false);
 
+  const [routeProgress, setRouteProgress] = useState<any>(null);
+  const [hasCompletedRoute, setHasCompletedRoute] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const network = useNetworkStatus();
 
@@ -167,7 +173,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   );
 
   // V2: completedAt indica si la ruta ha estat completada (sense finalQuizPassed)
-  const finalQuizPassed = safeLegend.userRouteProgress?.some((urp: any) => urp.userId === currentUser?.id && urp.completedAt != null);
+  const finalQuizPassed = hasCompletedRoute;
 
   // Parse POIs to calculate numeric raw distances for sorting
   const poisWithDistances = (safeLegend.pois || []).map((poi: any) => {
@@ -207,6 +213,21 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
         });
     }
   }, [isUnlocked, currentUser, safeLegend.id]);
+
+  // Carrega el progrés de la ruta de l'usuari per a les valoracions i ressenyes
+  useEffect(() => {
+    const isRoute = !!(safeLegend.pois && safeLegend.pois.length > 0);
+    if (isRoute && currentUser?.id && safeLegend.id) {
+      getUserRouteProgressAction(currentUser.id, safeLegend.id).then(res => {
+        if (res.success && res.progress) {
+          setRouteProgress(res.progress);
+          setHasCompletedRoute(res.progress.completedAt != null);
+          setFeedbackRating(res.progress.rating ?? 0);
+          setFeedbackComment(res.progress.comment ?? "");
+        }
+      });
+    }
+  }, [currentUser?.id, safeLegend.id, safeLegend.pois]);
 
 
   const handlePlayAudio = () => {
@@ -574,11 +595,88 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                       finalQuiz={safeLegend.finalQuiz}
                       isAlreadyCompleted={finalQuizPassed}
                       onComplete={(res?: any) => {
+                        setHasCompletedRoute(true);
+                        if (currentUser?.id) {
+                          getUserRouteProgressAction(currentUser.id, safeLegend.id).then(progressRes => {
+                            if (progressRes.success && progressRes.progress) {
+                              setRouteProgress(progressRes.progress);
+                              setFeedbackRating(progressRes.progress.rating ?? 0);
+                              setFeedbackComment(progressRes.progress.comment ?? "");
+                            }
+                          });
+                        }
                         if (res?.success && res.user && onUserUpdate) {
                           onUserUpdate(res.user);
                         }
                       }}
                   />
+                </div>
+              )}
+
+              {/* ⭐ RATING & COMMENT FORM FOR COMPLETED ROUTE */}
+              {hasCompletedRoute && (
+                <div className="mt-8 p-5 bg-stone-50 dark:bg-[#1a211e] border border-primary/10 rounded-2xl shadow-sm">
+                  <h3 className="font-serif text-xl font-bold text-[#1e2b25] dark:text-white mb-1">Valora aquesta ruta</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    Comparteix la teva opinió amb altres exploradors!
+                  </p>
+
+                  <div className="flex items-center gap-1.5 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setFeedbackRating(star)}
+                        className="transition-transform active:scale-95 p-0.5"
+                      >
+                        <Star
+                          className={`w-8 h-8 ${
+                            star <= feedbackRating
+                              ? "text-amber-500 fill-amber-500"
+                              : "text-gray-300 dark:text-gray-700"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    value={feedbackComment}
+                    onChange={(e) => setFeedbackComment(e.target.value)}
+                    placeholder="Què t'ha semblat la ruta? Alguna recomanació o descobriment especial?"
+                    className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-[#232f29] border border-stone-200 dark:border-stone-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary text-stone-800 dark:text-stone-100 placeholder-stone-400"
+                  />
+
+                  <div className="flex justify-end mt-3">
+                    <Button
+                      size="sm"
+                      disabled={isSubmittingFeedback}
+                      onClick={async () => {
+                        if (!currentUser?.id) return;
+                        try {
+                          setIsSubmittingFeedback(true);
+                          const res = await rateRouteAction(
+                            currentUser.id,
+                            safeLegend.id,
+                            feedbackRating,
+                            feedbackComment
+                          );
+                          if (res.success) {
+                            alert("Moltes gràcies pel teu comentari i valoració!");
+                          } else {
+                            alert(res.error || "Error al desar la valoració.");
+                          }
+                        } catch (err) {
+                          alert("Error de connexió al desar la valoració.");
+                        } finally {
+                          setIsSubmittingFeedback(false);
+                        }
+                      }}
+                      className="text-xs px-4 py-2"
+                    >
+                      {isSubmittingFeedback ? "Desant..." : "Desar Valoració"}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

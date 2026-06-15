@@ -22,6 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
+  trustHost: true,
   providers: [
     ...authConfig.providers,
     Resend({
@@ -36,8 +37,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = (credentials.email as string).toLowerCase().trim();
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string }
+          where: { email }
         });
 
         if (!user || !user.passwordHash || user.role === UserRole.TOURIST) {
