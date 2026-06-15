@@ -143,3 +143,79 @@ Un cop l'aplicació funcioni amb `AUTH_TYPE=plain`, es pot planificar la migraci
 5. Canviar `AUTH_TYPE=scram-sha-256`.
 
 Això permetrà que PgBouncer usi `pgbouncer_auth` per connectar-se al backend (text pla al userlist.txt) i validi els clients d'aplicació via auth_query (hash SCRAM des de pg_shadow), evitant el conflicte actual.
+
+---
+
+## 5. Inicialització de Dades Mestre i Comptes Administratius
+
+Després d'executar `npx prisma db push` a producció, la base de dades es troba en un estat buit de dades (Clean Slate). Per poder accedir a l'administració, cal inicialitzar el municipi i un compte `SUPER_ADMIN`. 
+
+A causa de la naturalesa de la compilació `standalone` de Next.js, els scripts en TypeScript localitzats a `/scripts/` es descarten en producció. Per tant, l'alternativa resilient és executar la consulta d'inicialització directament des de la consola de PostgreSQL (`pxx-postgres-db`):
+
+```bash
+psql -U admin_geocontent -d geocontent_db
+```
+
+```sql
+-- 1. Municipis base i contrasenya mestra del Gate (admin)
+INSERT INTO municipalities (id, name, slug, theme_id, admin_master_password, name_translations, created_at, updated_at, plan_tier, packaging_status)
+VALUES (
+  'a3b1a8d0-256f-40c2-9e8c-8f921ea0205f',
+  'Projecte Xino Xano Core',
+  'pxx-core',
+  'mountain',
+  'admin',
+  '{"ca": "Projecte Xino Xano Core", "es": "Proyecto Xino Xano Core", "en": "Project Xino Xano Core", "fr": "Projet Xino Xano Core"}'::jsonb,
+  now(),
+  now(),
+  'basic',
+  'IDLE'
+)
+ON CONFLICT (slug) DO UPDATE SET admin_master_password = 'admin';
+
+-- 2. Usuaris administradors (amb hash bcrypt preparat)
+INSERT INTO users (id, email, password_hash, role, username, xp, level, created_at, updated_at, municipality_id)
+VALUES (
+  'b5b2a9d1-367f-50c3-ae9d-9f032fa13060',
+  'miquel@projectexinoxano.cat',
+  '$2b$12$cxo.D8Hi0stqbvVaYTyAxuI0aLd1dHm2mY52Ub8MLNWbgDnpYwsDW', -- contrasenya de .env
+  'SUPER_ADMIN',
+  'Miquel UB',
+  1000,
+  10,
+  now(),
+  now(),
+  'a3b1a8d0-256f-40c2-9e8c-8f921ea0205f'
+)
+ON CONFLICT (email) DO UPDATE SET role = 'SUPER_ADMIN', password_hash = '$2b$12$cxo.D8Hi0stqbvVaYTyAxuI0aLd1dHm2mY52Ub8MLNWbgDnpYwsDW';
+```
+
+---
+
+## 6. Segregació de Fluxos de Login (Admin vs Turista)
+
+S'ha detectat i resolt un conflicte en la redirecció de NextAuth. Per defecte, NextAuth redirigeix qualsevol petició d'autenticació no resolta a `/login` (el flux públic de turistes amb Magic Link). Això impedia que els administradors accedissin a la pantalla de contrasenya de `/admin/login`.
+
+**Solució implementada:**
+1. Desactivar el comportament d'autoredirecció per defecte a `auth.config.ts` forçant `authorized() { return true; }`.
+2. Centralitzar tot el control de fluxos d'autenticació i rol a `middleware.ts`:
+   - Qualsevol intent d'accés no autenticat a `/admin/...` es redirigeix a `/admin/login` (amb Email + Contrasenya).
+   - Els usuaris autenticats amb rol `TOURIST` que intenten accedir a `/admin` són immediatament rebotats a l'arrel de la web (`/[locale]`).
+
+---
+
+## 7. Optimització de Compilació i Dependències de Producció (Alpine)
+
+Durant els desplegaments en calent sobre servidors VPS de memòria limitada (Hetzner), s'han resolt dos problemes crítics de la compilació Docker:
+
+### A. Prevenció d'OOM durant la compilació de Next.js
+Next.js té un gran consum de memòria durant el `next build`. S'ha afegit la variable `NODE_OPTIONS` limitant el heap per evitar la cancel·lació forçosa de la imatge pel gestor de memòria del servidor:
+```dockerfile
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+```
+
+### B. Mòduls Natius (bcrypt) a Alpine Linux
+A causa de l'ús d'Alpine a la imatge `runner`, el mòdul natiu `bcrypt` requereix llibreries dinàmiques per carregar la seva compilació de C++. S'ha assegurat la presència de `libc6-compat` i `openssl` a la fase final del Dockerfile per permetre la importació nativa:
+```dockerfile
+RUN apk add --no-cache libc6-compat openssl
+```
