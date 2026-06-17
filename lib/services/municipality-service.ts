@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/database/prisma';
 import { revalidatePath } from 'next/cache';
 
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export async function updateMunicipalityInternal(id: string, name: string, logoUrl?: string, themeId?: string, adminMasterPassword?: string, planTier?: string, extraRoutesCount?: number) {
   if (!id) return { success: false, error: "ID missing" };

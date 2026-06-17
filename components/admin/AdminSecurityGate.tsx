@@ -27,6 +27,8 @@ export default function AdminSecurityGate({ title, description, verifyFn }: Admi
             const result = await verifyFn(password);
             if (!result.success) {
                 setError(result.error || 'Contrasenya incorrecta');
+            } else {
+                window.location.reload();
             }
         } catch (err) {
             setError('Error de connexió');

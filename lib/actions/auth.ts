@@ -4,7 +4,7 @@
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { cookies, headers } from 'next/headers'
 import { prisma } from "../database/prisma";
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { signIn as authSignIn, signOut as authSignOut, auth } from "@/auth";
@@ -97,7 +97,6 @@ export async function unlockAdminDashboard(municipalityId: string, password: str
         maxAge: 3600 // 1 hora
       });
       
-      revalidatePath('/admin');
       return { success: true };
     }
     
@@ -114,11 +113,19 @@ export async function verifyAdminPassword(municipalityId: string, password: stri
     if (!muni) return { success: false, error: "Municipality not found" };
     if (!muni.adminMasterPassword) return { success: false, error: "No password configured" };
 
-    const isValid = await bcrypt.compare(password, muni.adminMasterPassword);
+    // Suportar fallback per a contrasenyes en text pla de migracions antigues
+    let isValid = false;
+    if (muni.adminMasterPassword.startsWith('$2') || muni.adminMasterPassword.length === 60) {
+      isValid = await bcrypt.compare(password, muni.adminMasterPassword);
+    } else {
+      isValid = password === muni.adminMasterPassword;
+    }
+
     if (!isValid) return { success: false, error: "Invalid password" };
 
     return { success: true };
   } catch (err) {
+    console.error("Error in verifyAdminPassword:", err);
     return { success: false, error: "Database error" };
   }
 }

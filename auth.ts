@@ -3,7 +3,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/database/prisma"
 import Resend from "next-auth/providers/resend"
 import CredentialsProvider from "next-auth/providers/credentials"
-import bcrypt from "bcrypt"
+import bcrypt from "bcryptjs"
 import { authConfig } from "./auth.config"
 import { UserRole } from "@prisma/client"
 
