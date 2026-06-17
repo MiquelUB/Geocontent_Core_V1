@@ -11,11 +11,17 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Preparem el filtratge
     const where: any = {
-      status: 'CLOSED' // Només rutes publicades
+      status: 'CLOSED', // Només rutes publicades
+      municipality: {
+        planTier: { not: 'inactive' }
+      }
     };
 
     if (municipalitySlug) {
-      where.municipality = { slug: municipalitySlug };
+      where.municipality = {
+        slug: municipalitySlug,
+        planTier: { not: 'inactive' }
+      };
     }
 
     if (theme) {

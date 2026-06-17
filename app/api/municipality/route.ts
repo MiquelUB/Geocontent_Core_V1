@@ -16,8 +16,11 @@ export async function GET(request: Request) {
 
         // Use Prisma directly for consistency with core architecture
         // Prisma uses camelCase for the schema fields
-        const brand = await prisma.municipality.findUnique({
-            where: { id },
+        const brand = await prisma.municipality.findFirst({
+            where: { 
+                id,
+                planTier: { not: 'inactive' }
+            },
             select: {
                 name: true,
                 logoUrl: true,
@@ -28,6 +31,9 @@ export async function GET(request: Request) {
         if (!brand) {
             // Check if there's any municipality at all as fallback
             const firstOne = await prisma.municipality.findFirst({
+                where: {
+                    planTier: { not: 'inactive' }
+                },
                 select: {
                     name: true,
                     logoUrl: true,

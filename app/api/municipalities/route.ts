@@ -7,7 +7,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const municipalities = await prisma.municipality.findMany({
-      include: {
+      where: {
+        planTier: { not: 'inactive' }
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        logoUrl: true,
+        themeId: true,
+        nameTranslations: true,
         _count: {
           select: { routes: true }
         }

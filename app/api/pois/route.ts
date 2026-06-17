@@ -14,6 +14,21 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const route = await prisma.route.findFirst({
+      where: {
+        id: routeId,
+        status: 'CLOSED',
+        municipality: {
+          planTier: { not: 'inactive' }
+        }
+      },
+      select: { id: true }
+    });
+
+    if (!route) {
+      return NextResponse.json({ error: 'Route not found or inactive' }, { status: 404 });
+    }
+
     const routePois = await prisma.routePoi.findMany({
       where: { routeId: routeId },
       include: {
