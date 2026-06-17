@@ -18,6 +18,17 @@ export const authConfig = {
       if (trigger === "update" && session?.impersonateMunicipalityId) {
         if (token.role === 'SUPER_ADMIN') {
           token.municipalityId = session.impersonateMunicipalityId;
+
+          // ✅ AFEGIR: Registre d'auditoria (Pas 7.2)
+          const { prisma } = await import('@/lib/database/prisma');
+          await prisma.adminAuditLog.create({
+            data: {
+              adminUserId: token.id as string,
+              action: 'impersonate',
+              targetMunicipalityId: session.impersonateMunicipalityId,
+              metadata: { timestamp: new Date().toISOString() }
+            }
+          }).catch(err => console.error('[AuditLog] Failed to log impersonation:', err));
         }
       }
       return token;

@@ -22,6 +22,19 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: "MunicipalityId no vàlid o inexistent" }, { status: 400 });
     }
 
+    // Check ownership or super admin role
+    const userRole = (session.user as any).role as string;
+    const userMunicipalityId = (session.user as any).municipalityId as string | null;
+
+    const isAuthorized =
+      userRole === 'SUPER_ADMIN' ||
+      (userRole === 'ADMIN' && userMunicipalityId === municipalityId);
+
+    if (!isAuthorized) {
+      console.warn(`[Analytics] Accés denegat: user ${session.user.id} (${userRole}) intentant accedir a municipi ${municipalityId}`);
+      return NextResponse.json({ success: false, error: 'Accés denegat.' }, { status: 403 });
+    }
+
     const now = new Date();
     const startDate = startDateParam ? new Date(startDateParam) : new Date(now.getFullYear(), now.getMonth(), 1);
     const endDate = endDateParam ? new Date(endDateParam) : now;

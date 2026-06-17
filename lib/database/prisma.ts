@@ -31,6 +31,28 @@ function createPrismaClient(): PrismaClient {
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
+  // Injectar el context RLS des de Prisma (PAS 5.3)
+  (client as any).$use(async (params: any, next: any) => {
+    try {
+      const { auth } = await import("@/auth");
+      const session = await auth();
+      if (session?.user) {
+        const userId = session.user.id || '';
+        const municipalityId = (session.user as any).municipalityId || '';
+        
+        await client.$executeRaw`
+          SELECT
+            set_config('app.current_user_id', ${userId}, true),
+            set_config('app.current_municipality_id', ${municipalityId}, true),
+            set_config('app.role', 'user', true)
+        `;
+      }
+    } catch (err) {
+      console.error("[Prisma RLS Middleware Error]:", err);
+    }
+    return next(params);
+  });
+
   return client;
 }
 
