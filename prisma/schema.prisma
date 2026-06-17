@@ -295,3 +295,17 @@ enum ReportStatus {
   COMPLETED
   FAILED
 }
+
+model AdminAuditLog {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminUserId          String   @map("admin_user_id") @db.Uuid
+  action               String   // "impersonate" | "create_municipality" | "delete_user" | etc.
+  targetMunicipalityId String?  @map("target_municipality_id") @db.Uuid
+  targetUserId         String?  @map("target_user_id") @db.Uuid
+  metadata             Json?    // Informació addicional (IP, User-Agent, etc.)
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@map("admin_audit_logs")
+  @@index([adminUserId])
+  @@index([createdAt])
+}
