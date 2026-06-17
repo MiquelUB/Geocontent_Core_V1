@@ -6,6 +6,7 @@ export const authConfig = {
     verifyRequest: "/login",
     error: "/login",
   },
+  trustHost: true,
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {

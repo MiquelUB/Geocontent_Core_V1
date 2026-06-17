@@ -91,6 +91,7 @@ POSTGRES_PASSWORD="password_segura_generada"
 # === AUTH.JS V5 ===
 AUTH_SECRET="openssl rand -base64 32"
 NEXTAUTH_URL="https://el-teu-domini.com"
+AUTH_TRUST_HOST="true"
 RESEND_API_KEY="re_xxxxxxxxxxxxxxxxx"
 
 # === INFRASTRUCTURE ===

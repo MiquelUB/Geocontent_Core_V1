@@ -31,29 +31,39 @@ function createPrismaClient(): PrismaClient {
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-  // Injectar el context RLS des de Prisma (PAS 5.3)
-  (client as any).$use(async (params: any, next: any) => {
-    try {
-      const { auth } = await import("@/auth");
-      const session = await auth();
-      if (session?.user) {
-        const userId = session.user.id || '';
-        const municipalityId = (session.user as any).municipalityId || '';
-        
-        await client.$executeRaw`
-          SELECT
-            set_config('app.current_user_id', ${userId}, true),
-            set_config('app.current_municipality_id', ${municipalityId}, true),
-            set_config('app.role', 'user', true)
-        `;
+  // Injectar el context RLS des de Prisma (PAS 5.3) de forma compatible amb Prisma v6/v7
+  const extendedClient = client.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }) {
+          try {
+            // Evitem cridar a auth() per a taules de NextAuth per prevenir bucles infinits de recursió
+            const isAuthTable = ['User', 'Session', 'Account', 'VerificationToken'].includes(model);
+            if (!isAuthTable) {
+              const { auth } = await import("@/auth");
+              const session = await auth();
+              if (session?.user) {
+                const userId = session.user.id || '';
+                const municipalityId = (session.user as any).municipalityId || '';
+                
+                await client.$executeRaw`
+                  SELECT
+                    set_config('app.current_user_id', ${userId}, true),
+                    set_config('app.current_municipality_id', ${municipalityId}, true),
+                    set_config('app.role', 'user', true)
+                `;
+              }
+            }
+          } catch (err) {
+            console.error("[Prisma RLS Extension Error]:", err);
+          }
+          return query(args);
+        }
       }
-    } catch (err) {
-      console.error("[Prisma RLS Middleware Error]:", err);
     }
-    return next(params);
   });
 
-  return client;
+  return extendedClient as any;
 }
 
 // Lazy singleton — NOT instantiated at import time. Safe for Next.js static build.
