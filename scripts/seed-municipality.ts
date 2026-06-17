@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
+import bcrypt from 'bcrypt'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -12,17 +13,20 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log("🚀 Creant Municipi per defecte i configurant Seguretat Mestra...")
 
+  const adminMasterPassword = process.env.ADMIN_MASTER_PASSWORD || 'admin'
+  const hashedPassword = await bcrypt.hash(adminMasterPassword, 12)
+
   // 1. Creem el municipi "Core"
   const municipality = await prisma.municipality.upsert({
     where: { slug: 'pxx-core' },
     update: {
-      adminMasterPassword: 'admin', // Aquesta és la "Contrasenya Mestra"
+      adminMasterPassword: hashedPassword, // Aquesta és la "Contrasenya Mestra"
     },
     create: {
       name: 'Projecte Xino Xano Core',
       slug: 'pxx-core',
       themeId: 'mountain',
-      adminMasterPassword: 'admin', // Contrasenya per defecte per al Gate
+      adminMasterPassword: hashedPassword, // Contrasenya per defecte per al Gate
       nameTranslations: {
         ca: 'Projecte Xino Xano Core',
         es: 'Proyecto Xino Xano Core',

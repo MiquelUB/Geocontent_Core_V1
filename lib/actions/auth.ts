@@ -2,8 +2,10 @@
 
 
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { prisma } from "../database/prisma";
+import bcrypt from 'bcrypt';
+import { z } from 'zod';
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { signIn as authSignIn, signOut as authSignOut, auth } from "@/auth";
 import { rateLimit } from '@/lib/services/ratelimit';
@@ -46,7 +48,7 @@ export async function logout() {
 export async function registerUser(name: string, email: string) {
   try {
     const session = await auth();
-    if (!session || (session.user as any).role !== 'admin') {
+    if (!session || !['ADMIN', 'SUPER_ADMIN'].includes((session.user as any).role)) {
       return { success: false, error: "Accés denegat. Només administradors." };
     }
 
@@ -110,34 +112,61 @@ export async function verifyAdminPassword(municipalityId: string, password: stri
   try {
     const muni = await prisma.municipality.findUnique({ where: { id: municipalityId } });
     if (!muni) return { success: false, error: "Municipality not found" };
-    if (muni.adminMasterPassword && muni.adminMasterPassword !== password) {
-      return { success: false, error: "Invalid password" };
-    }
+    if (!muni.adminMasterPassword) return { success: false, error: "No password configured" };
+
+    const isValid = await bcrypt.compare(password, muni.adminMasterPassword);
+    if (!isValid) return { success: false, error: "Invalid password" };
+
     return { success: true };
   } catch (err) {
     return { success: false, error: "Database error" };
   }
 }
 
-export async function loginOrRegister(name: string, email: string): Promise<{success: boolean, user?: any, error?: string}> {
+export async function loginOrRegister(
+  name: string,
+  email: string
+): Promise<{success: boolean, user?: any, error?: string}> {
   try {
+    // 1. Rate limiting per IP (prevenir spam massiu)
+    const headersList = await headers();
+    const ip = headersList.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+    const rl = await rateLimit(`register:${ip}`, 5, 3600); // 5 intents/hora per IP
+    if (!rl.success) {
+      return { success: false, error: 'Massa intents des d\'aquesta IP. Torna-ho a provar en 1 hora.' };
+    }
+
+    // 2. Validació d'email amb Zod (prevenir input malformat)
+    const emailSchema = z.string().email().max(254);
+    const emailParse = emailSchema.safeParse(email.toLowerCase().trim());
+    if (!emailParse.success) {
+      return { success: false, error: 'Format d\'email no vàlid.' };
+    }
+
+    // 3. Validació de nom
+    const nameSchema = z.string().min(2).max(100).trim();
+    const nameParse = nameSchema.safeParse(name);
+    if (!nameParse.success) {
+      return { success: false, error: 'El nom ha de tenir entre 2 i 100 caràcters.' };
+    }
+
+    // 4. Upsert amb resposta uniforme (evitar enumeració d'usuaris)
     const user = await prisma.user.upsert({
-      where: { email: email.toLowerCase() },
-      update: {
-        username: name
-      },
+      where: { email: emailParse.data },
+      update: { username: nameParse.data },
       create: {
-        email: email.toLowerCase(),
-        username: name,
+        email: emailParse.data,
+        username: nameParse.data,
         role: 'TOURIST',
         xp: 0,
         level: 1
-      }
+      },
+      select: { id: true, email: true, role: true } // NO retornar password_hash ni camps interns
     });
+
     return { success: true, user };
   } catch (err: any) {
-    console.error("Error in loginOrRegister:", err);
-    const detailedError = err instanceof Error ? err.message : String(err);
-    return { success: false, error: `Error DB: ${detailedError}` };
+    console.error("Error in loginOrRegister:", err.message); // Log intern sense detalls sensibles
+    return { success: false, error: 'No s\'ha pogut completar el registre. Torna-ho a provar.' };
   }
 }

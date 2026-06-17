@@ -16,7 +16,10 @@ const nextConfig = {
   experimental: {
     externalDir: true,
     serverActions: {
-      allowedOrigins: ['pxxv-pxx-frontend.80opze.easypanel.host', 'localhost:3000']
+      allowedOrigins: [
+        process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
+        'localhost:3000'
+      ].filter(Boolean)
     }
   },
   webpack: (config) => {
