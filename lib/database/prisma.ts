@@ -35,28 +35,59 @@ function createPrismaClient(): PrismaClient {
   const extendedClient = client.$extends({
     query: {
       $allModels: {
-        async $allOperations({ model, operation, args, query }) {
-          try {
-            // Evitem cridar a auth() per a taules de NextAuth per prevenir bucles infinits de recursió
-            const isAuthTable = ['User', 'Session', 'Account', 'VerificationToken'].includes(model);
-            if (!isAuthTable) {
-              const { auth } = await import("@/auth");
-              const session = await auth();
-              if (session?.user) {
-                const userId = session.user.id || '';
-                const municipalityId = (session.user as any).municipalityId || '';
-                
-                await client.$executeRaw`
-                  SELECT
-                    set_config('app.current_user_id', ${userId}, true),
-                    set_config('app.current_municipality_id', ${municipalityId}, true),
-                    set_config('app.role', 'user', true)
-                `;
-              }
-            }
-          } catch (err) {
-            console.error("[Prisma RLS Extension Error]:", err);
+        async $allOperations(options) {
+          const { model, operation, args, query } = options;
+          // Evitem cridar a auth() per a taules de NextAuth per prevenir bucles infinits de recursió
+          const isAuthTable = ['User', 'Session', 'Account', 'VerificationToken'].includes(model);
+          if (isAuthTable) {
+            return query(args);
           }
+
+          let session = null;
+          try {
+            const { getCachedSession } = await import("./prisma-rls-cache");
+            session = await getCachedSession();
+          } catch (err) {
+            // Ignorem errors silenciosament fora del context de request (CLI, build, etc.)
+          }
+
+          if (session?.user) {
+            const userId = session.user.id || '';
+            const municipalityId = (session.user as any).municipalityId || '';
+            const safeUserId = userId.replace(/[^a-zA-Z0-9-]/g, "");
+            const safeMunicipalityId = municipalityId.replace(/[^a-zA-Z0-9-]/g, "");
+
+            const internalParams = (options as any).__internalParams;
+
+            if (internalParams?.transaction) {
+              // Si ja estem dins d'una transacció activa (itx), configurem el context de RLS
+              // en la mateixa connexió de la transacció utilitzant el client intern de la transacció.
+              try {
+                const txClient = (client as any)._createItxClient(internalParams.transaction);
+                await txClient.$executeRawUnsafe(`
+                  SELECT
+                    set_config('app.current_user_id', '${safeUserId}', true),
+                    set_config('app.current_municipality_id', '${safeMunicipalityId}', true),
+                    set_config('app.role', 'user', true);
+                `);
+              } catch (err) {
+                console.error("[Prisma RLS Transaction Extension Error]:", err);
+              }
+              return query(args);
+            } else {
+              // Si no estem en transacció, embolcallem la consulta en una transacció de connexió única
+              // per assegurar que el set_config s'apliqui en la mateixa connexió física sota PgBouncer.
+              return client.$transaction(async (tx: any) => {
+                const modelKey = model.charAt(0).toLowerCase() + model.slice(1);
+                const txModel = tx[modelKey];
+                if (txModel && typeof txModel[operation] === "function") {
+                  return txModel[operation](args);
+                }
+                return query(args);
+              });
+            }
+          }
+
           return query(args);
         }
       }
