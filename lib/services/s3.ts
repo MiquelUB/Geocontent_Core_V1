@@ -29,6 +29,17 @@ const BUCKET = process.env.S3_BUCKET || "geocontent";
  * Puja un fitxer complet (Buffer) a S3
  */
 export async function uploadToS3(file: Buffer, key: string, contentType: string) {
+  console.log("[S3 Debug] Connection config state:", {
+    has_S3_ACCESS_KEY: !!process.env.S3_ACCESS_KEY,
+    S3_ACCESS_KEY_len: process.env.S3_ACCESS_KEY?.length || 0,
+    has_AWS_ACCESS_KEY_ID: !!process.env.AWS_ACCESS_KEY_ID,
+    AWS_ACCESS_KEY_ID_len: process.env.AWS_ACCESS_KEY_ID?.length || 0,
+    has_S3_SECRET_KEY: !!process.env.S3_SECRET_KEY,
+    S3_SECRET_KEY_len: process.env.S3_SECRET_KEY?.length || 0,
+    S3_REGION: process.env.S3_REGION,
+    S3_BUCKET: process.env.S3_BUCKET
+  });
+
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
