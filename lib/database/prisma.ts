@@ -54,8 +54,12 @@ function createPrismaClient(): PrismaClient {
           if (session?.user) {
             const userId = session.user.id || '';
             const municipalityId = (session.user as any).municipalityId || '';
-            const safeUserId = userId.replace(/[^a-zA-Z0-9-]/g, "");
-            const safeMunicipalityId = municipalityId.replace(/[^a-zA-Z0-9-]/g, "");
+            
+            const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+            
+            const safeUserId = isValidUUID(userId) ? userId : '00000000-0000-0000-0000-000000000000';
+            const safeMunicipalityId = isValidUUID(municipalityId) ? municipalityId : '00000000-0000-0000-0000-000000000000';
+            const safeRole = session.user.role === 'SUPER_ADMIN' ? 'system' : 'user';
 
             const internalParams = (options as any).__internalParams;
 
@@ -68,7 +72,7 @@ function createPrismaClient(): PrismaClient {
                   SELECT
                     set_config('app.current_user_id', '${safeUserId}', true),
                     set_config('app.current_municipality_id', '${safeMunicipalityId}', true),
-                    set_config('app.role', 'user', true);
+                    set_config('app.role', '${safeRole}', true);
                 `);
               } catch (err) {
                 console.error("[Prisma RLS Transaction Extension Error]:", err);
