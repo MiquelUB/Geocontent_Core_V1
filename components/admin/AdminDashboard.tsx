@@ -500,7 +500,7 @@ export default function AdminDashboard({
 
             <Card className="border-stone-200 shadow-sm bg-white">
               <CardHeader>
-                <CardTitle className="font-serif text-xl text-stone-800">Llistat de Llegendes Existents</CardTitle>
+                <CardTitle className="font-serif text-xl text-stone-800">Llistat de Rutes Existents</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border border-stone-200">
