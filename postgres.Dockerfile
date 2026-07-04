@@ -1,5 +1,11 @@
 FROM postgis/postgis:16-3.4
 
+# Forçar PostgreSQL a usar un subdirectori per evitar conflictes
+# amb el VOLUME anònim declarat a la imatge base de postgres.
+# El volum d'EasyPanel es munta a /var/lib/postgresql/data
+# i PGDATA apunta al subdirectori /var/lib/postgresql/data/pgdata
+ENV PGDATA=/var/lib/postgresql/data/pgdata
+
 # Canvi a root per poder instal·lar paquets
 USER root
 

@@ -37,6 +37,8 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
+      LISTEN_PORT: 6432
+      AUTH_TYPE: plain
     ports:
       - "6434:6432"
     depends_on:

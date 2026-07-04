@@ -21,6 +21,20 @@ export default async function AdminPage() {
   const municipalityId = await getDefaultMunicipalityId();
 
   if (!isMasterUnlocked) {
+    // Guàrdia: Si no hi ha cap municipi configurat, mostrem un missatge informatiu
+    if (!municipalityId) {
+      return (
+        <div className="min-h-screen bg-stone-100 flex items-center justify-center p-6">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+            <h2 className="text-xl font-bold text-stone-800 mb-4">⚠️ Base de dades en inicialització</h2>
+            <p className="text-stone-600">
+              No s&apos;ha trobat cap municipi configurat. Si acabes de desplegar, espera uns segons i recarrega la pàgina.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-6">
         <AdminSecurityGate
@@ -28,7 +42,7 @@ export default async function AdminPage() {
           description="Introduïu la contrasenya mestra del consistori per gestionar els continguts."
           verifyFn={async (pass) => {
             'use server';
-            return unlockAdminDashboard(municipalityId || '', pass);
+            return unlockAdminDashboard(municipalityId, pass);
           }}
         />
       </div>

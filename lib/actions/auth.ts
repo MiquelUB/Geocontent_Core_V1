@@ -109,6 +109,14 @@ export async function unlockAdminDashboard(municipalityId: string, password: str
 
 export async function verifyAdminPassword(municipalityId: string, password: string) {
   try {
+    if (!municipalityId || municipalityId.trim() === '') {
+      return { success: false, error: "Municipality ID is required" };
+    }
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(municipalityId);
+    if (!isValidUUID) {
+      return { success: false, error: "Invalid Municipality ID format" };
+    }
+
     const muni = await prisma.municipality.findUnique({ where: { id: municipalityId } });
     if (!muni) return { success: false, error: "Municipality not found" };
     if (!muni.adminMasterPassword) return { success: false, error: "No password configured" };

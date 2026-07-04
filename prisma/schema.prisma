@@ -309,3 +309,10 @@ model AdminAuditLog {
   @@index([adminUserId])
   @@index([createdAt])
 }
+
+model AlembicVersion {
+  version_num String @id @db.VarChar(32)
+
+  @@map("alembic_version")
+}
+
