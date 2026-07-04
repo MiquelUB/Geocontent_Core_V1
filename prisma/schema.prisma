@@ -6,6 +6,8 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DATABASE_DIRECT_URL")
   extensions = [postgis, postgis_tiger_geocoder, postgis_topology, uuid_ossp(map: "uuid-ossp")]
 }
 

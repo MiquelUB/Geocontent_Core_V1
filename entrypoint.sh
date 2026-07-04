@@ -1,16 +1,14 @@
 #!/bin/sh
 # PXX — Entrypoint de Producció (V2 Sovereign)
-# Executa el seed automàtic si la DB està buida i arrenca Next.js.
-
-set -e
+# Executa prisma db push + seed automàtic i arrenca Next.js.
 
 echo "🏔️  PXX Geocontent — Iniciant..."
 
 # 1. Executar Prisma DB Push per sincronitzar l'esquema
-# Utilitza DATABASE_DIRECT_URL per saltar-se PgBouncer durant DDL
+# Usa el path directe al CLI (npx no funciona al standalone)
 echo "📦 [Entrypoint] Sincronitzant esquema de la DB..."
-npx prisma db push --skip-generate 2>&1 || {
-  echo "⚠️  [Entrypoint] prisma db push ha fallat. El servidor arrencarà igualment."
+node node_modules/prisma/build/index.js db push --skip-generate --accept-data-loss 2>&1 || {
+  echo "⚠️  [Entrypoint] prisma db push ha fallat. Comproveu els logs anteriors."
 }
 
 # 2. Executar el seed automàtic (només si la DB està buida)
