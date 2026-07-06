@@ -49,6 +49,7 @@ function getVideoDuration(file: File): Promise<number> {
 function directUpload(
   signedUrl: string,
   file: File,
+  tagging: string,
   onProgress: (pct: number) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -65,6 +66,9 @@ function directUpload(
     xhr.onerror = () => reject(new Error('Network error during upload'));
     xhr.open('PUT', signedUrl);
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    if (tagging) {
+      xhr.setRequestHeader('x-amz-tagging', tagging);
+    }
     xhr.send(file);
   });
 }
@@ -98,11 +102,11 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
         `/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}&bucket=geocontent&contentType=${encodeURIComponent(file.type || 'video/mp4')}`
       );
       if (!sigRes.ok) throw new Error('No s\'ha pogut obtenir la URL signada.');
-      const { signedUrl, publicUrl, storagePath } = await sigRes.json();
+      const { signedUrl, publicUrl, storagePath, tagging } = await sigRes.json();
 
       // ── Step 3: Upload directly to Supabase (Next.js never touches bytes) ─
       setState({ phase: 'uploading', progress: 0, type });
-      await directUpload(signedUrl, file, (pct) => {
+      await directUpload(signedUrl, file, tagging, (pct) => {
         setState({ phase: 'uploading', progress: pct, type });
       });
 

@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/database/prisma';
-import { uploadToS3 } from '@/lib/services/s3';
+import { getDefaultMunicipalityId } from '@/lib/actions/queries';
 import { getLocalizedContent } from '@/lib/i18n-db';
 
 const OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/audio/speech";
@@ -57,14 +57,36 @@ export async function generatePoiAudiosAction(poiId: string) {
       const audioBuffer = Buffer.from(await response.arrayBuffer());
       const s3Key = `media/pois/${poiId}/audio/${locale}.mp3`;
       
-      // Pugem a S3 (Stockholm per defecte segons config)
-      await uploadToS3(audioBuffer, s3Key, "audio/mpeg");
+      const municipalityId = await getDefaultMunicipalityId();
+      if (!municipalityId) throw new Error("TenantID required for cost allocation");
+
+      // Pugem a S3 via FastAPI proxy
+      const fastApiUrl = process.env.INTERNAL_API_URL || 'http://fastapi-core:8000';
+      const formData = new FormData();
+      
+      // Node.js 20+ suporta File object globalment, però podem usar Blob
+      const blob = new Blob([audioBuffer], { type: "audio/mpeg" });
+      formData.append('file', blob, `${locale}.mp3`);
+      formData.append('folder', `media/pois/${poiId}/audio`);
+
+      const uploadRes = await fetch(`${fastApiUrl}/s3/upload`, {
+        method: 'POST',
+        headers: {
+          'x-internal-tenant-id': municipalityId,
+        },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`FastAPI upload error: ${await uploadRes.text()}`);
+      }
+
+      const { key } = await uploadRes.json();
 
       // Construïm la URL pública. 
-      // Nota: En producció idealment usaríem un CloudFront o un helper de config.
-      const bucket = process.env.S3_BUCKET || "geocontent";
+      const bucket = process.env.S3_BUCKET || "pxx-core-v1";
       const region = process.env.S3_REGION || "eu-north-1";
-      const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${s3Key}`;
+      const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
       
       results[locale] = publicUrl;
     }

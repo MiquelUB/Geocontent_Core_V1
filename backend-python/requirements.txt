@@ -6,3 +6,4 @@ psycopg2-binary>=2.9.9
 asyncpg>=0.29.0
 arq>=0.25.0
 pydantic>=2.6.4
+boto3>=1.34.0\npython-multipart>=0.0.9

@@ -39,6 +39,28 @@ export default function HlsVideoPlayer({
   muted = true,
   onSourceChange,
 }: HlsVideoPlayerProps) {
+  // Helpers to use CDN URL for S3 links
+  const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || '';
+  const formatUrlForCdn = (url: string | undefined): string => {
+    if (!url) return '';
+    if (cdnUrl && (url.includes('s3.amazonaws.com') || url.includes('s3.eu-north-1.amazonaws.com'))) {
+      try {
+        const urlObj = new URL(url);
+        return `${cdnUrl}${urlObj.pathname}`;
+      } catch (e) {
+        return url;
+      }
+    }
+    // Si és una ruta relativa (però no blob ni data), força la CDN si existeix
+    if (cdnUrl && url.startsWith('/') && !url.startsWith('//')) {
+      return `${cdnUrl}${url}`;
+    }
+    return url;
+  };
+
+  const finalSrc = formatUrlForCdn(src);
+  const finalLowBitrateSrc = lowBitrateSrc ? formatUrlForCdn(lowBitrateSrc) : undefined;
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -55,14 +77,14 @@ export default function HlsVideoPlayer({
   // Resolve the best available source
   const resolveSource = useCallback(async (): Promise<{ type: VideoSource; url: string | null }> => {
     // 1. Check local cache first (always preferred)
-    const cachedUrl = await videoCache.getCachedVideoUrl(src);
+    const cachedUrl = await videoCache.getCachedVideoUrl(finalSrc);
     if (cachedUrl) {
       return { type: 'cache', url: cachedUrl };
     }
 
     // Also check lowres cache
-    if (lowBitrateSrc) {
-      const cachedLow = await videoCache.getCachedVideoUrl(lowBitrateSrc);
+    if (finalLowBitrateSrc) {
+      const cachedLow = await videoCache.getCachedVideoUrl(finalLowBitrateSrc);
       if (cachedLow && !network.isOnline) {
         return { type: 'cache', url: cachedLow };
       }
@@ -70,22 +92,22 @@ export default function HlsVideoPlayer({
 
     // 2. Online + fast → HLS
     if (network.isOnline && !network.isSlowNetwork) {
-      return { type: 'hls', url: src };
+      return { type: 'hls', url: finalSrc };
     }
 
     // 3. Online + slow → low bitrate fallback
-    if (network.isOnline && network.isSlowNetwork && lowBitrateSrc) {
-      return { type: 'lowres', url: lowBitrateSrc };
+    if (network.isOnline && network.isSlowNetwork && finalLowBitrateSrc) {
+      return { type: 'lowres', url: finalLowBitrateSrc };
     }
 
     // 4. Online + slow but no lowres → HLS anyway (best effort)
     if (network.isOnline) {
-      return { type: 'hls', url: src };
+      return { type: 'hls', url: finalSrc };
     }
 
     // 5. Offline + not cached
     return { type: 'offline', url: null };
-  }, [src, lowBitrateSrc, network.isOnline, network.isSlowNetwork, videoCache]);
+  }, [finalSrc, finalLowBitrateSrc, network.isOnline, network.isSlowNetwork, videoCache]);
 
   // Destroy existing HLS instance
   const destroyHls = useCallback(() => {
@@ -138,9 +160,9 @@ export default function HlsVideoPlayer({
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
           console.warn('[SmartPlayer] Network error, attempting fallback...');
           // Try low-res, then cache, then offline
-          if (lowBitrateSrc && activeSource !== 'lowres') {
+          if (finalLowBitrateSrc && activeSource !== 'lowres') {
             destroyHls();
-            video.src = lowBitrateSrc;
+            video.src = finalLowBitrateSrc;
             setActiveSource('lowres');
             onSourceChange?.('lowres');
           }
@@ -148,7 +170,7 @@ export default function HlsVideoPlayer({
       });
 
       // Background: cache the video for future offline use
-      videoCache.cacheVideo(lowBitrateSrc || src);
+      videoCache.cacheVideo(finalLowBitrateSrc || finalSrc);
 
     } else if (type === 'hls' && video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS (Safari)
@@ -158,7 +180,7 @@ export default function HlsVideoPlayer({
         setIsTransitioning(false);
         if (autoPlay) video.play();
       }, { once: true });
-      videoCache.cacheVideo(lowBitrateSrc || src);
+      videoCache.cacheVideo(finalLowBitrateSrc || finalSrc);
 
     } else {
       // Progressive MP4 (cache or lowres)
@@ -172,7 +194,7 @@ export default function HlsVideoPlayer({
 
     setActiveSource(type);
     onSourceChange?.(type);
-  }, [resolveSource, activeSource, destroyHls, autoPlay, lowBitrateSrc, src, onSourceChange, videoCache]);
+  }, [resolveSource, activeSource, destroyHls, autoPlay, finalLowBitrateSrc, finalSrc, onSourceChange, videoCache]);
 
   // Initialize on mount via IntersectionObserver (lazy)
   useEffect(() => {

@@ -8,12 +8,12 @@ import { v4 as uuidv4 } from 'uuid';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
-import { uploadToS3 } from "../services/s3";
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { SECURITY_CONFIG } from '@/lib/config/constants';
+import { getDefaultMunicipalityId } from './queries';
 
 /**
- * Puja un fitxer a S3/MinIO
+ * Puja un fitxer a S3 via l'API Core (FastAPI)
  */
 export async function uploadFile(file: File, folder: string = 'geocontent') {
   // SEC-08: Límit de mida
@@ -21,23 +21,37 @@ export async function uploadFile(file: File, folder: string = 'geocontent') {
     throw new Error(`Fitxer massa gran. Màxim ${SECURITY_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.`);
   }
 
-  // Sanitize filename
-  const safeName = file.name.replace(/[^\x00-\x7F]/g, "").replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
-  const fileName = `${folder}/${uuidv4()}_${safeName}`;
+  const municipalityId = await getDefaultMunicipalityId();
+  if (!municipalityId) {
+    throw new Error("TenantID required for cost allocation");
+  }
+
+  const fastApiUrl = process.env.INTERNAL_API_URL || 'http://fastapi-core:8000';
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', folder);
   
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const response = await fetch(`${fastApiUrl}/s3/upload`, {
+      method: 'POST',
+      headers: {
+        'x-internal-tenant-id': municipalityId,
+      },
+      body: formData,
+    });
     
-    // Pugem directament a S3/MinIO
-    await uploadToS3(buffer, fileName, file.type);
+    if (!response.ok) {
+        console.error('FastAPI upload error:', await response.text());
+        throw new Error("Error de l'API Core al pujar el fitxer");
+    }
+    
+    const { key } = await response.json();
     
     // Construct and return the public URL
-    const bucket = process.env.S3_BUCKET || "geocontent";
-    const endpoint = process.env.S3_ENDPOINT || "http://localhost:9000";
-    // Si estem darrera un proxy o domini públic s'hauria de fer servir NEXT_PUBLIC_S3_PUBLIC_URL si existeix
-    const publicEndpoint = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || endpoint;
-    const publicUrl = `${publicEndpoint}/${bucket}/${fileName}`;
+    const bucket = process.env.S3_BUCKET || "pxx-core-v1";
+    const region = process.env.S3_REGION || "eu-north-1";
+    const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
     
     return publicUrl;
   } catch (err: any) {

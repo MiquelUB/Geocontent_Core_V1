@@ -24,7 +24,7 @@ services:
     image: redis:7-alpine
     container_name: pxx-redis
     restart: always
-    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction --requirepass ${REDIS_PASSWORD} --bind 127.0.0.1 ${TAILSCALE_IP}
     volumes:
       - pxx_redis_data:/data
     networks:
@@ -34,24 +34,6 @@ services:
         limits:
           memory: 300M
 
-  # Múscul GIS i IA (FastAPI) - Privat
-  worker:
-    build:
-      context: ./backend-python
-      dockerfile: Dockerfile
-    container_name: pxx-worker
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/geocontent_db
-      REDIS_URL: redis://redis:6379/0
-      PYTHONUNBUFFERED: 1
-    networks:
-      - pxx-internal
-    # No s'exposen ports públics: només accessible per Next.js via xarxa interna
-    deploy:
-      resources:
-        limits:
-          memory: 1500M
 
   # Cervell i UI (Next.js) - Públic
   app:

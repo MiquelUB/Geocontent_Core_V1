@@ -9,6 +9,10 @@ app = FastAPI(
     version="2.0.0"
 )
 
+from routers import s3, webhooks
+app.include_router(s3.router)
+app.include_router(webhooks.router)
+
 # Configuració estricta de CORS (Comunica amb Next.js i permet Bypass S3)
 origins = [
     "http://localhost:3000",
