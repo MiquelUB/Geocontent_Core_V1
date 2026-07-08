@@ -33,8 +33,10 @@ export async function GET(request: NextRequest) {
 
         // SEC-07: Whitelist d'hosts (Validació exacta per evitar subdominis maliciosos)
         const s3Hostname = process.env.S3_ENDPOINT ? new URL(process.env.S3_ENDPOINT).hostname : null;
+        const storageUrlHostname = process.env.NEXT_PUBLIC_STORAGE_URL ? new URL(process.env.NEXT_PUBLIC_STORAGE_URL).hostname : null;
         const allowedHosts = ['tile.openstreetmap.org', 'openstreetmap.org', 'a.tile.openstreetmap.org', 'b.tile.openstreetmap.org', 'c.tile.openstreetmap.org'];
         if (s3Hostname) allowedHosts.push(s3Hostname);
+        if (storageUrlHostname) allowedHosts.push(storageUrlHostname);
         
         const isAllowed = allowedHosts.some(host => 
             parsedUrl.hostname === host || parsedUrl.hostname.endsWith('.' + host)

@@ -45,6 +45,12 @@ export async function recordVisit(_clientUserId: string, poiId: string) {
     // SEC-03: El userId REAL prové de la sessió, no del client
     const userId = await requireAuth();
 
+    // Verify user exists in DB (fixes P2003 error if DB was reset but JWT cookie remains)
+    const userExists = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+    if (!userExists) {
+        return { success: false, error: "Usuari no trobat. Si us plau, torna a iniciar sessió." };
+    }
+
     const poi = await prisma.poi.findUnique({ where: { id: poiId } });
     if (!poi) return { success: false, error: "POI not found" };
 
