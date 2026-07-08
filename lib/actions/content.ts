@@ -475,56 +475,60 @@ export async function createPoi(formData: FormData) {
 }
 
 export async function updatePoi(id: string, formData: FormData) {
-  const title = formData.get('title') as string;
-  const description = formData.get('description') as string;
-  const latitude = parseFloat(formData.get('latitude') as string);
-  const longitude = parseFloat(formData.get('longitude') as string);
+  try {
+    const title = formData.get('title') as string;
+    const description = formData.get('description') as string;
+    const latitude = parseFloat(formData.get('latitude') as string);
+    const longitude = parseFloat(formData.get('longitude') as string);
 
-  const appThumbFile = formData.get('app_thumbnail_file') as File | null;
-  const headerFile = formData.get('header_file') as File | null;
-  const audioFile = formData.get('audio_file') as File | null;
+    const appThumbFile = formData.get('app_thumbnail_file') as File | null;
+    const headerFile = formData.get('header_file') as File | null;
+    const audioFile = formData.get('audio_file') as File | null;
 
-  const appThumbnail = (appThumbFile?.size ?? 0) > 0 ? await uploadFile(appThumbFile!) : (formData.get('app_thumbnail') as string || '');
-  const header16x9 = (headerFile?.size ?? 0) > 0 ? await uploadFile(headerFile!) : (formData.get('header_16x9') as string || '');
-  const audioUrl = (audioFile?.size ?? 0) > 0 ? await uploadFile(audioFile!) : (formData.get('audio_url') as string || '');
+    const appThumbnail = (appThumbFile?.size ?? 0) > 0 ? await uploadFile(appThumbFile!) : (formData.get('app_thumbnail') as string || '');
+    const header16x9 = (headerFile?.size ?? 0) > 0 ? await uploadFile(headerFile!) : (formData.get('header_16x9') as string || '');
+    const audioUrl = (audioFile?.size ?? 0) > 0 ? await uploadFile(audioFile!) : (formData.get('audio_url') as string || '');
 
-  const videoSlotCount = parseInt(formData.get('video_slot_count') as string || '0', 10);
-  const urlsFromForm: string[] = JSON.parse(formData.get('video_urls') as string || '[]');
-  const uploadedVideoUrls: string[] = [];
-  for (let i = 0; i < videoSlotCount; i++) {
-    const file = formData.get(`video_file_${i}`) as File | null;
-    if (file && file.size > 0) {
-      uploadedVideoUrls.push(await uploadFile(file));
-    }
-  }
-  const videoUrls = [
-    ...uploadedVideoUrls,
-    ...urlsFromForm.filter(u => u && u.startsWith('http') && !uploadedVideoUrls.includes(u))
-  ];
-
-  const textContent = formData.get('text_content') as string || '';
-  const icon = formData.get('icon') as string || null;
-
-  const carouselFileCount = parseInt(formData.get('carousel_file_count') as string || '0', 10);
-  const carouselUrlsFromForm: string[] = JSON.parse(formData.get('carousel_images') as string || '[]');
-  const finalCarouselImages: string[] = [];
-
-  if (carouselFileCount === 0 && carouselUrlsFromForm.length > 0) {
-    carouselUrlsFromForm.forEach(u => finalCarouselImages.push(u));
-  } else {
-    let urlIdx = 0;
-    for (let i = 0; i < carouselFileCount; i++) {
-      const file = formData.get(`carousel_file_${i}`) as File | null;
+    const videoSlotCount = parseInt(formData.get('video_slot_count') as string || '0', 10);
+    let urlsFromForm: string[] = [];
+    try { urlsFromForm = JSON.parse(formData.get('video_urls') as string || '[]'); } catch (e) {}
+    
+    const uploadedVideoUrls: string[] = [];
+    for (let i = 0; i < videoSlotCount; i++) {
+      const file = formData.get(`video_file_${i}`) as File | null;
       if (file && file.size > 0) {
-        finalCarouselImages.push(await uploadFile(file));
-      } else if (carouselUrlsFromForm[urlIdx]) {
-        finalCarouselImages.push(carouselUrlsFromForm[urlIdx]);
-        urlIdx++;
+        uploadedVideoUrls.push(await uploadFile(file));
       }
     }
-  }
+    const videoUrls = [
+      ...uploadedVideoUrls,
+      ...urlsFromForm.filter(u => u && u.startsWith('http') && !uploadedVideoUrls.includes(u))
+    ];
 
-  try {
+    const textContent = formData.get('text_content') as string || '';
+    const icon = formData.get('icon') as string || null;
+
+    const carouselFileCount = parseInt(formData.get('carousel_file_count') as string || '0', 10);
+    let carouselUrlsFromForm: string[] = [];
+    try { carouselUrlsFromForm = JSON.parse(formData.get('carousel_images') as string || '[]'); } catch(e) {}
+    
+    const finalCarouselImages: string[] = [];
+
+    if (carouselFileCount === 0 && carouselUrlsFromForm.length > 0) {
+      carouselUrlsFromForm.forEach(u => finalCarouselImages.push(u));
+    } else {
+      let urlIdx = 0;
+      for (let i = 0; i < carouselFileCount; i++) {
+        const file = formData.get(`carousel_file_${i}`) as File | null;
+        if (file && file.size > 0) {
+          finalCarouselImages.push(await uploadFile(file));
+        } else if (carouselUrlsFromForm[urlIdx]) {
+          finalCarouselImages.push(carouselUrlsFromForm[urlIdx]);
+          urlIdx++;
+        }
+      }
+    }
+
     // Traducciones
     let titleTranslations = undefined;
     let descriptionTranslations = undefined;
@@ -540,7 +544,6 @@ export async function updatePoi(id: string, formData: FormData) {
 
     const type = formData.get('type') as string;
     const manualQuizStr = formData.get('manual_quiz') as string;
-    const muniId = formData.get('municipality_id') as string;
     let manualQuiz = null;
     try { if (manualQuizStr) manualQuiz = JSON.parse(manualQuizStr); } catch (e) { }
 
