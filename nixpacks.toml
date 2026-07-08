@@ -1,0 +1,5 @@
+# nixpacks.toml — Forçar Node 22 si Easypanel usa Nixpacks
+# Si Easypanel usa el Dockerfile, aquest fitxer s'ignora.
+
+[variables]
+NODE_VERSION = "22"
