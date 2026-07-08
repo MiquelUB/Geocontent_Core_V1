@@ -541,6 +541,11 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
               <Badge variant="outline" className="text-[9px]">1:1</Badge>
             </Label>
+            {appThumbnail && !appThumbnailFile && (
+              <div className="mb-2 w-16 h-16 rounded-md overflow-hidden border border-stone-200">
+                <img src={appThumbnail} alt="App Thumbnail" className="w-full h-full object-cover" />
+              </div>
+            )}
             <Input type="file" accept="image/*" onChange={(e) => setAppThumbnailFile(e.target.files?.[0] || null)} />
           </div>
 
@@ -552,6 +557,11 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
               <Badge variant="outline" className="text-[9px]">16:9</Badge>
             </Label>
+            {header16x9 && !headerFile && (
+              <div className="mb-2 w-32 h-18 aspect-video rounded-md overflow-hidden border border-stone-200">
+                <img src={header16x9} alt="Header 16:9" className="w-full h-full object-cover" />
+              </div>
+            )}
             <Input type="file" accept="image/*" onChange={(e) => setHeaderFile(e.target.files?.[0] || null)} />
           </div>
 
