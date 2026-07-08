@@ -201,7 +201,7 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: process.env.AI_MODEL_TRANSLATE_ID || "google/gemini-1.5-flash",
+      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
       response_format: { type: "json_object" },
       temperature: 0.1,
@@ -253,7 +253,7 @@ export async function translateFieldsAction(fields: Record<string, string>) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: process.env.AI_MODEL_TRANSLATE_ID || "google/gemini-1.5-flash",
+      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(fields) }],
       response_format: { type: "json_object" },
       temperature: 0.1,
