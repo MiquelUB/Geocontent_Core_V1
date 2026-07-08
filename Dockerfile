@@ -64,9 +64,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/postgres-interval ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/split2 ./node_modules/split2
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/xtend ./node_modules/xtend
 
-# Dependències de Prisma 7.x (effect + fast-check per al client de Prisma)
+# Dependències de Prisma 7.x — FIX CRÍTIC:
+# @prisma/config té el seu PROPI node_modules/ anidal amb effect+fast-check+pure-rand.
+# Hem de copiar-los explícitament o el runtime no els troba.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/fast-check ./node_modules/fast-check
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/effect ./node_modules/effect
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/pure-rand ./node_modules/pure-rand
+# Mòduls anidats dins de @prisma/config (versió local d'effect i les seves deps)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/config/node_modules ./node_modules/@prisma/config/node_modules
 
 # Copiar l'entrypoint i el seed de producció
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
