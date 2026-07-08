@@ -173,6 +173,10 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.SITE_URL || "https://projectexinoxano.com",
+        "X-Title": "PXX Dashboard",
+      },
     });
 
     let payload: Record<string, string | null> = {};
@@ -232,6 +236,10 @@ export async function translateFieldsAction(fields: Record<string, string>) {
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.SITE_URL || "https://projectexinoxano.com",
+        "X-Title": "PXX Dashboard",
+      },
     });
 
     const systemPrompt = `
