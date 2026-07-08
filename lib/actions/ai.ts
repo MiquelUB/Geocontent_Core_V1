@@ -121,9 +121,13 @@ export async function generateRouteFromDocumentAction(formData: FormData) {
     `;
 
     const OpenAI = (await import('openai')).default;
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('[AI] OPENROUTER_API_KEY no configurada a les variables d\'entorn.');
+      return { success: false, error: 'El servei d\'IA no està configurat. Contacta amb l\'administrador.' };
+    }
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY || "sk-placeholder",
+      apiKey: process.env.OPENROUTER_API_KEY,
       defaultHeaders: {
         "HTTP-Referer": process.env.SITE_URL || "https://projectexinoxano.com",
         "X-Title": "PXX Dashboard",
@@ -162,10 +166,13 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
   try {
     const { prisma } = await import('../database/prisma');
     const OpenAI = (await import('openai')).default;
-
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('[AI] OPENROUTER_API_KEY no configurada. Salt de autoTranslateAction.');
+      return;
+    }
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY || "sk-placeholder",
+      apiKey: process.env.OPENROUTER_API_KEY,
     });
 
     let payload: Record<string, string | null> = {};
@@ -218,9 +225,13 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
 export async function translateFieldsAction(fields: Record<string, string>) {
   try {
     const OpenAI = (await import('openai')).default;
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('[AI] OPENROUTER_API_KEY no configurada.');
+      return { success: false, error: 'El servei d\'IA no està configurat. Contacta amb l\'administrador.' };
+    }
     const openai = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
-      apiKey: process.env.OPENROUTER_API_KEY || "sk-placeholder",
+      apiKey: process.env.OPENROUTER_API_KEY,
     });
 
     const systemPrompt = `
