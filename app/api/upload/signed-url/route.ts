@@ -82,6 +82,11 @@ export async function GET(req: NextRequest) {
             accessKeyId: accessKey,
             secretAccessKey: secretKey,
         },
+        // CRÍTIC: Desactivar checksums automàtics (CRC32).
+        // AWS SDK v3 afegeix x-amz-checksum-crc32 per defecte al PutObjectCommand.
+        // El browser NO pot generar aquest header al fer el PUT directe a la presigned URL → 403.
+        requestChecksumCalculation: 'when_required',
+        responseChecksumValidation: 'when_required',
     };
     // Suport per a endpoints alternatius (MinIO, Cloudflare R2)
     if (endpoint && !endpoint.includes('amazonaws.com')) {

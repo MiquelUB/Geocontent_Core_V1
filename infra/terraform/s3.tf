@@ -28,10 +28,12 @@ resource "aws_s3_bucket_cors_configuration" "pxx_media_cors" {
 
   cors_rule {
     allowed_headers = ["*"]
-    allowed_methods = ["GET", "HEAD", "PUT", "POST"]
-    # RESTRINGIT: Canvia el "*" pel domini del teu front real
-    allowed_origins = ["https://app.teudomini.com"] 
-    expose_headers  = ["ETag"]
+    allowed_methods = ["GET", "HEAD", "PUT", "POST", "DELETE"]
+    allowed_origins = [
+      "https://pxxv-pxx-frontend.80opze.easypanel.host",
+      "https://app.teudomini.com"   # Afegir el domini definitiu quan estigui disponible
+    ]
+    expose_headers  = ["ETag", "x-amz-checksum-crc32", "x-amz-server-side-encryption"]
     max_age_seconds = 3000
   }
 }
