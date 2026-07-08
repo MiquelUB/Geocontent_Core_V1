@@ -46,7 +46,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Garantir que els motors de Prisma estiguin disponibles al runtime standalone
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
-# Copiar mòduls necessaris per al seed automàtic i prisma db push
+# Copiar mòduls necessaris per al runtime de Prisma (inclou dependències de Prisma 7.x)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
@@ -63,6 +63,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/postgres-date ./node
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/postgres-interval ./node_modules/postgres-interval
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/split2 ./node_modules/split2
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/xtend ./node_modules/xtend
+
+# Dependències de Prisma 7.x (effect + fast-check per al client de Prisma)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/fast-check ./node_modules/fast-check
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/effect ./node_modules/effect
 
 # Copiar l'entrypoint i el seed de producció
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
