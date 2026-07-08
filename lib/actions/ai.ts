@@ -197,7 +197,7 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "qwen/qwen-turbo",
+      model: process.env.AI_MODEL_TRANSLATE_ID || "google/gemini-2.0-flash-001",
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
       response_format: { type: "json_object" },
       temperature: 0.1,
@@ -245,7 +245,7 @@ export async function translateFieldsAction(fields: Record<string, string>) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: "qwen/qwen-turbo",
+      model: process.env.AI_MODEL_TRANSLATE_ID || "google/gemini-2.0-flash-001",
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(fields) }],
       response_format: { type: "json_object" },
       temperature: 0.1,
