@@ -64,6 +64,7 @@ class Route(SQLModel, table=True):
     availability_type: str = Field(default="permanent")
     is_premium: bool = Field(default=False)
     thumbnail_1x1: Optional[str] = Field(default=None)
+    header_16x9: Optional[str] = Field(default=None)
     status: str = Field(default="DRAFT")
     final_quiz: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))
     audio_translations: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSONB))

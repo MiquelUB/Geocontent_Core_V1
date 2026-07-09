@@ -187,6 +187,7 @@ export async function createRoute(formData: FormData) {
   const category = formData.get('category') as string || 'mountain'
   const thumbnailFile = formData.get('thumbnail_file') as File || null
   let thumbnail1x1 = formData.get('thumbnail_1x1') as string || ''
+  let header16x9 = formData.get('header_16x9') as string || ''
 
   if (thumbnailFile && thumbnailFile.size > 0) {
     thumbnail1x1 = await uploadFile(thumbnailFile);
@@ -238,6 +239,7 @@ export async function createRoute(formData: FormData) {
         municipalityId,
         themeId: category as any,
         thumbnail1x1: thumbnail1x1 || null,
+        header16x9: header16x9 || null,
         finalQuiz: finalQuizInfo,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -271,6 +273,7 @@ export async function updateRoute(id: string, formData: FormData) {
   const category = formData.get('category') as string || 'mountain'
   const thumbnailFile = formData.get('thumbnail_file') as File || null
   let thumbnail1x1 = formData.get('thumbnail_1x1') as string || ''
+  let header16x9 = formData.get('header_16x9') as string || ''
 
   if (thumbnailFile && thumbnailFile.size > 0) {
     thumbnail1x1 = await uploadFile(thumbnailFile);
@@ -311,6 +314,7 @@ export async function updateRoute(id: string, formData: FormData) {
         municipalityId: locationMuniId || muniId || undefined,
         themeId: category as any,
         thumbnail1x1: thumbnail1x1 || null,
+        header16x9: header16x9 || null,
         finalQuiz: finalQuizInfo || undefined,
         updatedAt: new Date()
       }

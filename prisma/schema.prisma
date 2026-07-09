@@ -103,6 +103,7 @@ model Route {
   availabilityType        RouteAvailability   @default(permanent) @map("availability_type")
   isPremium               Boolean             @default(false) @map("is_premium")
   thumbnail1x1            String?             @map("thumbnail_1x1")
+  header16x9              String?             @map("header_16x9")
   status                  RouteStatus         @default(DRAFT)
   finalQuiz               Json?               @map("final_quiz")
   createdAt               DateTime            @default(now()) @map("created_at")

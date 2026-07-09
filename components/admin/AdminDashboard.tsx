@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon } from "lucide-react";
+import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon, MonitorPlay } from "lucide-react";
 import { verifyAdminPassword } from "@/lib/actions/auth";
 import { createRoute, updateRoute, deleteLegend, createPoi, updatePoi, addPoiToRoute } from "@/lib/actions/content";
 import { getAdminLegends, getRouteWithPois, getAllProfiles } from "@/lib/actions/queries";
@@ -74,9 +74,11 @@ export default function AdminDashboard({
   const [routeDescription, setRouteDescription] = useState('');
   const [routeLocation, setRouteLocation] = useState('');
   const [routeThumbnail, setRouteThumbnail] = useState('');
+  const [routeThumbFile, setRouteThumbFile] = useState<File | null>(null);
+  const [routeHeader, setRouteHeader] = useState('');
+  const [routeHeaderFile, setRouteHeaderFile] = useState<File | null>(null);
   const [routeCategory, setRouteCategory] = useState(municipalityTheme || 'mountain');
   const [routeDownloadRequired, setRouteDownloadRequired] = useState(false);
-  const [routeThumbFile, setRouteThumbFile] = useState<File | null>(null);
   const [routeFinalQuiz, setRouteFinalQuiz] = useState<any>(null);
   const [isGeneratingRouteQuiz, setIsGeneratingRouteQuiz] = useState(false);
 
@@ -134,6 +136,7 @@ export default function AdminDashboard({
       setRouteCategory(editingRoute.category || '');
       setRouteDownloadRequired(editingRoute.downloadRequired || false);
       // setRouteThumbnail(editingRoute.thumbnail_1x1 || ''); // Use server value if exists
+      // setRouteHeader(editingRoute.header_16x9 || ''); // Use server value if exists
     }
   }, [editingRoute]);
 
@@ -145,6 +148,9 @@ export default function AdminDashboard({
     setRouteDescription('');
     setRouteLocation('');
     setRouteThumbnail('');
+    setRouteThumbFile(null);
+    setRouteHeader('');
+    setRouteHeaderFile(null);
     setRouteCategory(municipalityTheme || 'mountain');
     setRouteDownloadRequired(false);
     setRouteThumbFile(null);
@@ -166,6 +172,15 @@ export default function AdminDashboard({
         finalRouteThumbnail = await uploadFileClient(compressed);
       }
       formData.append('thumbnail_1x1', finalRouteThumbnail);
+
+      let finalRouteHeader = routeHeader;
+      if (routeHeaderFile) {
+        // Assume uploadFileClient works for 16:9 images too without severe compression size issues, but compression is fine
+        const compressedHeader = await compressImage(routeHeaderFile);
+        finalRouteHeader = await uploadFileClient(compressedHeader);
+      }
+      formData.append('header_16x9', finalRouteHeader);
+
       formData.append('download_required', String(routeDownloadRequired));
       if (routeFinalQuiz) {
         formData.append('final_quiz', JSON.stringify(routeFinalQuiz));
@@ -356,6 +371,31 @@ export default function AdminDashboard({
                           <Input id="routeThumb" value={routeThumbnail} onChange={(e) => setRouteThumbnail(e.target.value)} placeholder="URL imatge" className="h-8 text-xs" />
                         </div>
                       </div>
+
+                      <div className="space-y-1">
+                        <Label htmlFor="routeHeader" className="text-xs font-bold text-stone-600 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <MonitorPlay className="w-3.5 h-3.5 text-stone-400" />
+                            Imatge de Capçalera (16:9)
+                          </div>
+                        </Label>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setRouteHeaderFile(file);
+                            }
+                          }}
+                          className="cursor-pointer"
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-stone-400">O URL:</span>
+                          <Input id="routeHeader" value={routeHeader} onChange={(e) => setRouteHeader(e.target.value)} placeholder="URL imatge panoràmica" className="h-8 text-xs" />
+                        </div>
+                      </div>
+
                       <div className="flex items-center gap-2 py-2">
                         <input
                           type="checkbox"
