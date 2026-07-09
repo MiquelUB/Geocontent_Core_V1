@@ -232,7 +232,7 @@ export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand }: Lege
                             {/* Image Area */}
                             <div className="relative h-64 w-full overflow-hidden">
                                 <ImageWithFallback
-                                    src={legend.image}
+                                    src={legend.hero || legend.image}
                                     alt={getLocalizedContent(legend, 'title', locale)}
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                 />
