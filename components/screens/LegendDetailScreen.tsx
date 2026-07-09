@@ -278,7 +278,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
           className="absolute inset-0 w-full h-full"
         >
           <ImageWithFallback
-            src={proxifyUrl(safeLegend.image || safeLegend.image_url || safeLegend.header16x9)}
+            src={proxifyUrl(safeLegend.hero_image_url || safeLegend.header16x9 || safeLegend.image || safeLegend.image_url)}
             alt={safeLegend.title}
             className="w-full h-full object-cover"
           />

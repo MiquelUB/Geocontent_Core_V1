@@ -189,7 +189,7 @@ function mapRoute(route: any) {
     latitude: firstPoi?.latitude ?? 0,
     longitude: firstPoi?.longitude ?? 0,
     image_url: route.thumbnail1x1 || firstPoi?.appThumbnail || '',
-    hero_image_url: route.thumbnail1x1 || firstPoi?.header16x9 || '',
+    hero_image_url: firstPoi?.header16x9 || route.thumbnail1x1 || '',
     poiCount: pois.length,
     pois,
     finalQuiz: route.finalQuiz || null,
