@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Save, Upload } from "lucide-react";
 import { updateMunicipality } from "@/lib/actions/content";
 import { getMunicipalities } from "@/lib/actions/queries";
-import { uploadFile } from "@/lib/actions/storage";
+import { uploadFileClient } from "@/lib/upload-client";
 import { useRouter } from "next/navigation";
 
 export default function MunicipalityManager({ municipalityId }: { municipalityId?: string }) {
@@ -50,8 +50,14 @@ export default function MunicipalityManager({ municipalityId }: { municipalityId
 
     let finalLogoUrl = logoUrl;
     if (logoFile) {
-      const up = await uploadFile(logoFile);
-      if (up) finalLogoUrl = up;
+      try {
+        const up = await uploadFileClient(logoFile);
+        if (up) finalLogoUrl = up;
+      } catch (err: any) {
+        alert("Error pujant la imatge: " + err.message);
+        setIsSaving(false);
+        return;
+      }
     }
 
     console.log('>>> [CLIENT] Calling API with:', { id: muniId, name, logoUrl: finalLogoUrl, themeId });
