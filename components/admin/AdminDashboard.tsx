@@ -16,6 +16,7 @@ import { createRoute, updateRoute, deleteLegend, createPoi, updatePoi, addPoiToR
 import { getAdminLegends, getRouteWithPois, getAllProfiles } from "@/lib/actions/queries";
 import { getReports } from "@/lib/actions/reports";
 import { compressImage } from "@/lib/imageOptimization";
+import { uploadFileClient } from "@/lib/upload-client";
 import { useRouter } from "next/navigation";
 import { getAdminTheme } from "@/lib/adminTheme";
 import VideoUploader from "./VideoUploader";
@@ -159,12 +160,13 @@ export default function AdminDashboard({
       formData.append('description', routeDescription);
       formData.append('location', routeLocation);
       formData.append('category', routeCategory);
-      formData.append('thumbnail_1x1', routeThumbnail);
-      formData.append('download_required', String(routeDownloadRequired));
+      let finalRouteThumbnail = routeThumbnail;
       if (routeThumbFile) {
         const compressed = await compressImage(routeThumbFile);
-        formData.append('thumbnail_file', compressed);
+        finalRouteThumbnail = await uploadFileClient(compressed);
       }
+      formData.append('thumbnail_1x1', finalRouteThumbnail);
+      formData.append('download_required', String(routeDownloadRequired));
       if (routeFinalQuiz) {
         formData.append('final_quiz', JSON.stringify(routeFinalQuiz));
       }
