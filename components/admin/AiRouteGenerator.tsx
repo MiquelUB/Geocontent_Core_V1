@@ -30,9 +30,12 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
-      // Validació ràpida al frontend
-      if (selectedFile.type !== 'application/pdf' && selectedFile.type !== 'text/plain') {
-        setError("Format invàlid. Només es permeten fitxers PDF o TXT.");
+      const isPdf = selectedFile.type === 'application/pdf';
+      const isTxt = selectedFile.type === 'text/plain';
+      const isMd = selectedFile.type === 'text/markdown' || selectedFile.name.toLowerCase().endsWith('.md');
+      
+      if (!isPdf && !isTxt && !isMd) {
+        setError("Format invàlid. Només es permeten fitxers PDF, TXT o MD.");
         setFile(null);
         return;
       }
@@ -200,10 +203,10 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
         <CardContent className="space-y-4">
           <div className="border-2 border-dashed border-stone-300 rounded-lg p-6 flex flex-col items-center justify-center text-center bg-stone-50">
             <UploadCloud className="h-10 w-10 text-stone-400 mb-2" />
-            <p className="text-sm text-stone-600 mb-4">Arrossega o selecciona un fitxer (Només PDF o TXT)</p>
+            <p className="text-sm text-stone-600 mb-4">Arrossega o selecciona un fitxer (Només PDF, TXT o MD)</p>
             <input
               type="file"
-              accept=".pdf, .txt"
+              accept=".pdf, .txt, .md"
               onChange={handleFileChange}
               className={`block w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold ${activeTheme.fileBg} ${activeTheme.fileText} ${activeTheme.fileHover}`}
             />
