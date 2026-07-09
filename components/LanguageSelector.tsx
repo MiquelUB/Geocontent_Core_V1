@@ -21,10 +21,10 @@ export default function LanguageSelector({ dark = false }: LanguageSelectorProps
   const borderColor = dark ? 'border-[#2F1B0C]/20' : 'border-white/20';
 
   const languages = [
-    { code: 'ca', name: 'Català', flag: '🇦🇩' },
-    { code: 'es', name: 'Castellano', flag: '🇪🇸' },
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' }
+    { code: 'ca', name: 'Català' },
+    { code: 'es', name: 'Castellano' },
+    { code: 'en', name: 'English' },
+    { code: 'fr', name: 'Français' }
   ];
 
   const handleLanguageChange = (newLocale: string) => {
@@ -72,7 +72,7 @@ export default function LanguageSelector({ dark = false }: LanguageSelectorProps
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xl">{lang.flag}</span>
+                      <span className="text-sm font-bold uppercase w-6 text-center text-white/80">{lang.code}</span>
                       <span className="text-sm font-medium">{lang.name}</span>
                     </div>
                     {locale === lang.code && <Check size={16} className="text-white" />}

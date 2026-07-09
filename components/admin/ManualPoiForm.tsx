@@ -16,10 +16,10 @@ import { autoTranslateAction, translateFieldsAction } from '@/lib/actions/ai';
 import { generatePoiAudiosAction } from '@/lib/actions/audio';
 
 const SUPPORTED_LOCALES = [
-  { id: 'ca', name: 'Català', flag: '🇦🇩' },
-  { id: 'es', name: 'Castellà', flag: '🇪🇸' },
-  { id: 'en', name: 'Anglès', flag: '🇬🇧' },
-  { id: 'fr', name: 'Francès', flag: '🇫🇷' },
+  { id: 'ca', name: 'Català' },
+  { id: 'es', name: 'Castellà' },
+  { id: 'en', name: 'Anglès' },
+  { id: 'fr', name: 'Francès' },
 ];
 
 const BIOME_MAP: Record<string, string> = {
@@ -363,8 +363,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
               <TabsList className="bg-stone-100/50 h-8 p-1">
                 {SUPPORTED_LOCALES.map(loc => (
-                  <TabsTrigger key={loc.id} value={loc.id} className="text-[10px] px-2 h-6">
-                    {loc.flag} <span className="ml-1 hidden sm:inline">{loc.id.toUpperCase()}</span>
+                  <TabsTrigger key={loc.id} value={loc.id} className="text-[10px] px-2 h-6 font-bold uppercase">
+                    {loc.id}
                   </TabsTrigger>
                 ))}
               </TabsList>
