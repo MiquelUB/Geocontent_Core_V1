@@ -90,6 +90,8 @@ export async function getOrCreateMunicipalityByName(name: string): Promise<strin
 import { updateMunicipalityInternal } from '../services/municipality-service';
 
 export async function updateMunicipality(id: string, name: string, logoUrl?: string, themeId?: string, adminMasterPassword?: string, planTier?: string, extraRoutesCount?: number) {
+  const session = await auth();
+  if (!session) return { success: false, error: "Accés denegat: Sessió requerida per modificar la configuració." };
   return updateMunicipalityInternal(id, name, logoUrl, themeId, adminMasterPassword, planTier, extraRoutesCount);
 }
 

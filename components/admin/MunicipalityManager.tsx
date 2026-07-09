@@ -62,19 +62,12 @@ export default function MunicipalityManager({ municipalityId }: { municipalityId
 
     console.log('>>> [CLIENT] Calling API with:', { id: muniId, name, logoUrl: finalLogoUrl, themeId });
 
-    // Call via API instead of Server Action to debug {} issues
-    const apiRes = await fetch('/api/admin/municipality', {
-      method: 'POST',
-      body: JSON.stringify({ id: muniId, name, logoUrl: finalLogoUrl, themeId, adminMasterPassword, planTier, extraRoutesCount }),
-      headers: { 'Content-Type': 'application/json' }
-    });
-
+    // Use Server Action explicitly to comply with GEMINI.md (Server Actions com a única capa de mutació client)
     let res: any;
     try {
-      res = await apiRes.json();
-    } catch (e) {
-      const text = await apiRes.text();
-      res = { success: false, error: 'Invalid JSON response from server', details: text };
+      res = await updateMunicipality(muniId, name, finalLogoUrl, themeId, adminMasterPassword, planTier, extraRoutesCount);
+    } catch (e: any) {
+      res = { success: false, error: 'Excepció cridant la Server Action', details: e.message };
     }
 
     console.log('>>> [CLIENT] Received response:', res);
