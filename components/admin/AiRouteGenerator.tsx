@@ -82,6 +82,19 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
   function buildTxtContent(data: any): string {
     const lines: string[] = [];
 
+    if (data.insufficient_input) {
+      lines.push(`=== ENTRADA INSUFICIENT ===`);
+      lines.push(`Motiu: ${data.insufficient_input.reason}`);
+      lines.push(`Què hi ha: ${data.insufficient_input.what_is_present}`);
+      if (data.insufficient_input.what_is_needed?.length) {
+        lines.push(`Què falta:`);
+        data.insufficient_input.what_is_needed.forEach((need: string) => {
+          lines.push(`- ${need}`);
+        });
+      }
+      return lines.join('\n');
+    }
+
     lines.push(`=== TERRITORI ===`);
     lines.push(`Nom: ${data.territory?.name || '—'}`);
     lines.push(`Context: ${data.territory?.context || '—'}`);
@@ -242,19 +255,44 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
         <Card className="border-stone-200 bg-stone-50 shadow-inner animate-in fade-in slide-in-from-bottom-4 duration-700">
           <CardHeader className="flex flex-row items-start justify-between">
             <div className="flex-1">
-              <Badge className="mb-2 bg-stone-800 text-stone-100 hover:bg-stone-700">🔍 Dossier d'Investigació</Badge>
-              <CardTitle className="font-serif text-2xl text-stone-900">{result.territory?.name || "Territori Analitzat"}</CardTitle>
-              <p className="text-sm text-stone-600 mt-2 max-w-2xl border-l-2 border-stone-200 pl-4 py-1 italic">
-                {result.territory?.context}
-              </p>
-              {result.territory?.suggested_themes && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {result.territory.suggested_themes.map((theme: string, i: number) => (
-                    <span key={i} className={`text-[10px] font-bold uppercase tracking-wider ${activeTheme.text} ${activeTheme.bg} px-2 py-0.5 rounded border ${activeTheme.border}`}>
-                      #{theme}
-                    </span>
-                  ))}
-                </div>
+              {result.insufficient_input ? (
+                <>
+                  <Badge className="mb-2 bg-red-800 text-red-100 hover:bg-red-700">⚠️ Entrada Insuficient</Badge>
+                  <CardTitle className="font-serif text-2xl text-stone-900">Document invàlid per a l'anàlisi</CardTitle>
+                  <p className="text-sm text-stone-600 mt-2 max-w-2xl border-l-2 border-red-300 pl-4 py-1 italic">
+                    {result.insufficient_input.reason}
+                  </p>
+                  <div className="mt-4 text-sm text-stone-700">
+                    <strong>Què hi ha:</strong> {result.insufficient_input.what_is_present}
+                  </div>
+                  {result.insufficient_input.what_is_needed && result.insufficient_input.what_is_needed.length > 0 && (
+                    <div className="mt-2 text-sm text-stone-700">
+                      <strong>Què falta:</strong>
+                      <ul className="list-disc pl-5 mt-1">
+                        {result.insufficient_input.what_is_needed.map((need: string, idx: number) => (
+                          <li key={idx}>{need}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Badge className="mb-2 bg-stone-800 text-stone-100 hover:bg-stone-700">🔍 Dossier d'Investigació</Badge>
+                  <CardTitle className="font-serif text-2xl text-stone-900">{result.territory?.name || "Territori Analitzat"}</CardTitle>
+                  <p className="text-sm text-stone-600 mt-2 max-w-2xl border-l-2 border-stone-200 pl-4 py-1 italic">
+                    {result.territory?.context}
+                  </p>
+                  {result.territory?.suggested_themes && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {result.territory.suggested_themes.map((theme: string, i: number) => (
+                        <span key={i} className={`text-[10px] font-bold uppercase tracking-wider ${activeTheme.text} ${activeTheme.bg} px-2 py-0.5 rounded border ${activeTheme.border}`}>
+                          #{theme}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <Button
