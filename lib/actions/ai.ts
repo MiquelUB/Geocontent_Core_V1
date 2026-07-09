@@ -12,10 +12,14 @@ export async function generateRouteFromDocumentAction(formData: FormData) {
       return { success: false, error: "No s'ha pujat cap document." };
     }
 
-    if (file.type !== 'application/pdf' && file.type !== 'text/plain') {
+    const isPdf = file.type === 'application/pdf';
+    const isTxt = file.type === 'text/plain';
+    const isMd = file.type === 'text/markdown' || file.name.toLowerCase().endsWith('.md');
+
+    if (!isPdf && !isTxt && !isMd) {
       return {
         success: false,
-        error: "Format no suportat. Només s'accepten documents de text (.txt) i PDF (.pdf)."
+        error: "Format no suportat. Només s'accepten documents de text (.txt, .md) i PDF (.pdf)."
       };
     }
 
@@ -146,7 +150,6 @@ export async function generateRouteFromDocumentAction(formData: FormData) {
           content: `Analitza aquest document municipal i extreu la informació. Text del document a analitzar, delimitat per tres cometes dobles:\n\n"""\n${safeContext}\n"""` 
         }
       ],
-      response_format: { type: "json_object" },
       temperature: 0.1,
     });
 
@@ -158,7 +161,18 @@ export async function generateRouteFromDocumentAction(formData: FormData) {
 
   } catch (error: any) {
     console.error("AI Route Fatal Error:", error);
-    return { success: false, error: GENERIC_ERROR_MESSAGE };
+    
+    let detailedMsg = "";
+    if (error.error && typeof error.error === 'object') {
+      detailedMsg = JSON.stringify(error.error, null, 2);
+    } else {
+      detailedMsg = error.message;
+    }
+    
+    console.error("====== FULL OPENROUTER ERROR ======");
+    console.error(detailedMsg);
+    console.error("===================================");
+    return { success: false, error: "Error del proveïdor: " + (error.error?.message || error.message) };
   }
 }
 
