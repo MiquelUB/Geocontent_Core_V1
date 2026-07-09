@@ -12,6 +12,7 @@ import { uploadFile } from './storage';
 import { autoTranslateAction } from './ai';
 import { getDefaultMunicipalityId, getRouteWithPois as _getRouteWithPois } from '../services/queries';
 import { auth } from "@/auth";
+import { rateLimit } from '@/lib/services/ratelimit';
 
 // Server Action Wrapper per a Client Components
 export async function getRouteWithPois(routeId: string) {
@@ -92,6 +93,10 @@ import { updateMunicipalityInternal } from '../services/municipality-service';
 export async function updateMunicipality(id: string, name: string, logoUrl?: string, themeId?: string, adminMasterPassword?: string, planTier?: string, extraRoutesCount?: number) {
   const session = await auth();
   if (!session) return { success: false, error: "Accés denegat: Sessió requerida per modificar la configuració." };
+
+  const rl = await rateLimit(`updateMunicipality:${id}`, 10, 60);
+  if (!rl.success) return { success: false, error: "Massa peticions d'actualització. Torna a intentar-ho d'aquí a 1 minut." };
+
   return updateMunicipalityInternal(id, name, logoUrl, themeId, adminMasterPassword, planTier, extraRoutesCount);
 }
 
