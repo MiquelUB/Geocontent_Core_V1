@@ -88,11 +88,13 @@ Format JSON: { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }`;
         { role: "system", content: systemPrompt },
         { role: "user", content: `Punt: ${title}\nContingut: ${content}` }
       ],
-      response_format: { type: "json_object" },
       temperature: 0.3,
     });
 
-    const resultText = completion.choices[0]?.message?.content || "{}";
+    let resultText = completion.choices[0]?.message?.content || "{}";
+    const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (match) resultText = match[1];
+
     return JSON.parse(resultText);
   } catch (error) {
     console.error("Error generating poi quiz:", error);
@@ -116,11 +118,14 @@ Format JSON EXACTE: { "preguntes": [ { "pregunta": "...", "opcions": ["A", "B", 
         { role: "system", content: systemPrompt },
         { role: "user", content: `Context de la ruta:\n${context}` }
       ],
-      response_format: { type: "json_object" },
       temperature: 0.5,
     });
 
-    return JSON.parse(completion.choices[0]?.message?.content || "{}");
+    let resultText = completion.choices[0]?.message?.content || "{}";
+    const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (match) resultText = match[1];
+
+    return JSON.parse(resultText);
   } catch (error) {
     console.error("Error generating final route quiz:", error);
     return null;
