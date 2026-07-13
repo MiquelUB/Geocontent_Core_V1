@@ -659,7 +659,18 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             </div>
           </div>
         ) : (
-          <p className="text-xs text-stone-400 italic">Aquest punt no té cap quiz assignat.</p>
+          <div className="space-y-3">
+            <p className="text-xs text-stone-400 italic">Aquest punt no té cap quiz assignat.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setManualQuiz({ pregunta: '', opcions: ['', '', '', ''], correcta: 0 })}
+              className="w-full text-xs"
+            >
+              Crear Quiz Manualment
+            </Button>
+          </div>
         )}
 
         <Button
