@@ -191,11 +191,13 @@ export async function getUserVisits(userId: string) {
  * SEC-03: userId derivat de la sessió Auth.js.
  * El paràmetre _clientUserId s'ignora (backward compatibility).
  */
-export async function completePoiQuizAction(poiId: string, _clientUserId: string) {
+export async function completePoiQuizAction(poiId: string, _clientUserId: string, attempts: number = 1) {
   try {
     // SEC-03: El userId REAL prové de la sessió
     const userId = await requireAuth();
-    const points = 50;
+    
+    // Scale points based on attempts: 1st=50, 2nd=40, 3rd=30, 4+=20
+    const points = Math.max(20, 50 - ((attempts - 1) * 10));
 
     const unlock = await prisma.userUnlock.findUnique({
       where: { userId_poiId: { userId, poiId } },
