@@ -7,12 +7,33 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 // SEC-12: Whitelist de formats permesos per pujada directa
 const ALLOWED_UPLOAD_TYPES = [
+    // Images
     'image/jpeg',
     'image/png',
     'image/webp',
+    'image/gif',
+    'image/heic',
+    'image/heif',
+    'image/svg+xml',
+    'image/bmp',
+    'image/tiff',
+    // Video
     'video/mp4',
     'video/quicktime',
-    'application/pdf'
+    'video/webm',
+    'video/x-msvideo',
+    'video/x-matroska',
+    // Audio (TTS i pujades manuals)
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/aac',
+    'audio/ogg',
+    'audio/wav',
+    'audio/webm',
+    'audio/x-m4a',
+    'audio/flac',
+    // Documents
+    'application/pdf',
 ];
 
 /**
@@ -60,14 +81,23 @@ export async function GET(req: NextRequest) {
         if (ext === 'png') contentType = 'image/png';
         else if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
         else if (ext === 'webp') contentType = 'image/webp';
+        else if (ext === 'gif') contentType = 'image/gif';
         else if (ext === 'mp4') contentType = 'video/mp4';
         else if (ext === 'mov') contentType = 'video/quicktime';
+        else if (ext === 'webm') contentType = 'video/webm';
+        else if (ext === 'mp3') contentType = 'audio/mpeg';
+        else if (ext === 'm4a') contentType = 'audio/mp4';
+        else if (ext === 'aac') contentType = 'audio/aac';
+        else if (ext === 'wav') contentType = 'audio/wav';
+        else if (ext === 'ogg') contentType = 'audio/ogg';
+        else if (ext === 'flac') contentType = 'audio/flac';
         else if (ext === 'pdf') contentType = 'application/pdf';
     }
     if (!contentType) contentType = 'application/octet-stream';
 
     // 3. SEC-12: Validació de format abans de signar
     if (!ALLOWED_UPLOAD_TYPES.includes(contentType)) {
+        console.warn(`[signed-url] Rejected MIME type: "${contentType}" for file: "${fileName}"`);
         return NextResponse.json({ error: 'Forbidden: Invalid MIME type' }, { status: 415 });
     }
 
