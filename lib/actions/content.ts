@@ -250,14 +250,8 @@ export async function createRoute(formData: FormData) {
     revalidatePath('/');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
-    (async () => {
-      try {
-        const { autoTranslateAction } = await import('@/lib/actions/ai');
-        await autoTranslateAction('route', id);
-      } catch (err) {
-        console.error("AutoTranslate Background Error:", err);
-      }
-    })();
+    // void + catch() per desacoblar la promesa del Server Action i no bloquejar la resposta
+    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('route', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     return { success: true, id };
   } catch (err: any) {
@@ -324,14 +318,7 @@ export async function updateRoute(id: string, formData: FormData) {
     revalidatePath('/');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
-    (async () => {
-      try {
-        const { autoTranslateAction } = await import('@/lib/actions/ai');
-        await autoTranslateAction('route', id);
-      } catch (err) {
-        console.error("AutoTranslate Background Error:", err);
-      }
-    })();
+    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('route', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     return { success: true };
   } catch (err: any) {
@@ -469,14 +456,7 @@ export async function createPoi(formData: FormData) {
     revalidatePath('/admin');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
-    (async () => {
-      try {
-        const { autoTranslateAction } = await import('@/lib/actions/ai');
-        await autoTranslateAction('poi', result.id);
-      } catch (err) {
-        console.error("AutoTranslate Background Error:", err);
-      }
-    })();
+    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('poi', result.id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     return { success: true, id: result.id };
   } catch (err: any) {
@@ -585,14 +565,7 @@ export async function updatePoi(id: string, formData: FormData) {
     revalidatePath('/admin');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
-    (async () => {
-      try {
-        const { autoTranslateAction } = await import('@/lib/actions/ai');
-        await autoTranslateAction('poi', id);
-      } catch (err) {
-        console.error("AutoTranslate Background Error:", err);
-      }
-    })();
+    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('poi', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     return { success: true };
   } catch (err: any) {
@@ -670,14 +643,7 @@ export async function updateLegend(id: string, formData: FormData) {
     revalidatePath('/');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
-    (async () => {
-      try {
-        const { autoTranslateAction } = await import('@/lib/actions/ai');
-        await autoTranslateAction('route', id);
-      } catch (err) {
-        console.error("AutoTranslate Background Error:", err);
-      }
-    })();
+    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('route', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     return { success: true };
   } catch (err: any) {
