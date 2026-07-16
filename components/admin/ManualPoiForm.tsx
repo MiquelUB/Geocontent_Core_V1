@@ -523,11 +523,25 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Latitud</Label>
-              <Input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} required />
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="42.411466"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value.replace(',', '.'))}
+                required
+              />
             </div>
             <div className="grid gap-2">
               <Label>Longitud</Label>
-              <Input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} required />
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="1.131715"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value.replace(',', '.'))}
+                required
+              />
             </div>
           </div>
         </div>
