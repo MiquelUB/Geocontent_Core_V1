@@ -8,6 +8,8 @@ import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { getPassportData as _getPassportData, getUserScore as _getUserScore } from '../services/queries';
 import { requireAuth } from '@/lib/auth-guard';
 
+import { rateLimit } from '@/lib/services/ratelimit';
+
 // --- SERVER ACTION WRAPPERS (Cervell -> Múscul) ---
 export async function getPassportData(userId: string) {
     return _getPassportData(userId);
@@ -195,6 +197,12 @@ export async function completePoiQuizAction(poiId: string, _clientUserId: string
   try {
     // SEC-03: El userId REAL prové de la sessió
     const userId = await requireAuth();
+
+    // SEC-10: Rate Limiting obligatori per a mutacions sensibles (evitar força bruta en respostes)
+    const rl = await rateLimit(`quiz:${userId}:${poiId}`, 10, 60); // Max 10 intents per minut per POI
+    if (!rl.success) {
+      return { success: false, error: 'Massa intents de resolució. Espera 1 minut.' };
+    }
     
     // Scale points based on attempts: 1st=50, 2nd=40, 3rd=30, 4+=20
     const points = Math.max(20, 50 - ((attempts - 1) * 10));
