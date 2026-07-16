@@ -32,6 +32,23 @@ export function SimpleLogin({ onLoginSuccess }: SimpleLoginProps) {
     }
 
     try {
+      // Importem dinàmicament per evitar problemes si estem en server side render tot i ser client component
+      const { signIn } = await import("next-auth/react");
+      
+      // 1. Iniciem sessió a NextAuth per establir la cookie de sessió JWT
+      const authRes = await signIn("tourist", {
+        name,
+        email,
+        redirect: false
+      });
+
+      if (authRes?.error) {
+        setError(t('errorLogin'));
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Obtenim les dades completes de l'usuari per a l'estat del frontend
       const result = await loginOrRegister(name, email);
       if (result.success && result.user) {
         onLoginSuccess(result.user);

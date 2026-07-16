@@ -29,6 +29,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       from: "noreply@projectexinoxano.com",
     }),
     CredentialsProvider({
+      id: "tourist",
+      name: "Tourist",
+      credentials: {
+        name: { label: "Name", type: "text" },
+        email: { label: "Email", type: "email" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.name) return null;
+        
+        const email = (credentials.email as string).toLowerCase().trim();
+        const name = (credentials.name as string).trim();
+        
+        // Utilitzem la mateixa lògica que loginOrRegister per garantir la creació/actualització del perfil
+        const defaultMunicipality = await prisma.municipality.findFirst({
+          orderBy: { createdAt: 'asc' },
+          select: { id: true }
+        });
+
+        const user = await prisma.user.upsert({
+          where: { email },
+          update: { username: name },
+          create: {
+            email,
+            username: name,
+            role: 'TOURIST',
+            xp: 0,
+            level: 1,
+            municipalityId: defaultMunicipality?.id || null
+          }
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.username,
+          role: user.role,
+          municipalityId: user.municipalityId,
+        };
+      }
+    }),
+    CredentialsProvider({
+      id: "admin",
       name: "Consistori / Admin",
       credentials: {
         email: { label: "Email", type: "email" },
