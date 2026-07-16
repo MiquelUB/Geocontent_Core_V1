@@ -41,9 +41,9 @@ export async function generatePoiAudiosAction(poiId: string) {
           "X-Title": "PXX Dashboard",
         },
         body: JSON.stringify({
-          model: process.env.AI_MODEL_AUDIO_ID || "openai/gpt-4o-mini-tts-2025-12-15",
-          input: text.substring(0, 4000), // OpenAI limit approx
-          voice: "shimmer",
+          model: process.env.AI_MODEL_AUDIO_ID || "mistralai/voxtral-mini-tts-2603",
+          input: text.substring(0, 4000), // Limit aprox
+          voice: "en_paul_neutral", // Compatible amb OpenRouter TTS (Mistral)
           response_format: "mp3",
         }),
       });
