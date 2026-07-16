@@ -16,6 +16,7 @@ const nextConfig = {
   experimental: {
     externalDir: true,
     serverActions: {
+      bodySizeLimit: '200mb',
       allowedOrigins: [
         process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
         'localhost:3000'

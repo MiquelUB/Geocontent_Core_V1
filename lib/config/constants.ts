@@ -3,8 +3,8 @@
  */
 
 export const SECURITY_CONFIG = {
-  // SEC-08: Límit de mida de fitxers (50MB)
-  MAX_FILE_SIZE: 50 * 1024 * 1024,
+  // SEC-08: Límit de mida de fitxers (200MB)
+  MAX_FILE_SIZE: 200 * 1024 * 1024,
   
   // SEC-04: Rate Limiting
   RATE_LIMITS: {
