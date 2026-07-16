@@ -47,7 +47,7 @@ interface VideoSlot {
 }
 
 const MAX_VIDEO_SLOTS = 3;
-const MAX_VIDEO_SIZE_MB = 10; // Reduït per evitar 413, recomanem usar VideoUploader si és més gran
+const MAX_VIDEO_SIZE_MB = 200;
 
 export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes = [], defaultRouteId, municipalityTheme }: ManualPoiFormProps) {
   const activeTheme = getAdminTheme(municipalityTheme);
