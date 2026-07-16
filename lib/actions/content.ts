@@ -347,16 +347,20 @@ export async function deleteLegend(id: string, municipalityId?: string) {
 
 export async function createPoi(formData: FormData) {
   try {
+    console.log('[createPoi] 1/8 - Starting...');
     const session = await auth();
     if (!session) return { success: false, error: "Sessió requerida." };
 
+    console.log('[createPoi] 2/8 - Validating Schema...');
     const validated = CreatePoiSchema.parse(Object.fromEntries(formData.entries()));
     const { title, description, latitude, longitude, route_id, text_content, video_urls, carousel_images, icon, title_translations, description_translations, text_content_translations } = validated;
+    console.log('[createPoi] 2/8 - Schema OK. lat=%s, lng=%s, route_id=%s', latitude, longitude, route_id);
 
     const appThumbFile = formData.get('app_thumbnail_file') as File || null
     const headerFile = formData.get('header_file') as File || null
     const audioFile = formData.get('audio_file') as File || null
 
+    console.log('[createPoi] 3/8 - Processing Media URLs...');
     const appThumbnail = appThumbFile?.size > 0 ? await uploadFile(appThumbFile) : (formData.get('app_thumbnail') as string || '')
     const header16x9 = headerFile?.size > 0 ? await uploadFile(headerFile) : (formData.get('header_16x9') as string || '')
     const audioUrl = audioFile?.size > 0 ? await uploadFile(audioFile) : (formData.get('audio_url') as string || '')
@@ -394,6 +398,7 @@ export async function createPoi(formData: FormData) {
       }
     }
 
+    console.log('[createPoi] 4/8 - Getting municipalityId...');
     let municipalityId = await getDefaultMunicipalityId();
 
     if (route_id) {
@@ -408,6 +413,7 @@ export async function createPoi(formData: FormData) {
 
     if (!municipalityId) return { success: false, error: GENERIC_ERROR_MESSAGE };
 
+    console.log('[createPoi] 5/8 - Checking Plan Limits...');
     if (route_id) {
       const canAdd = await canAddPoiToRoute(route_id);
       if (!canAdd) {
@@ -419,6 +425,7 @@ export async function createPoi(formData: FormData) {
       ? await prisma.routePoi.count({ where: { routeId: route_id } })
       : 0;
 
+    console.log('[createPoi] 6/8 - Database Transaction...');
     const result = await prisma.$transaction(async (tx) => {
       const poi = await tx.poi.create({
         data: {
@@ -453,20 +460,24 @@ export async function createPoi(formData: FormData) {
       return poi;
     });
 
+    console.log('[createPoi] 7/8 - Revalidating & Translation...');
     revalidatePath('/admin');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
     void import('@/lib/actions/ai').then(m => m.autoTranslateAction('poi', result.id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
+    console.log('[createPoi] 8/8 - Done!');
     return { success: true, id: result.id };
   } catch (err: any) {
     console.error('[createPoi error]', err);
-    return { success: false, error: GENERIC_ERROR_MESSAGE };
+    // Retornem l'error real per depurar el timeout o ZodError
+    return { success: false, error: err.message || JSON.stringify(err) };
   }
 }
 
 export async function updatePoi(id: string, formData: FormData) {
   try {
+    console.log(`[updatePoi ${id}] 1/5 - Starting...`);
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
     const latitude = parseFloat(formData.get('latitude') as string);
@@ -476,6 +487,7 @@ export async function updatePoi(id: string, formData: FormData) {
     const headerFile = formData.get('header_file') as File | null;
     const audioFile = formData.get('audio_file') as File | null;
 
+    console.log(`[updatePoi ${id}] 2/5 - Processing Media...`);
     const appThumbnail = (appThumbFile?.size ?? 0) > 0 ? await uploadFile(appThumbFile!) : (formData.get('app_thumbnail') as string || '');
     const header16x9 = (headerFile?.size ?? 0) > 0 ? await uploadFile(headerFile!) : (formData.get('header_16x9') as string || '');
     const audioUrl = (audioFile?.size ?? 0) > 0 ? await uploadFile(audioFile!) : (formData.get('audio_url') as string || '');
@@ -538,6 +550,7 @@ export async function updatePoi(id: string, formData: FormData) {
     let manualQuiz = null;
     try { if (manualQuizStr) manualQuiz = JSON.parse(manualQuizStr); } catch (e) { }
 
+    console.log(`[updatePoi ${id}] 3/5 - Updating database...`);
     await prisma.poi.update({
       where: { 
         id
@@ -562,15 +575,18 @@ export async function updatePoi(id: string, formData: FormData) {
       }
     });
 
+    console.log(`[updatePoi ${id}] 4/5 - Revalidating & Translation...`);
     revalidatePath('/admin');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
     void import('@/lib/actions/ai').then(m => m.autoTranslateAction('poi', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
+    console.log(`[updatePoi ${id}] 5/5 - Done!`);
     return { success: true };
   } catch (err: any) {
     console.error('[updatePoi error]', err);
-    return { success: false, error: GENERIC_ERROR_MESSAGE };
+    // Retornem l'error real
+    return { success: false, error: err.message || JSON.stringify(err) };
   }
 }
 
