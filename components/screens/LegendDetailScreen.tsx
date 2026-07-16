@@ -440,6 +440,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                             lowBitrateSrc={lowResSrc}
                             muted={false}
                             className="w-full"
+                            priority={idx === 0}
                         />
                       ) : (
                         <div className="w-full h-full min-h-[200px] bg-stone-900/5 backdrop-blur-md flex flex-col items-center justify-center gap-4 text-stone-400 relative">

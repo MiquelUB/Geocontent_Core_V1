@@ -42,7 +42,7 @@ export default function ContentModal({ content, onClose }: ContentModalProps) {
           )}
 
           {content.content_type === 'video' && content.content_url && (
-            <video controls className="w-full rounded-lg">
+            <video controls preload="auto" playsInline className="w-full rounded-lg">
               <source src={content.content_url} type="video/mp4" />
               Tu navegador no soporta video.
             </video>

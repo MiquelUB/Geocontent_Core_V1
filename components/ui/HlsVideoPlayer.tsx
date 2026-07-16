@@ -17,6 +17,7 @@ interface HlsVideoPlayerProps {
   className?: string;
   autoPlay?: boolean;
   muted?: boolean;
+  priority?: boolean;
   /** Callback fired when source type changes */
   onSourceChange?: (source: VideoSource) => void;
 }
@@ -37,6 +38,7 @@ export default function HlsVideoPlayer({
   className = '',
   autoPlay = false,
   muted = true,
+  priority = false,
   onSourceChange,
 }: HlsVideoPlayerProps) {
   // Helpers to use CDN URL for S3 links
@@ -196,10 +198,17 @@ export default function HlsVideoPlayer({
     onSourceChange?.(type);
   }, [resolveSource, activeSource, destroyHls, autoPlay, finalLowBitrateSrc, finalSrc, onSourceChange, videoCache]);
 
-  // Initialize on mount via IntersectionObserver (lazy)
+  // Initialize on mount via IntersectionObserver (lazy) or immediately if priority
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    if (priority) {
+      initializePlayer();
+      return () => {
+        destroyHls();
+      };
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -218,7 +227,7 @@ export default function HlsVideoPlayer({
       destroyHls();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [priority]);
 
   // React to network changes — switch source if needed
   useEffect(() => {
@@ -275,6 +284,7 @@ export default function HlsVideoPlayer({
         poster={poster}
         muted={isMuted}
         playsInline
+        preload="auto"
         className={`w-full h-auto ${isFullscreen ? 'h-full max-h-screen' : 'max-h-[80vh]'} object-contain`}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
