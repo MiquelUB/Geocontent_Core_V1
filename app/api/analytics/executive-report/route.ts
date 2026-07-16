@@ -63,7 +63,12 @@ export async function GET(req: Request) {
           timestamp
         FROM user_telemetry
         WHERE timestamp >= ${startDate} AND timestamp <= ${endDate}
-        AND user_id IN (SELECT id FROM users WHERE municipality_id = ${municipalityId}::uuid)
+        AND user_id IN (
+            SELECT user_id FROM user_unlocks uu
+            JOIN route_pois rp ON uu.poi_id = rp.poi_id
+            JOIN routes r ON rp.route_id = r.id
+            WHERE r.municipality_id = ${municipalityId}::uuid
+        )
         LIMIT 2000
       `;
     } catch (err: any) {

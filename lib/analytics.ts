@@ -6,13 +6,22 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const prevStart = new Date(startDate.getTime() - diff);
     const prevEnd = new Date(startDate.getTime() - 1);
 
-    // 1. Fetch Users Count (V2: model User, no Profile)
-    const totalMunicipalityUsers = await prisma.user.count({
-        where: {
-            municipalityId,
-            role: { notIn: ['ADMIN', 'SUPER_ADMIN'] }
-        }
-    });
+    // 1. Fetch Users Count (V2: Users visiting this municipality)
+    const [allTimeUnlocks, allTimeProgress] = await Promise.all([
+        prisma.userUnlock.groupBy({
+            by: ['userId'],
+            where: { poi: { routePois: { some: { route: { municipalityId } } } } }
+        }),
+        prisma.userRouteProgress.groupBy({
+            by: ['userId'],
+            where: { route: { municipalityId } }
+        })
+    ]);
+
+    const totalMunicipalityUsers = new Set([
+        ...allTimeUnlocks.map(u => u.userId),
+        ...allTimeProgress.map(p => p.userId)
+    ]).size;
 
     // Active users in selected period
     const [activePeriodUnlocks, activePeriodProgress] = await Promise.all([
@@ -92,7 +101,10 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     // 3. Quiz Statistics
     const allUnlocksData = await prisma.userUnlock.findMany({
-        where: { poi: { routePois: { some: { route: { municipalityId } } } } },
+        where: { 
+            poi: { routePois: { some: { route: { municipalityId } } } },
+            unlockedAt: { gte: startDate, lte: endDate }
+        },
         include: { poi: { select: { title: true } } }
     });
 
