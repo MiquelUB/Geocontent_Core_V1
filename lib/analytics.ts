@@ -7,6 +7,14 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const prevEnd = new Date(startDate.getTime() - 1);
 
     // 1. Fetch Users Count (V2: Users visiting this municipality)
+    const baseUsers = await prisma.user.findMany({
+        where: {
+            municipalityId,
+            role: { not: 'SUPER_ADMIN' }
+        },
+        select: { id: true }
+    });
+
     const [allTimeUnlocks, allTimeProgress] = await Promise.all([
         prisma.userUnlock.groupBy({
             by: ['userId'],
@@ -19,6 +27,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     ]);
 
     const totalMunicipalityUsers = new Set([
+        ...baseUsers.map(u => u.id),
         ...allTimeUnlocks.map(u => u.userId),
         ...allTimeProgress.map(p => p.userId)
     ]).size;
