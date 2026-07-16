@@ -20,15 +20,12 @@ export async function uploadFileClient(file: File, _bucket: string = 'geocontent
         throw new Error(errorData.error || "No s'ha pogut obtenir la URL de pujada");
     }
 
-    const { signedUrl, publicUrl, tagging } = await response.json();
+    const { signedUrl, publicUrl } = await response.json();
 
     // 2. Pugem el fitxer directament a S3 mitjançant un PUT
     const headers: Record<string, string> = {
         'Content-Type': contentType,
     };
-    if (tagging) {
-        headers['x-amz-tagging'] = tagging;
-    }
 
     const uploadResponse = await fetch(signedUrl, {
         method: 'PUT',

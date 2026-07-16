@@ -66,9 +66,6 @@ function directUpload(
     xhr.onerror = () => reject(new Error('Network error during upload'));
     xhr.open('PUT', signedUrl);
     xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-    if (tagging) {
-      xhr.setRequestHeader('x-amz-tagging', tagging);
-    }
     xhr.send(file);
   });
 }
