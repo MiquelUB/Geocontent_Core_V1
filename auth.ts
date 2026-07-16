@@ -6,6 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { authConfig } from "./auth.config"
 import { UserRole } from "@prisma/client"
+import { loginOrRegister } from "@/lib/actions/auth"
 
 // Extensió de tipus per a NextAuth v5
 declare module "next-auth" {
@@ -38,34 +39,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.name) return null;
         
-        const email = (credentials.email as string).toLowerCase().trim();
-        const name = (credentials.name as string).trim();
+        // Cridem a loginOrRegister per garantir validació Zod i Rate Limiting (VULN-03 mitigat)
+        const res = await loginOrRegister(credentials.name as string, credentials.email as string);
         
-        // Utilitzem la mateixa lògica que loginOrRegister per garantir la creació/actualització del perfil
-        const defaultMunicipality = await prisma.municipality.findFirst({
-          orderBy: { createdAt: 'asc' },
-          select: { id: true }
-        });
-
-        const user = await prisma.user.upsert({
-          where: { email },
-          update: { username: name },
-          create: {
-            email,
-            username: name,
-            role: 'TOURIST',
-            xp: 0,
-            level: 1,
-            municipalityId: defaultMunicipality?.id || null
-          }
-        });
+        if (!res.success || !res.user) {
+          return null;
+        }
 
         return {
-          id: user.id,
-          email: user.email,
-          name: user.username,
-          role: user.role,
-          municipalityId: user.municipalityId,
+          id: res.user.id,
+          email: res.user.email,
+          name: res.user.username,
+          role: res.user.role,
+          municipalityId: res.user.municipalityId,
         };
       }
     }),

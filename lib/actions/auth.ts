@@ -184,7 +184,7 @@ export async function loginOrRegister(
         level: 1,
         municipalityId: defaultMunicipality?.id || null
       },
-      select: { id: true, email: true, role: true } // NO retornar password_hash ni camps interns
+      select: { id: true, email: true, role: true, username: true, municipalityId: true } // NO retornar password_hash ni camps interns
     });
 
     return { success: true, user };
