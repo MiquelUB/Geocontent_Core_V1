@@ -165,6 +165,13 @@ export async function loginOrRegister(
       return { success: false, error: 'El nom ha de tenir entre 2 i 100 caràcters.' };
     }
 
+    // Assignar el municipi per defecte de l'instància
+    // Aquest sistema V2 és single-tenant per instància, per tant tots els turistes pertanyen a aquest municipi base
+    const defaultMunicipality = await prisma.municipality.findFirst({
+      orderBy: { createdAt: 'asc' },
+      select: { id: true }
+    });
+
     // 4. Upsert amb resposta uniforme (evitar enumeració d'usuaris)
     const user = await prisma.user.upsert({
       where: { email: emailParse.data },
@@ -174,7 +181,8 @@ export async function loginOrRegister(
         username: nameParse.data,
         role: 'TOURIST',
         xp: 0,
-        level: 1
+        level: 1,
+        municipalityId: defaultMunicipality?.id || null
       },
       select: { id: true, email: true, role: true } // NO retornar password_hash ni camps interns
     });
