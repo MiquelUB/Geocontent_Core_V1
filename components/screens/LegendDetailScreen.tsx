@@ -165,6 +165,15 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   // Normalitzem l'URL de l'àudio (pot venir com 'audioUrl', 'audio' o 'audio_url' depenent de l'origen)
   const effectiveAudioUrl = safeLegend.audioUrl || safeLegend.audio || safeLegend.audio_url;
 
+  // Fallback de descripció per a rutes quan la BD té el camp de descripció buit
+  const poiCount = safeLegend.pois?.length || 0;
+  const poiNames = safeLegend.pois?.map((p: any) => getLocalizedContent(p, 'title', locale)).filter(Boolean).slice(0, 3).join(', ');
+  const defaultRouteDesc = isRouteContainer && poiCount > 0 
+    ? `${safeLegend.title}. ${t('itinerary')}${poiNames ? `: ${poiNames}` : ''}.`
+    : '';
+
+  const effectiveDescription = safeLegend.description || safeLegend.textContent || defaultRouteDesc;
+
   // A POI is unlocked if it's a route container, OR it was already visited, OR user is admin, OR user is close enough
   const isUnlocked = isRouteContainer || isAlreadyVisited || isMasterAdmin || (distanceMeters !== null && distanceMeters <= UNLOCK_DISTANCE);
 
@@ -338,7 +347,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
       <div className="relative -mt-10 bg-background rounded-t-[2.5rem] z-20 px-8 py-10 min-h-[50vh] shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
 
         {/* Contenid Principal */}
-        {(safeLegend.description || safeLegend.textContent) ? (
+        {effectiveDescription ? (
           <div className="relative group overflow-hidden rounded-3xl mb-12">
             <div className={`prose prose-lg prose-stone max-w-none leading-relaxed font-serif transition-all duration-1000 z-10 relative ${isUnlocked ? 'text-foreground/90' : 'text-stone-300 blur-[8px] select-none scale-[0.98]'}`}>
               {isUnlocked ? (
@@ -349,7 +358,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                     className="z-10 relative"
                 >
                   <p className="first-letter:text-5xl first-letter:font-serif first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:mt-[-8px] whitespace-pre-line">
-                    {safeLegend.description || safeLegend.textContent || safeLegend.title}
+                    {effectiveDescription}
                   </p>
                   <div className="clear-both"></div>
 
