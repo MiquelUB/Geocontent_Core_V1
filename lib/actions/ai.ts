@@ -420,6 +420,66 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
   }
 }
 
+export async function translateRouteAction(routeId: string) {
+  try {
+    const { prisma } = await import('../database/prisma');
+    const OpenAI = (await import('openai')).default;
+    if (!process.env.OPENROUTER_API_KEY) {
+      return { success: false, error: "El servei d'IA (OPENROUTER_API_KEY) no està configurat." };
+    }
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.SITE_URL || "https://projectexinoxano.com",
+        "X-Title": "PXX Dashboard",
+      },
+    });
+
+    const route = await prisma.route.findUnique({ where: { id: routeId } });
+    if (!route) return { success: false, error: "Ruta no trobada." };
+
+    const payload = { name: route.name, description: route.description };
+
+    const systemPrompt = `
+      Ets un expert en traducció de continguts turístics. Tradueix les claus d'aquesta ruta turística al Castellà (es), Anglès (en) i Francès (fr).
+      ESTRICTES NORMES:
+      1. Mantén el to narratiu del territori.
+      2. Noms propis de municipis, rius i muntanyes NO es tradueixen jamai (ex: Gerri de la Sal).
+      3. Mantén EXACTAMENT el mateix format JSON de claus que el d'entrada, i a dins un diccionari amb les ISO 'es', 'en', 'fr'.
+      Exemple sortida: { "name": { "es": "...", "en": "...", "fr": "..." }, "description": { "es": "...", "en": "...", "fr": "..." } }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+    });
+
+    const res = JSON.parse(completion.choices[0].message.content || '{}');
+    const nameTranslations = res.name || {};
+    const descriptionTranslations = res.description || {};
+
+    await prisma.route.update({
+      where: { id: routeId },
+      data: {
+        nameTranslations: nameTranslations as any,
+        descriptionTranslations: descriptionTranslations as any
+      }
+    });
+
+    return {
+      success: true,
+      nameTranslations,
+      descriptionTranslations
+    };
+  } catch (err: any) {
+    console.error(`[translateRouteAction Error]:`, err);
+    return { success: false, error: err.message || "Error durant la traducció de la ruta." };
+  }
+}
+
 export async function translateFieldsAction(fields: Record<string, string>) {
   try {
     const OpenAI = (await import('openai')).default;

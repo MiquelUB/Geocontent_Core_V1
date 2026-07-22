@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon, MonitorPlay } from "lucide-react";
+import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon, MonitorPlay, Globe, Languages } from "lucide-react";
 import { verifyAdminPassword } from "@/lib/actions/auth";
 import { createRoute, updateRoute, deleteLegend, createPoi, updatePoi, addPoiToRoute } from "@/lib/actions/content";
+import { translateRouteAction } from "@/lib/actions/ai";
 import { getAdminLegends, getRouteWithPois, getAllProfiles } from "@/lib/actions/queries";
 import { getReports } from "@/lib/actions/reports";
 import { compressImage } from "@/lib/imageOptimization";
@@ -81,6 +82,7 @@ export default function AdminDashboard({
   const [routeDownloadRequired, setRouteDownloadRequired] = useState(false);
   const [routeFinalQuiz, setRouteFinalQuiz] = useState<any>(null);
   const [isGeneratingRouteQuiz, setIsGeneratingRouteQuiz] = useState(false);
+  const [translatingRouteId, setTranslatingRouteId] = useState<string | null>(null);
 
   // State per llistat
   const [legends, setLegends] = useState<Legend[]>(initialLegends);
@@ -205,6 +207,24 @@ export default function AdminDashboard({
       alert("Error: " + error.message);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleTranslateRouteDirect(routeId: string) {
+    setTranslatingRouteId(routeId);
+    try {
+      const res = await translateRouteAction(routeId);
+      if (res.success) {
+        alert('Traduccions de la ruta (es, en, fr) generades amb èxit!');
+        const updated = await getAdminLegends();
+        setLegends(updated as any);
+      } else {
+        alert("Error traduint la ruta: " + res.error);
+      }
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setTranslatingRouteId(null);
     }
   }
 
@@ -486,9 +506,28 @@ export default function AdminDashboard({
                         </div>
                       )}
 
-                      <Button onClick={handleSaveRoute} disabled={isLoading} size="sm" className={`w-fit ${adminTheme.primary} ${adminTheme.hover} text-white`}>
-                        {editingRoute ? 'Actualitzar Ruta' : 'Crear Ruta'}
-                      </Button>
+                      <div className="flex items-center gap-3">
+                        <Button onClick={handleSaveRoute} disabled={isLoading} size="sm" className={`w-fit ${adminTheme.primary} ${adminTheme.hover} text-white`}>
+                          {editingRoute ? 'Actualitzar Ruta' : 'Crear Ruta'}
+                        </Button>
+                        {editingRoute && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={translatingRouteId === editingRoute.id}
+                            onClick={() => handleTranslateRouteDirect(editingRoute.id)}
+                            className="border-purple-300 text-purple-700 hover:bg-purple-50 flex items-center gap-1.5"
+                          >
+                            {translatingRouteId === editingRoute.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Globe className="w-3.5 h-3.5 text-purple-600" />
+                            )}
+                            {translatingRouteId === editingRoute.id ? "Traduint..." : "Traduir Ruta (IA)"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -581,6 +620,20 @@ export default function AdminDashboard({
                               }}
                             >
                               Gestionar Punts
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-purple-600 hover:text-purple-800 hover:bg-purple-50"
+                              disabled={translatingRouteId === legend.id}
+                              onClick={() => handleTranslateRouteDirect(legend.id)}
+                            >
+                              {translatingRouteId === legend.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin mr-1 inline" />
+                              ) : (
+                                <Globe className="w-3 h-3 mr-1 inline" />
+                              )}
+                              Traduir IA
                             </Button>
                             <Button
                               variant="ghost"
