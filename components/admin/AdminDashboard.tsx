@@ -10,10 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon, MonitorPlay, Globe, Languages } from "lucide-react";
+import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon, MonitorPlay, Globe, Languages, Sparkles, CheckCircle2 } from "lucide-react";
 import { verifyAdminPassword } from "@/lib/actions/auth";
 import { createRoute, updateRoute, deleteLegend, createPoi, updatePoi, addPoiToRoute } from "@/lib/actions/content";
-import { translateRouteAction } from "@/lib/actions/ai";
+import { translateRouteAction, translateFieldsAction } from "@/lib/actions/ai";
 import { getAdminLegends, getRouteWithPois, getAllProfiles } from "@/lib/actions/queries";
 import { getReports } from "@/lib/actions/reports";
 import { compressImage } from "@/lib/imageOptimization";
@@ -84,6 +84,11 @@ export default function AdminDashboard({
   const [isGeneratingRouteQuiz, setIsGeneratingRouteQuiz] = useState(false);
   const [translatingRouteId, setTranslatingRouteId] = useState<string | null>(null);
 
+  // States per a traduccions de Ruta (Formulari)
+  const [routeNameTranslations, setRouteNameTranslations] = useState<Record<string, string>>({});
+  const [routeDescriptionTranslations, setRouteDescriptionTranslations] = useState<Record<string, string>>({});
+  const [isTranslatingRouteForm, setIsTranslatingRouteForm] = useState(false);
+
   // State per llistat
   const [legends, setLegends] = useState<Legend[]>(initialLegends);
   const [editingRoute, setEditingRoute] = useState<Legend | null>(null);
@@ -132,13 +137,13 @@ export default function AdminDashboard({
 
   useEffect(() => {
     if (editingRoute) {
-      setRouteTitle(editingRoute.title || '');
+      setRouteTitle(editingRoute.title || editingRoute.name || '');
       setRouteDescription(editingRoute.description || '');
       setRouteLocation(editingRoute.location_name || '');
       setRouteCategory(editingRoute.category || '');
       setRouteDownloadRequired(editingRoute.downloadRequired || false);
-      // setRouteThumbnail(editingRoute.thumbnail_1x1 || ''); // Use server value if exists
-      // setRouteHeader(editingRoute.header_16x9 || ''); // Use server value if exists
+      setRouteNameTranslations((editingRoute as any).nameTranslations || {});
+      setRouteDescriptionTranslations((editingRoute as any).descriptionTranslations || {});
     }
   }, [editingRoute]);
 
@@ -157,7 +162,41 @@ export default function AdminDashboard({
     setRouteDownloadRequired(false);
     setRouteThumbFile(null);
     setRouteFinalQuiz(null);
+    setRouteNameTranslations({});
+    setRouteDescriptionTranslations({});
   };
+
+  async function handleTranslateRouteForm() {
+    if (!routeTitle) {
+      alert("S'ha d'introduir el Nom de la Ruta per traduir.");
+      return;
+    }
+    setIsTranslatingRouteForm(true);
+    try {
+      const res = await translateFieldsAction({
+        name: routeTitle,
+        description: routeDescription || ''
+      });
+      if (res.success && res.data) {
+        const nt = res.data.name || {};
+        const dt = res.data.description || {};
+        setRouteNameTranslations(nt);
+        setRouteDescriptionTranslations(dt);
+
+        if (editingRoute?.id) {
+          await translateRouteAction(editingRoute.id);
+        }
+        alert("Traduccions de la ruta generades amb èxit (Castellà, Anglès, Francès)!");
+      } else {
+        alert("Error traduint la ruta: " + res.error);
+      }
+    } catch (err: any) {
+      console.error("Error traduint la ruta:", err);
+      alert("Error de connexió en traduir la ruta");
+    } finally {
+      setIsTranslatingRouteForm(false);
+    }
+  }
 
   async function handleSaveRoute() {
     if (!routeTitle) return alert('El títol de la ruta és obligatori.');
@@ -168,6 +207,12 @@ export default function AdminDashboard({
       formData.append('description', routeDescription);
       formData.append('location', routeLocation);
       formData.append('category', routeCategory);
+      if (Object.keys(routeNameTranslations).length > 0) {
+        formData.append('name_translations', JSON.stringify(routeNameTranslations));
+      }
+      if (Object.keys(routeDescriptionTranslations).length > 0) {
+        formData.append('description_translations', JSON.stringify(routeDescriptionTranslations));
+      }
       let finalRouteThumbnail = routeThumbnail;
       if (routeThumbFile) {
         const compressed = await compressImage(routeThumbFile);
@@ -353,7 +398,36 @@ export default function AdminDashboard({
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="p-6 border-b border-stone-100 bg-stone-50/30">
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider mb-4">Metadata de la Ruta (Carpeta)</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wider">Metadata de la Ruta (Carpeta)</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isTranslatingRouteForm || !routeTitle}
+                        onClick={handleTranslateRouteForm}
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50 flex items-center gap-1.5 h-8 text-xs font-bold"
+                      >
+                        {isTranslatingRouteForm ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600 fill-purple-200" />
+                        )}
+                        {isTranslatingRouteForm ? "Traduint..." : "Traduir Ruta (IA)"}
+                      </Button>
+                    </div>
+
+                    {(Object.keys(routeNameTranslations).length > 0 || Object.keys(routeDescriptionTranslations).length > 0) && (
+                      <div className="mb-4 p-2.5 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-between text-xs text-purple-800 font-medium animate-in fade-in">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                          <span>Traduccions de la ruta preparades (es, en, fr)</span>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 font-bold text-purple-700 uppercase">
+                          {Object.keys(routeNameTranslations).length} idiomes
+                        </span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="routeTitle">Nom de la Ruta</Label>
