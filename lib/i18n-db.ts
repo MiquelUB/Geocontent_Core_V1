@@ -14,14 +14,25 @@ export function getLocalizedContent(row: any, field: string, locale: string): st
     const columnLocalized = row[`${f}_${locale}`];
     if (columnLocalized !== undefined && columnLocalized !== null && columnLocalized !== '') return columnLocalized;
 
-    // 2. Intentar objecte JSONB de traduccions (ex: titleTranslations)
-    const translations = row[`${f}_translations`] || row[`${f}Translations`] || row[`${f}Translation` ];
-    if (translations && typeof translations === 'object') {
-      const jsonLocalized = translations[locale];
-      if (jsonLocalized) return jsonLocalized;
-      
-      const jsonFallback = translations['ca'];
-      if (jsonFallback) return jsonFallback;
+    // 2. Intentar objecte JSONB de traduccions (ex: titleTranslations, audioTranslations)
+    let translations = row[`${f}_translations`] || row[`${f}Translations`] || row[`${f}Translation` ];
+    
+    // Si el camp és de tipus àudio, obrir la cerca a les claus d'àudio habituals
+    if (!translations && (f === 'audio' || f === 'audioUrl' || f === 'audio_url')) {
+      translations = row.audioTranslations || row.audio_translations || row.audioUrlTranslations || row.audio_url_translations;
+    }
+
+    if (translations) {
+      if (typeof translations === 'string') {
+        try { translations = JSON.parse(translations); } catch (e) {}
+      }
+      if (typeof translations === 'object' && translations !== null) {
+        const jsonLocalized = translations[locale];
+        if (jsonLocalized) return jsonLocalized;
+        
+        const jsonFallback = translations['ca'];
+        if (jsonFallback) return jsonFallback;
+      }
     }
 
     // 3. Fallback a la columna de l'idioma base (Català)
@@ -29,16 +40,23 @@ export function getLocalizedContent(row: any, field: string, locale: string): st
     if (columnFallback !== undefined && columnFallback !== null && columnFallback !== '') return columnFallback;
 
     // 4. Fallback final al camp base sense sufix
+    if (f === 'audio' || f === 'audioUrl' || f === 'audio_url') {
+      return row.audioUrl || row.audio || row.audio_url || '';
+    }
+
     return row[f] || '';
   };
 
   let result = getField(field);
 
-  // Fallback entre camps comuns (title <-> name)
+  // Fallback entre camps comuns (title <-> name, location <-> location_name, audio <-> audioUrl)
   if (!result || result === '') {
     if (field === 'title') result = getField('name');
     else if (field === 'name') result = getField('title');
     else if (field === 'location') result = getField('location_name');
+    else if (field === 'audio' || field === 'audioUrl' || field === 'audio_url') {
+      result = getField('audio') || getField('audioUrl') || getField('audio_url') || row.audioUrl || row.audio || row.audio_url || '';
+    }
   }
 
   return result || '';
@@ -48,6 +66,11 @@ export function getLocalizedContent(row: any, field: string, locale: string): st
  * Extreu un camp traduït d'un objecte JSONB de traduccions (legacy/helper).
  */
 export function getTranslation(translations: any, locale: string, fallbackLocale: string = 'ca'): string {
-  if (!translations || typeof translations !== 'object') return '';
-  return translations[locale] || translations[fallbackLocale] || Object.values(translations)[0] || '';
+  if (!translations) return '';
+  let trans = translations;
+  if (typeof trans === 'string') {
+    try { trans = JSON.parse(trans); } catch (e) {}
+  }
+  if (!trans || typeof trans !== 'object') return '';
+  return trans[locale] || trans[fallbackLocale] || Object.values(trans)[0] || '';
 }

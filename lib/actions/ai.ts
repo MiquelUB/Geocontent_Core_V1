@@ -374,7 +374,7 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     if (type === 'poi') {
       const poi = await prisma.poi.findUnique({ where: { id } });
       if (!poi) return;
-      payload = { title: poi.title, description: poi.description };
+      payload = { title: poi.title, description: poi.description, textContent: poi.textContent };
     } else {
       const route = await prisma.route.findUnique({ where: { id } });
       if (!route) return;
@@ -402,7 +402,11 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     if (type === 'poi') {
       await prisma.poi.update({
         where: { id },
-        data: { titleTranslations: res.title || {}, descriptionTranslations: res.description || {} }
+        data: { 
+          titleTranslations: res.title || {}, 
+          descriptionTranslations: res.description || {},
+          textContentTranslations: res.textContent || {}
+        }
       });
     } else {
       await prisma.route.update({

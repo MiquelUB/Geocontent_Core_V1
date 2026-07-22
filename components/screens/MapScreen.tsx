@@ -147,7 +147,7 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
       category: legend.category, 
       location: legend.location,
       image: poi.image_url || legend.image,
-      audioUrl: poi.audioUrl || poi.audio || poi.audio_url || legend.audio || legend.audio_url || '',
+      audioUrl: getLocalizedContent(poi, 'audio', locale) || poi.audioUrl || poi.audio || poi.audio_url || getLocalizedContent(legend, 'audio', locale) || legend.audio || legend.audio_url || '',
       parentRoutePois: legend.pois,
       coordinates: { lat: poi.latitude, lng: poi.longitude }
     }))

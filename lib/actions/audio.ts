@@ -16,88 +16,59 @@ export async function generatePoiAudiosAction(poiId: string) {
     if (!poi) return { success: false, error: "POI no trobat." };
 
     const locales = ['ca', 'es', 'en', 'fr'];
-    const currentTranslations = (poi.audioTranslations as any) || {};
-    const results: Record<string, string> = { ...currentTranslations };
+    const texts: Record<string, string> = {};
 
     for (const locale of locales) {
       // Regla de contingut: Prioritzem textContent, si no description, si no el títol.
       const text = getLocalizedContent(poi, 'textContent', locale) || 
                    getLocalizedContent(poi, 'description', locale) || 
                    getLocalizedContent(poi, 'title', locale);
-
-      if (!text) {
+      
+      if (text) {
+        texts[locale] = text;
+      } else {
         console.warn(`[Audio] No text found for POI ${poiId} in locale ${locale}`);
-        continue;
       }
-
-      console.log(`[Audio] Generating TTS for ${poiId} in ${locale}...`);
-
-      const response = await fetch(OPENROUTER_TTS_URL, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": process.env.SITE_URL || "https://projectexinoxano.com",
-          "X-Title": "PXX Dashboard",
-        },
-        body: JSON.stringify({
-          model: process.env.AI_MODEL_AUDIO_ID || "mistralai/voxtral-mini-tts-2603",
-          input: text.substring(0, 4000), // Limit aprox
-          voice: "en_paul_neutral", // Compatible amb OpenRouter TTS (Mistral)
-          response_format: "mp3",
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`[Audio] Error from OpenRouter (${locale}):`, errText);
-        continue;
-      }
-
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
-      const s3Key = `media/pois/${poiId}/audio/${locale}.mp3`;
-      
-      const municipalityId = await getDefaultMunicipalityId();
-      if (!municipalityId) throw new Error("TenantID required for cost allocation");
-
-      // Pugem a S3 via FastAPI proxy
-      const fastApiUrl = process.env.INTERNAL_API_URL || 'http://fastapi-core:8000';
-      const formData = new FormData();
-      
-      // Node.js 20+ suporta File object globalment, però podem usar Blob
-      const blob = new Blob([audioBuffer], { type: "audio/mpeg" });
-      formData.append('file', blob, `${locale}.mp3`);
-      formData.append('folder', `media/pois/${poiId}/audio`);
-
-      const uploadRes = await fetch(`${fastApiUrl}/s3/upload`, {
-        method: 'POST',
-        headers: {
-          'x-internal-tenant-id': municipalityId,
-        },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error(`FastAPI upload error: ${await uploadRes.text()}`);
-      }
-
-      const { key } = await uploadRes.json();
-
-      // Construïm la URL pública. 
-      const bucket = process.env.S3_BUCKET || "pxx-core-v1";
-      const region = process.env.S3_REGION || "eu-north-1";
-      const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
-      
-      results[locale] = publicUrl;
     }
 
-    // Actualitzem la base de dades amb les noves URLs
-    await prisma.poi.update({
-      where: { id: poiId },
-      data: { audioTranslations: results }
+    if (Object.keys(texts).length === 0) {
+      return { success: false, error: "No hi ha text per generar àudios." };
+    }
+
+    const fastApiUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
+    console.log(`[Audio] Cridant FastAPI (Múscul) per generar àudios sincrònicament pel POI ${poiId}...`);
+
+    const response = await fetch(`${fastApiUrl}/audio/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ poi_id: poiId, texts })
     });
 
-    return { success: true, data: results };
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[Audio] FastAPI Error:`, errText);
+      return { success: false, error: `Error del Múscul (FastAPI): ${response.statusText}` };
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      return { success: false, error: "Error intern en la generació d'àudio a FastAPI." };
+    }
+
+    const currentTranslations = (poi.audioTranslations as any) || {};
+    const newTranslations = { ...currentTranslations, ...result.urls };
+    const defaultAudioUrl = poi.audioUrl || newTranslations['ca'] || Object.values(newTranslations)[0] || '';
+
+    // Actualitzem la base de dades amb les noves URLs i el camp base audioUrl
+    await prisma.poi.update({
+      where: { id: poiId },
+      data: { 
+        audioTranslations: newTranslations,
+        ...(defaultAudioUrl ? { audioUrl: defaultAudioUrl } : {})
+      }
+    });
+
+    return { success: true, data: newTranslations };
   } catch (error: any) {
     console.error("Audio Generation Fatal Error:", error);
     return { success: false, error: error.message || "Error desconegut en la generació d'àudio." };
