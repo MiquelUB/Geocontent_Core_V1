@@ -59,7 +59,15 @@ export async function getAdminLegends() {
       id: route.id,
       name: route.name,
       title: route.name, // UI compat
+      description: route.description || '',
+      nameTranslations: route.nameTranslations || {},
+      descriptionTranslations: route.descriptionTranslations || {},
+      audioTranslations: route.audioTranslations || {},
+      category: route.themeId || 'mountain',
+      location_name: (route.municipality?.name || '').replace(/^Ajuntament de /i, ''),
       municipality_name: route.municipality?.name || 'Sense municipi',
+      thumbnail_1x1: route.thumbnail1x1 || '',
+      header_16x9: route.header16x9 || '',
       pois_count: route.routePois?.length || 0,
       total_visits: route.routePois?.reduce((acc: number, rp: any) => acc + (rp.poi?.userUnlocks?.length || 0), 0) || 0,
       created_at: route.createdAt

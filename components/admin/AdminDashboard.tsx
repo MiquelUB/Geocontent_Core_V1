@@ -142,6 +142,8 @@ export default function AdminDashboard({
       setRouteLocation(editingRoute.location_name || '');
       setRouteCategory(editingRoute.category || '');
       setRouteDownloadRequired(editingRoute.downloadRequired || false);
+      setRouteThumbnail(editingRoute.thumbnail_1x1 || (editingRoute as any).thumbnail1x1 || '');
+      setRouteHeader(editingRoute.header_16x9 || (editingRoute as any).header16x9 || '');
       setRouteNameTranslations((editingRoute as any).nameTranslations || {});
       setRouteDescriptionTranslations((editingRoute as any).descriptionTranslations || {});
     }
