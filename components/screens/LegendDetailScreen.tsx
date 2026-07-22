@@ -165,8 +165,12 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   // Normalitzem l'URL de l'àudio (pot venir com 'audioUrl', 'audio' o 'audio_url' depenent de l'origen)
   const effectiveAudioUrl = safeLegend.audioUrl || safeLegend.audio || safeLegend.audio_url;
 
-  // Utilitzar estrictament la Descripció de la ruta introduïda al formulari / BD (amb la seva traducció)
-  const effectiveDescription = safeLegend.description || safeLegend.textContent || "";
+  // Descripció de la ruta introduïda al formulari / BD (amb traducció), o descripció combinada dels seus punts si la ruta té el camp buit
+  const poiDescriptions = isRouteContainer && safeLegend.pois
+    ? safeLegend.pois.map((p: any) => getLocalizedContent(p, 'description', locale) || getLocalizedContent(p, 'textContent', locale)).filter(Boolean).join('\n\n')
+    : '';
+
+  const effectiveDescription = safeLegend.description || safeLegend.textContent || poiDescriptions || "";
 
   // A POI is unlocked if it's a route container, OR it was already visited, OR user is admin, OR user is close enough
   const isUnlocked = isRouteContainer || isAlreadyVisited || isMasterAdmin || (distanceMeters !== null && distanceMeters <= UNLOCK_DISTANCE);
