@@ -436,23 +436,10 @@ export async function translateRouteAction(routeId: string) {
       },
     });
 
-    const route = await prisma.route.findUnique({
-      where: { id: routeId },
-      include: {
-        routePois: {
-          include: { poi: true },
-          orderBy: { orderIndex: 'asc' }
-        }
-      }
-    });
+    const route = await prisma.route.findUnique({ where: { id: routeId } });
     if (!route) return { success: false, error: "Ruta no trobada." };
 
-    const poiTitles = route.routePois?.map((rp: any) => rp.poi?.title).filter(Boolean).join(', ') || '';
-    const descToUse = route.description && route.description.trim() !== ''
-      ? route.description
-      : `Itinerari turístic i cultural "${route.name}" per descobrir els punts d'interès del territori${poiTitles ? `: ${poiTitles}` : ''}.`;
-
-    const payload = { name: route.name, description: descToUse };
+    const payload = { name: route.name, description: route.description || '' };
 
     const systemPrompt = `
       Ets un expert en traducció de continguts turístics. Tradueix les claus d'aquesta ruta turística al Castellà (es), Anglès (en) i Francès (fr).
@@ -477,7 +464,6 @@ export async function translateRouteAction(routeId: string) {
     await prisma.route.update({
       where: { id: routeId },
       data: {
-        description: route.description && route.description.trim() !== '' ? route.description : descToUse,
         nameTranslations: nameTranslations as any,
         descriptionTranslations: descriptionTranslations as any
       }
