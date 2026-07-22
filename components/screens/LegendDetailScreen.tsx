@@ -80,8 +80,8 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   const safeLegend = {
     ...legend,
     title: getLocalizedContent(legend, 'title', locale) || getLocalizedContent(legend, 'name', locale) || t('notFound'),
-    description: getLocalizedContent(legend, 'description', locale) || "",
-    textContent: getLocalizedContent(legend, 'textContent', locale) || "",
+    description: getLocalizedContent(legend, 'description', locale) || getLocalizedContent(legend, 'textContent', locale) || legend?.description || legend?.textContent || "",
+    textContent: getLocalizedContent(legend, 'textContent', locale) || getLocalizedContent(legend, 'description', locale) || legend?.textContent || legend?.description || "",
     image: legend?.image || legend?.image_url || "",
     location: getLocalizedContent(legend, 'location', locale) || t('unknown'),
     categoryLabel: getLocalizedContent(legend, 'categoryLabel', locale) || t('unknown'),
@@ -338,7 +338,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
       <div className="relative -mt-10 bg-background rounded-t-[2.5rem] z-20 px-8 py-10 min-h-[50vh] shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
 
         {/* Contenid Principal */}
-        {(safeLegend.textContent || safeLegend.description) ? (
+        {(safeLegend.description || safeLegend.textContent) ? (
           <div className="relative group overflow-hidden rounded-3xl mb-12">
             <div className={`prose prose-lg prose-stone max-w-none leading-relaxed font-serif transition-all duration-1000 z-10 relative ${isUnlocked ? 'text-foreground/90' : 'text-stone-300 blur-[8px] select-none scale-[0.98]'}`}>
               {isUnlocked ? (
@@ -349,7 +349,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                     className="z-10 relative"
                 >
                   <p className="first-letter:text-5xl first-letter:font-serif first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:mt-[-8px]">
-                    {safeLegend.textContent || safeLegend.description}
+                    {safeLegend.description || safeLegend.textContent}
                   </p>
                   <div className="clear-both"></div>
 

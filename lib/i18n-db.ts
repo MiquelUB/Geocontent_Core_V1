@@ -35,8 +35,8 @@ export function getLocalizedContent(row: any, field: string, locale: string): st
         const jsonLocalized = translations[locale];
         if (jsonLocalized) return jsonLocalized;
         
-        const jsonFallback = translations['ca'];
-        if (jsonFallback) return jsonFallback;
+        const jsonFallback = translations['ca'] || translations['es'] || Object.values(translations)[0];
+        if (jsonFallback && typeof jsonFallback === 'string') return jsonFallback;
       }
     }
 
@@ -54,11 +54,12 @@ export function getLocalizedContent(row: any, field: string, locale: string): st
 
   let result = getField(field);
 
-  // Fallback entre camps comuns (title <-> name, location <-> location_name, audio <-> audioUrl)
+  // Fallback entre camps comuns (title <-> name, location <-> location_name, description <-> textContent, audio <-> audioUrl)
   if (!result || result === '') {
     if (field === 'title') result = getField('name');
     else if (field === 'name') result = getField('title');
     else if (field === 'location') result = getField('location_name');
+    else if (field === 'description') result = getField('textContent') || getField('summary') || row.description || row.textContent || '';
     else if (field === 'audio' || field === 'audioUrl' || field === 'audio_url') {
       result = getField('audio') || getField('audioUrl') || getField('audio_url') || row.audioUrl || row.audio || row.audio_url || '';
     }
