@@ -348,8 +348,8 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                     transition={{ duration: 0.8 }}
                     className="z-10 relative"
                 >
-                  <p className="first-letter:text-5xl first-letter:font-serif first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:mt-[-8px]">
-                    {safeLegend.description || safeLegend.textContent}
+                  <p className="first-letter:text-5xl first-letter:font-serif first-letter:font-bold first-letter:text-primary first-letter:float-left first-letter:mr-3 first-letter:mt-[-8px] whitespace-pre-line">
+                    {safeLegend.description || safeLegend.textContent || safeLegend.title}
                   </p>
                   <div className="clear-both"></div>
 
