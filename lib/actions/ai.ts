@@ -408,6 +408,13 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
           textContentTranslations: res.textContent || {}
         }
       });
+      try {
+        const { generatePoiAudiosAction } = await import('@/lib/actions/audio');
+        await generatePoiAudiosAction(id);
+        console.log(`[autoTranslateAction] Audio guides generated for POI (${id})`);
+      } catch (audioErr) {
+        console.error(`[autoTranslateAction] Audio generation error for POI (${id}):`, audioErr);
+      }
     } else {
       await prisma.route.update({
         where: { id },

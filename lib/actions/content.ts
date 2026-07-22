@@ -425,6 +425,12 @@ export async function createPoi(formData: FormData) {
       ? await prisma.routePoi.count({ where: { routeId: route_id } })
       : 0;
 
+    let audio_translations = undefined;
+    try {
+      const at = formData.get('audio_translations') as string;
+      if (at) audio_translations = JSON.parse(at);
+    } catch (e) {}
+
     console.log('[createPoi] 6/8 - Database Transaction...');
     const result = await prisma.$transaction(async (tx) => {
       const poi = await tx.poi.create({
@@ -436,6 +442,7 @@ export async function createPoi(formData: FormData) {
           latitude,
           longitude,
           audioUrl,
+          audioTranslations: audio_translations as any,
           videoUrls: finalVideoUrls,
           textContent: text_content,
           textContentTranslations: text_content_translations as any,
@@ -536,13 +543,16 @@ export async function updatePoi(id: string, formData: FormData) {
     let titleTranslations = undefined;
     let descriptionTranslations = undefined;
     let textContentTranslations = undefined;
+    let audioTranslations = undefined;
     try {
       const tt = formData.get('title_translations') as string;
       const dt = formData.get('description_translations') as string;
       const tct = formData.get('text_content_translations') as string;
+      const at = formData.get('audio_translations') as string;
       if (tt) titleTranslations = JSON.parse(tt);
       if (dt) descriptionTranslations = JSON.parse(dt);
       if (tct) textContentTranslations = JSON.parse(tct);
+      if (at) audioTranslations = JSON.parse(at);
     } catch (e) { }
 
     const type = formData.get('type') as string;
@@ -563,6 +573,7 @@ export async function updatePoi(id: string, formData: FormData) {
         latitude,
         longitude,
         audioUrl,
+        audioTranslations: audioTranslations as any,
         videoUrls,
         textContent,
         textContentTranslations: textContentTranslations as any,
