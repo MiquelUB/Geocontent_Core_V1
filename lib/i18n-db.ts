@@ -14,9 +14,14 @@ export function getLocalizedContent(row: any, field: string, locale: string): st
     const columnLocalized = row[`${f}_${locale}`];
     if (columnLocalized !== undefined && columnLocalized !== null && columnLocalized !== '') return columnLocalized;
 
-    // 2. Intentar objecte JSONB de traduccions (ex: titleTranslations, audioTranslations)
+    // 2. Intentar objecte JSONB de traduccions (ex: titleTranslations, nameTranslations, audioTranslations)
     let translations = row[`${f}_translations`] || row[`${f}Translations`] || row[`${f}Translation` ];
     
+    // Si el camp és de tipus títol/nom, buscar a les claus tant de title com de name
+    if (!translations && (f === 'title' || f === 'name')) {
+      translations = row.titleTranslations || row.title_translations || row.nameTranslations || row.name_translations;
+    }
+
     // Si el camp és de tipus àudio, obrir la cerca a les claus d'àudio habituals
     if (!translations && (f === 'audio' || f === 'audioUrl' || f === 'audio_url')) {
       translations = row.audioTranslations || row.audio_translations || row.audioUrlTranslations || row.audio_url_translations;

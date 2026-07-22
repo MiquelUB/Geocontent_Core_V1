@@ -179,9 +179,11 @@ function mapRoute(route: any) {
 
   return {
     id: route.id,
+    name: title,
     title: title,
     description: route.description || '',
     nameTranslations: route.nameTranslations || {},
+    titleTranslations: route.nameTranslations || {},
     descriptionTranslations: route.descriptionTranslations || {},
     audioTranslations: route.audioTranslations || {},
     category: route.themeId || '',
