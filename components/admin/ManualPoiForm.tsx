@@ -71,42 +71,49 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   
   // States for multi-language fields
   const [titles, setTitles] = useState<Record<string, string>>(() =>
-    getInitialTranslations(poi?.titleTranslations, poi?.title)
+    getInitialTranslations(poi?.titleTranslations || poi?.title_translations, poi?.title)
   );
   
   const [descriptions, setDescriptions] = useState<Record<string, string>>(() =>
-    getInitialTranslations(poi?.descriptionTranslations, poi?.description)
+    getInitialTranslations(poi?.descriptionTranslations || poi?.description_translations, poi?.description)
   );
 
   const [textContents, setTextContents] = useState<Record<string, string>>(() =>
-    getInitialTranslations(poi?.textContentTranslations, poi?.textContent)
+    getInitialTranslations(poi?.textContentTranslations || poi?.text_content_translations, poi?.textContent || poi?.text_content)
   );
 
   const [activeLocale, setActiveLocale] = useState('ca');
   
-  const [routeId, setRouteId] = useState(poi?.routeId || defaultRouteId || '');
+  const [routeId, setRouteId] = useState(poi?.routeId || poi?.route_id || defaultRouteId || '');
   const [latitude, setLatitude] = useState(poi?.latitude !== undefined && poi?.latitude !== null ? poi.latitude.toString() : '');
   const [longitude, setLongitude] = useState(poi?.longitude !== undefined && poi?.longitude !== null ? poi.longitude.toString() : '');
   const [icon, setIcon] = useState(poi?.icon || '');
   const [poiType, setPoiType] = useState(poi?.type || 'CIVIL');
-  const [manualQuiz, setManualQuiz] = useState<any>(poi?.manualQuiz || null);
+  const [manualQuiz, setManualQuiz] = useState<any>(poi?.manualQuiz || poi?.manual_quiz || null);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
 
-  const [appThumbnail, setAppThumbnail] = useState(poi?.appThumbnail || '');
-  const [header16x9, setHeader16x9] = useState(poi?.header16x9 || '');
-  const [audioUrl, setAudioUrl] = useState(poi?.audioUrl || '');
+  const [appThumbnail, setAppThumbnail] = useState(
+    poi?.appThumbnail || poi?.app_thumbnail || poi?.image_url || poi?.thumbnail_1x1 || ''
+  );
+  const [header16x9, setHeader16x9] = useState(
+    poi?.header16x9 || poi?.header_16x9 || poi?.hero_image_url || ''
+  );
+  const [audioUrl, setAudioUrl] = useState(
+    poi?.audioUrl || poi?.audio_url || poi?.audio || (poi?.audioTranslations?.ca || (poi?.audioTranslations && Object.values(poi.audioTranslations)[0])) || ''
+  );
 
   const [carouselImages, setCarouselImages] = useState<string[]>(() => {
     if (poi?.carouselImages && poi.carouselImages.length > 0) return poi.carouselImages;
+    if (poi?.carousel_images && poi.carousel_images.length > 0) return poi.carousel_images;
     if (poi?.images && poi.images.length > 1) {
       return poi.images.slice(1);
     }
     return [];
   });
   const [carouselFiles, setCarouselFiles] = useState<(File | null)[]>(() =>
-    new Array((poi?.carouselImages?.length || (poi?.images?.length > 1 ? poi.images.length - 1 : 0))).fill(null)
+    new Array((poi?.carouselImages?.length || poi?.carousel_images?.length || (poi?.images?.length > 1 ? poi.images.length - 1 : 0))).fill(null)
   );
   const [newCarouselUrl, setNewCarouselUrl] = useState('');
   const [newCarouselFile, setNewCarouselFile] = useState<File | null>(null);
@@ -116,7 +123,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [audioFile, setAudioFile] = useState<File | null>(null);
 
   const initVideoSlots = (): VideoSlot[] => {
-    const existingUrls: string[] = poi?.videoUrls || (poi?.videoUrl ? [poi.videoUrl] : []);
+    const existingUrls: string[] = poi?.videoUrls || poi?.video_urls || (poi?.videoUrl ? [poi.videoUrl] : (poi?.video_url ? [poi.video_url] : []));
     const slots: VideoSlot[] = existingUrls.slice(0, MAX_VIDEO_SLOTS).map((url: string) => ({
       url,
       file: null,
@@ -128,29 +135,31 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
   // Sync form states whenever poi prop changes
   useEffect(() => {
-    setTitles(getInitialTranslations(poi?.titleTranslations, poi?.title));
-    setDescriptions(getInitialTranslations(poi?.descriptionTranslations, poi?.description));
-    setTextContents(getInitialTranslations(poi?.textContentTranslations, poi?.textContent));
-    setRouteId(poi?.routeId || defaultRouteId || '');
+    setTitles(getInitialTranslations(poi?.titleTranslations || poi?.title_translations, poi?.title));
+    setDescriptions(getInitialTranslations(poi?.descriptionTranslations || poi?.description_translations, poi?.description));
+    setTextContents(getInitialTranslations(poi?.textContentTranslations || poi?.text_content_translations, poi?.textContent || poi?.text_content));
+    setRouteId(poi?.routeId || poi?.route_id || defaultRouteId || '');
     setLatitude(poi?.latitude !== undefined && poi?.latitude !== null ? poi.latitude.toString() : '');
     setLongitude(poi?.longitude !== undefined && poi?.longitude !== null ? poi.longitude.toString() : '');
     setIcon(poi?.icon || '');
     setPoiType(poi?.type || 'CIVIL');
-    setManualQuiz(poi?.manualQuiz || null);
-    setAppThumbnail(poi?.appThumbnail || '');
-    setHeader16x9(poi?.header16x9 || '');
-    setAudioUrl(poi?.audioUrl || '');
+    setManualQuiz(poi?.manualQuiz || poi?.manual_quiz || null);
+    setAppThumbnail(poi?.appThumbnail || poi?.app_thumbnail || poi?.image_url || poi?.thumbnail_1x1 || '');
+    setHeader16x9(poi?.header16x9 || poi?.header_16x9 || poi?.hero_image_url || '');
+    setAudioUrl(poi?.audioUrl || poi?.audio_url || poi?.audio || (poi?.audioTranslations?.ca || (poi?.audioTranslations && Object.values(poi.audioTranslations)[0])) || '');
     setAppThumbnailFile(null);
     setHeaderFile(null);
     setAudioFile(null);
 
     const carImages = (poi?.carouselImages && poi.carouselImages.length > 0)
       ? poi.carouselImages
-      : (poi?.images && poi.images.length > 1 ? poi.images.slice(1) : []);
+      : ((poi?.carousel_images && poi.carousel_images.length > 0)
+        ? poi.carousel_images
+        : (poi?.images && poi.images.length > 1 ? poi.images.slice(1) : []));
     setCarouselImages(carImages);
     setCarouselFiles(new Array(carImages.length).fill(null));
 
-    const existingUrls: string[] = poi?.videoUrls || (poi?.videoUrl ? [poi.videoUrl] : []);
+    const existingUrls: string[] = poi?.videoUrls || poi?.video_urls || (poi?.videoUrl ? [poi.videoUrl] : (poi?.video_url ? [poi.video_url] : []));
     setVideoSlots(existingUrls.slice(0, MAX_VIDEO_SLOTS).map((url: string) => ({
       url,
       file: null,
@@ -627,8 +636,13 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           <div className="grid gap-2">
             <Label className="flex items-center gap-2">
               <Music className="w-4 h-4 text-stone-400" />
-              Àudio
+              Àudio (MP3)
             </Label>
+            {audioUrl && !audioFile && (
+              <div className="flex items-center gap-2 mb-1 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                <audio src={audioUrl} controls className="h-8 w-full" />
+              </div>
+            )}
             <Input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
           </div>
 

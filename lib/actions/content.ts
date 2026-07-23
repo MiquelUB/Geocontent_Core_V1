@@ -261,39 +261,51 @@ export async function createRoute(formData: FormData) {
 }
 
 export async function updateRoute(id: string, formData: FormData) {
-  const name = formData.get('title') as string
-  const description = formData.get('description') as string || ''
-  const location = formData.get('location') as string || ''
-  const category = formData.get('category') as string || 'mountain'
-  const thumbnailFile = formData.get('thumbnail_file') as File || null
-  let thumbnail1x1 = formData.get('thumbnail_1x1') as string || ''
-  let header16x9 = formData.get('header_16x9') as string || ''
-
-  if (thumbnailFile && thumbnailFile.size > 0) {
-    thumbnail1x1 = await uploadFile(thumbnailFile);
-  }
-
-  const muniId = formData.get('municipality_id') as string;
-  const downloadRequired = formData.get('download_required') === 'true';
-  const locationMuniId = await getOrCreateMunicipalityByName(location);
-
-  let finalQuizInfo = null;
-  const finalQuizRaw = formData.get('final_quiz') as string;
-  if (finalQuizRaw) {
-    try { finalQuizInfo = JSON.parse(finalQuizRaw); } catch (e) { }
-  }
-
-  // Traducciones
-  let nameTranslations = undefined;
-  let descTranslations = undefined;
   try {
-    const nt = formData.get('name_translations') as string;
-    const dt = formData.get('description_translations') as string;
-    if (nt) nameTranslations = JSON.parse(nt);
-    if (dt) descTranslations = JSON.parse(dt);
-  } catch (e) { }
+    const existingRoute = await prisma.route.findUnique({ where: { id } });
+    if (!existingRoute) return { success: false, error: "Ruta no trobada." };
 
-  try {
+    const nameParam = formData.get('title') as string;
+    const name = nameParam || existingRoute.name || '';
+
+    const descParam = formData.get('description') as string;
+    const description = descParam || existingRoute.description || '';
+
+    const location = formData.get('location') as string || '';
+    const category = formData.get('category') as string || existingRoute.themeId || 'mountain';
+    const thumbnailFile = formData.get('thumbnail_file') as File || null;
+
+    let thumbnail1x1 = (formData.get('thumbnail_1x1') as string) || existingRoute.thumbnail1x1 || '';
+    if (thumbnailFile && thumbnailFile.size > 0) {
+      thumbnail1x1 = await uploadFile(thumbnailFile);
+    }
+
+    const headerFile = formData.get('header_file') as File || null;
+    let header16x9 = (formData.get('header_16x9') as string) || existingRoute.header16x9 || '';
+    if (headerFile && headerFile.size > 0) {
+      header16x9 = await uploadFile(headerFile);
+    }
+
+    const muniId = formData.get('municipality_id') as string;
+    const downloadRequired = formData.get('download_required') === 'true';
+    const locationMuniId = await getOrCreateMunicipalityByName(location);
+
+    let finalQuizInfo = existingRoute.finalQuiz;
+    const finalQuizRaw = formData.get('final_quiz') as string;
+    if (finalQuizRaw) {
+      try { finalQuizInfo = JSON.parse(finalQuizRaw); } catch (e) { }
+    }
+
+    // Traducciones (merge amb les existents)
+    let nameTranslations = (existingRoute.nameTranslations as any) || {};
+    let descTranslations = (existingRoute.descriptionTranslations as any) || {};
+    try {
+      const nt = formData.get('name_translations') as string;
+      const dt = formData.get('description_translations') as string;
+      if (nt) nameTranslations = { ...nameTranslations, ...JSON.parse(nt) };
+      if (dt) descTranslations = { ...descTranslations, ...JSON.parse(dt) };
+    } catch (e) { }
+
     await prisma.route.update({
       where: { 
         id,
@@ -316,9 +328,6 @@ export async function updateRoute(id: string, formData: FormData) {
 
     revalidatePath('/admin');
     revalidatePath('/');
-
-    // Traducció automàtica silenciosa en segon pla (múscul IA)
-    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('route', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     return { success: true };
   } catch (err: any) {
@@ -484,20 +493,43 @@ export async function createPoi(formData: FormData) {
 
 export async function updatePoi(id: string, formData: FormData) {
   try {
-    console.log(`[updatePoi ${id}] 1/5 - Starting...`);
-    const title = formData.get('title') as string;
-    const description = formData.get('description') as string;
-    const latitude = parseFloat(formData.get('latitude') as string);
-    const longitude = parseFloat(formData.get('longitude') as string);
+    console.log(`[updatePoi ${id}] 1/5 - Fetching existing POI...`);
+    const existingPoi = await prisma.poi.findUnique({ where: { id } });
+    if (!existingPoi) return { success: false, error: "POI no trobat." };
+
+    const titleParam = formData.get('title') as string;
+    const title = titleParam || existingPoi.title;
+
+    const descParam = formData.get('description') as string;
+    const description = descParam || existingPoi.description || '';
+
+    const textContentParam = formData.get('text_content') as string;
+    const textContent = textContentParam || existingPoi.textContent || '';
+
+    const latStr = formData.get('latitude') as string;
+    const lngStr = formData.get('longitude') as string;
+    const latitude = latStr ? parseFloat(latStr) : existingPoi.latitude;
+    const longitude = lngStr ? parseFloat(lngStr) : existingPoi.longitude;
 
     const appThumbFile = formData.get('app_thumbnail_file') as File | null;
     const headerFile = formData.get('header_file') as File | null;
     const audioFile = formData.get('audio_file') as File | null;
 
     console.log(`[updatePoi ${id}] 2/5 - Processing Media...`);
-    const appThumbnail = (appThumbFile?.size ?? 0) > 0 ? await uploadFile(appThumbFile!) : (formData.get('app_thumbnail') as string || '');
-    const header16x9 = (headerFile?.size ?? 0) > 0 ? await uploadFile(headerFile!) : (formData.get('header_16x9') as string || '');
-    const audioUrl = (audioFile?.size ?? 0) > 0 ? await uploadFile(audioFile!) : (formData.get('audio_url') as string || '');
+    const appThumbParam = formData.get('app_thumbnail') as string;
+    const appThumbnail = (appThumbFile?.size ?? 0) > 0 
+      ? await uploadFile(appThumbFile!) 
+      : (appThumbParam || existingPoi.appThumbnail || '');
+
+    const headerParam = formData.get('header_16x9') as string;
+    const header16x9 = (headerFile?.size ?? 0) > 0 
+      ? await uploadFile(headerFile!) 
+      : (headerParam || existingPoi.header16x9 || '');
+
+    const audioParam = formData.get('audio_url') as string;
+    const audioUrl = (audioFile?.size ?? 0) > 0 
+      ? await uploadFile(audioFile!) 
+      : (audioParam || existingPoi.audioUrl || '');
 
     const videoSlotCount = parseInt(formData.get('video_slot_count') as string || '0', 10);
     let urlsFromForm: string[] = [];
@@ -510,20 +542,22 @@ export async function updatePoi(id: string, formData: FormData) {
         uploadedVideoUrls.push(await uploadFile(file));
       }
     }
-    const videoUrls = [
+    let videoUrls = [
       ...uploadedVideoUrls,
       ...urlsFromForm.filter(u => u && u.startsWith('http') && !uploadedVideoUrls.includes(u))
     ];
+    if (videoUrls.length === 0 && existingPoi.videoUrls) {
+      videoUrls = existingPoi.videoUrls;
+    }
 
-    const textContent = formData.get('text_content') as string || '';
-    const icon = formData.get('icon') as string || null;
+    const iconParam = formData.get('icon') as string;
+    const icon = iconParam || existingPoi.icon || null;
 
     const carouselFileCount = parseInt(formData.get('carousel_file_count') as string || '0', 10);
     let carouselUrlsFromForm: string[] = [];
     try { carouselUrlsFromForm = JSON.parse(formData.get('carousel_images') as string || '[]'); } catch(e) {}
     
-    const finalCarouselImages: string[] = [];
-
+    let finalCarouselImages: string[] = [];
     if (carouselFileCount === 0 && carouselUrlsFromForm.length > 0) {
       carouselUrlsFromForm.forEach(u => finalCarouselImages.push(u));
     } else {
@@ -538,26 +572,30 @@ export async function updatePoi(id: string, formData: FormData) {
         }
       }
     }
+    if (finalCarouselImages.length === 0 && existingPoi.carouselImages) {
+      finalCarouselImages = existingPoi.carouselImages;
+    }
 
-    // Traducciones
-    let titleTranslations = undefined;
-    let descriptionTranslations = undefined;
-    let textContentTranslations = undefined;
-    let audioTranslations = undefined;
+    // Traducciones (merge amb les existents per no perdre idiomes)
+    let titleTranslations = (existingPoi.titleTranslations as any) || {};
+    let descriptionTranslations = (existingPoi.descriptionTranslations as any) || {};
+    let textContentTranslations = (existingPoi.textContentTranslations as any) || {};
+    let audioTranslations = (existingPoi.audioTranslations as any) || {};
+
     try {
       const tt = formData.get('title_translations') as string;
       const dt = formData.get('description_translations') as string;
       const tct = formData.get('text_content_translations') as string;
       const at = formData.get('audio_translations') as string;
-      if (tt) titleTranslations = JSON.parse(tt);
-      if (dt) descriptionTranslations = JSON.parse(dt);
-      if (tct) textContentTranslations = JSON.parse(tct);
-      if (at) audioTranslations = JSON.parse(at);
+      if (tt) titleTranslations = { ...titleTranslations, ...JSON.parse(tt) };
+      if (dt) descriptionTranslations = { ...descriptionTranslations, ...JSON.parse(dt) };
+      if (tct) textContentTranslations = { ...textContentTranslations, ...JSON.parse(tct) };
+      if (at) audioTranslations = { ...audioTranslations, ...JSON.parse(at) };
     } catch (e) { }
 
     const type = formData.get('type') as string;
     const manualQuizStr = formData.get('manual_quiz') as string;
-    let manualQuiz = null;
+    let manualQuiz = existingPoi.manualQuiz;
     try { if (manualQuizStr) manualQuiz = JSON.parse(manualQuizStr); } catch (e) { }
 
     console.log(`[updatePoi ${id}] 3/5 - Updating database...`);
@@ -582,21 +620,17 @@ export async function updatePoi(id: string, formData: FormData) {
         carouselImages: finalCarouselImages,
         icon,
         manualQuiz,
-        type: type ? (type as any) : undefined
+        type: type ? (type as any) : (existingPoi.type || undefined)
       }
     });
 
-    console.log(`[updatePoi ${id}] 4/5 - Revalidating & Translation...`);
+    console.log(`[updatePoi ${id}] 4/5 - Revalidating path...`);
     revalidatePath('/admin');
-
-    // Traducció automàtica silenciosa en segon pla (múscul IA)
-    void import('@/lib/actions/ai').then(m => m.autoTranslateAction('poi', id)).catch(err => console.error('AutoTranslate Background Error:', err));
 
     console.log(`[updatePoi ${id}] 5/5 - Done!`);
     return { success: true };
   } catch (err: any) {
     console.error('[updatePoi error]', err);
-    // Retornem l'error real
     return { success: false, error: err.message || JSON.stringify(err) };
   }
 }
