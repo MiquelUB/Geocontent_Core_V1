@@ -398,10 +398,9 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                   {/* Text Històric / Curiositats - Renderejat immediatament sota l'audioguia */}
                   {isUnlocked && showTextContent && (
                     <div className="mt-8 pt-6 border-t border-stone-200/80">
-                      <div className="flex items-center gap-2 text-primary font-serif font-bold text-sm mb-3 uppercase tracking-wider">
-                        <BookOpen className="w-4 h-4 text-primary" />
-                        <span>{tCommon('history') || 'Text Històric i Curiositats'}</span>
-                      </div>
+                      <h3 className="font-serif font-bold text-lg text-primary mb-3">
+                        {t('history')}
+                      </h3>
                       <p className="text-foreground/90 font-serif leading-relaxed text-base whitespace-pre-line">
                         {effectiveTextContent}
                       </p>
