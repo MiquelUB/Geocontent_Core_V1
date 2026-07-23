@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles } from "lucide-react";
+import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles, ExternalLink } from "lucide-react";
 import iconsMapping from '@/lib/icons-mapping.json';
 import { getAdminTheme } from "@/lib/adminTheme";
 import { compressImage } from "@/lib/imageOptimization";
@@ -681,11 +681,31 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                {slot.url && (
+                  <div className="flex items-center justify-between gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
+                      <span className="font-mono text-[11px] text-stone-600 truncate" title={slot.url}>
+                        {slot.url.split('/').pop() || slot.url}
+                      </span>
+                    </div>
+                    {slot.url.startsWith('http') && (
+                      <a
+                        href={slot.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
+                      >
+                        <ExternalLink className="w-3 h-3" /> Veure Vídeo
+                      </a>
+                    )}
+                  </div>
+                )}
                 <Input
                   type="file"
                   accept="video/*"
                   onChange={(e) => handleVideoFileChange(idx, e.target.files?.[0] || null)}
-                  className="h-9 text-xs"
+                  className="h-9 text-xs cursor-pointer"
                 />
               </div>
             ))}
