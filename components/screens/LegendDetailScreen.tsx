@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { ArrowLeft, Play, Pause, Heart, Star, Share2, MapPin, Calendar, Volume2, Lock, History, Wifi, WifiOff, Navigation2, Trophy, AlertCircle } from "lucide-react";
+import { ArrowLeft, Play, Pause, Heart, Star, Share2, MapPin, Calendar, Volume2, Lock, History, Wifi, WifiOff, Navigation2, Trophy, AlertCircle, BookOpen } from "lucide-react";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import ImageSlider from "../ui/ImageSlider";
 import HlsVideoPlayer from "../ui/HlsVideoPlayer";
@@ -170,7 +170,12 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
     ? safeLegend.pois.map((p: any) => getLocalizedContent(p, 'description', locale) || getLocalizedContent(p, 'textContent', locale)).filter(Boolean).join('\n\n')
     : '';
 
-  const effectiveDescription = safeLegend.description || safeLegend.textContent || poiDescriptions || "";
+  const localizedDesc = getLocalizedContent(safeLegend, 'description', locale);
+  const localizedTextContent = getLocalizedContent(safeLegend, 'textContent', locale);
+
+  const effectiveDescription = localizedDesc || safeLegend.description || (isRouteContainer ? poiDescriptions : "");
+  const effectiveTextContent = localizedTextContent || safeLegend.textContent || safeLegend.text_content || "";
+  const showTextContent = !!effectiveTextContent && effectiveTextContent.trim() !== effectiveDescription.trim();
 
   // A POI is unlocked if it's a route container, OR it was already visited, OR user is admin, OR user is close enough
   const isUnlocked = isRouteContainer || isAlreadyVisited || isMasterAdmin || (distanceMeters !== null && distanceMeters <= UNLOCK_DISTANCE);
@@ -387,6 +392,19 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                     <div className="mt-4 p-2 rounded-lg bg-red-50 border border-red-100 flex items-center gap-2 text-[10px] text-red-500 font-bold uppercase tracking-wider">
                       <AlertCircle className="w-3 h-3" />
                       {t('noAudio')}
+                    </div>
+                  )}
+
+                  {/* Text Històric / Curiositats - Renderejat immediatament sota l'audioguia */}
+                  {isUnlocked && showTextContent && (
+                    <div className="mt-8 pt-6 border-t border-stone-200/80">
+                      <div className="flex items-center gap-2 text-primary font-serif font-bold text-sm mb-3 uppercase tracking-wider">
+                        <BookOpen className="w-4 h-4 text-primary" />
+                        <span>{tCommon('history') || 'Text Històric i Curiositats'}</span>
+                      </div>
+                      <p className="text-foreground/90 font-serif leading-relaxed text-base whitespace-pre-line">
+                        {effectiveTextContent}
+                      </p>
                     </div>
                   )}
                 </motion.div>
