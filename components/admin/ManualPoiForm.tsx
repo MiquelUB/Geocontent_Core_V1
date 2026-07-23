@@ -49,30 +49,44 @@ interface VideoSlot {
 const MAX_VIDEO_SLOTS = 3;
 const MAX_VIDEO_SIZE_MB = 200;
 
+const getInitialTranslations = (translations: any, baseValue: string = '') => {
+  let res: Record<string, string> = { ca: baseValue || '', es: '', en: '', fr: '' };
+  if (translations) {
+    let parsed = translations;
+    if (typeof parsed === 'string') {
+      try { parsed = JSON.parse(parsed); } catch (e) {}
+    }
+    if (parsed && typeof parsed === 'object') {
+      res = { ...res, ...parsed };
+    }
+  }
+  if (!res.ca && baseValue) {
+    res.ca = baseValue;
+  }
+  return res;
+};
+
 export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes = [], defaultRouteId, municipalityTheme }: ManualPoiFormProps) {
   const activeTheme = getAdminTheme(municipalityTheme);
   
   // States for multi-language fields
-  const [titles, setTitles] = useState<Record<string, string>>(() => {
-    if (poi?.titleTranslations && Object.keys(poi.titleTranslations).length > 0) return poi.titleTranslations;
-    return { ca: poi?.title || '', es: '', en: '', fr: '' };
-  });
+  const [titles, setTitles] = useState<Record<string, string>>(() =>
+    getInitialTranslations(poi?.titleTranslations, poi?.title)
+  );
   
-  const [descriptions, setDescriptions] = useState<Record<string, string>>(() => {
-    if (poi?.descriptionTranslations && Object.keys(poi.descriptionTranslations).length > 0) return poi.descriptionTranslations;
-    return { ca: poi?.description || '', es: '', en: '', fr: '' };
-  });
+  const [descriptions, setDescriptions] = useState<Record<string, string>>(() =>
+    getInitialTranslations(poi?.descriptionTranslations, poi?.description)
+  );
 
-  const [textContents, setTextContents] = useState<Record<string, string>>(() => {
-    if (poi?.textContentTranslations && Object.keys(poi.textContentTranslations).length > 0) return poi.textContentTranslations;
-    return { ca: poi?.textContent || '', es: '', en: '', fr: '' };
-  });
+  const [textContents, setTextContents] = useState<Record<string, string>>(() =>
+    getInitialTranslations(poi?.textContentTranslations, poi?.textContent)
+  );
 
   const [activeLocale, setActiveLocale] = useState('ca');
   
   const [routeId, setRouteId] = useState(poi?.routeId || defaultRouteId || '');
-  const [latitude, setLatitude] = useState(poi?.latitude?.toString() || '');
-  const [longitude, setLongitude] = useState(poi?.longitude?.toString() || '');
+  const [latitude, setLatitude] = useState(poi?.latitude !== undefined && poi?.latitude !== null ? poi.latitude.toString() : '');
+  const [longitude, setLongitude] = useState(poi?.longitude !== undefined && poi?.longitude !== null ? poi.longitude.toString() : '');
   const [icon, setIcon] = useState(poi?.icon || '');
   const [poiType, setPoiType] = useState(poi?.type || 'CIVIL');
   const [manualQuiz, setManualQuiz] = useState<any>(poi?.manualQuiz || null);
@@ -86,7 +100,6 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
   const [carouselImages, setCarouselImages] = useState<string[]>(() => {
     if (poi?.carouselImages && poi.carouselImages.length > 0) return poi.carouselImages;
-    // Fallback per punts antics on les imatges anaven al camp "images"
     if (poi?.images && poi.images.length > 1) {
       return poi.images.slice(1);
     }
@@ -112,6 +125,38 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     return slots;
   };
   const [videoSlots, setVideoSlots] = useState<VideoSlot[]>(initVideoSlots);
+
+  // Sync form states whenever poi prop changes
+  useEffect(() => {
+    setTitles(getInitialTranslations(poi?.titleTranslations, poi?.title));
+    setDescriptions(getInitialTranslations(poi?.descriptionTranslations, poi?.description));
+    setTextContents(getInitialTranslations(poi?.textContentTranslations, poi?.textContent));
+    setRouteId(poi?.routeId || defaultRouteId || '');
+    setLatitude(poi?.latitude !== undefined && poi?.latitude !== null ? poi.latitude.toString() : '');
+    setLongitude(poi?.longitude !== undefined && poi?.longitude !== null ? poi.longitude.toString() : '');
+    setIcon(poi?.icon || '');
+    setPoiType(poi?.type || 'CIVIL');
+    setManualQuiz(poi?.manualQuiz || null);
+    setAppThumbnail(poi?.appThumbnail || '');
+    setHeader16x9(poi?.header16x9 || '');
+    setAudioUrl(poi?.audioUrl || '');
+    setAppThumbnailFile(null);
+    setHeaderFile(null);
+    setAudioFile(null);
+
+    const carImages = (poi?.carouselImages && poi.carouselImages.length > 0)
+      ? poi.carouselImages
+      : (poi?.images && poi.images.length > 1 ? poi.images.slice(1) : []);
+    setCarouselImages(carImages);
+    setCarouselFiles(new Array(carImages.length).fill(null));
+
+    const existingUrls: string[] = poi?.videoUrls || (poi?.videoUrl ? [poi.videoUrl] : []);
+    setVideoSlots(existingUrls.slice(0, MAX_VIDEO_SLOTS).map((url: string) => ({
+      url,
+      file: null,
+      mode: 'url' as const,
+    })));
+  }, [poi, defaultRouteId]);
 
   const handleAddVideoSlot = () => {
     if (videoSlots.length < MAX_VIDEO_SLOTS) {

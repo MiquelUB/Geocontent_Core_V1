@@ -51,6 +51,7 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
       const route = await getRouteWithPois(routeId);
       const mappedPois = route?.routePois?.map(rp => ({
         ...rp.poi,
+        routeId: route.id,
         orderIndex: rp.orderIndex
       })) ?? [];
       setPois(mappedPois);
