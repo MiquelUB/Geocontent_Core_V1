@@ -451,6 +451,11 @@ export default function AdminDashboard({
                           </div>
                           <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-bold uppercase">Upload Recomanat</span>
                         </Label>
+                        {routeThumbnail && !routeThumbFile && (
+                          <div className="mb-1 w-16 h-16 rounded-md overflow-hidden border border-stone-200">
+                            <img src={routeThumbnail} alt="Portada 1x1" className="w-full h-full object-cover" />
+                          </div>
+                        )}
                         <Input
                           type="file"
                           accept="image/*"
@@ -475,6 +480,11 @@ export default function AdminDashboard({
                             Imatge de Capçalera (16:9)
                           </div>
                         </Label>
+                        {routeHeader && !routeHeaderFile && (
+                          <div className="mb-1 w-32 h-18 aspect-video rounded-md overflow-hidden border border-stone-200">
+                            <img src={routeHeader} alt="Capçalera 16:9" className="w-full h-full object-cover" />
+                          </div>
+                        )}
                         <Input
                           type="file"
                           accept="image/*"

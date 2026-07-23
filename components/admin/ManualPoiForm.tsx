@@ -49,19 +49,27 @@ interface VideoSlot {
 const MAX_VIDEO_SLOTS = 3;
 const MAX_VIDEO_SIZE_MB = 200;
 
-const getInitialTranslations = (translations: any, baseValue: string = '') => {
-  let res: Record<string, string> = { ca: baseValue || '', es: '', en: '', fr: '' };
+const getInitialTranslations = (translations: any, baseValue: string = '', secondaryBaseValue: string = '') => {
+  const effectiveBase = (baseValue && baseValue.trim() !== '') 
+    ? baseValue 
+    : ((secondaryBaseValue && secondaryBaseValue.trim() !== '') ? secondaryBaseValue : '');
+
+  let res: Record<string, string> = { ca: effectiveBase, es: '', en: '', fr: '' };
   if (translations) {
     let parsed = translations;
     if (typeof parsed === 'string') {
       try { parsed = JSON.parse(parsed); } catch (e) {}
     }
     if (parsed && typeof parsed === 'object') {
-      res = { ...res, ...parsed };
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v && typeof v === 'string' && v.trim() !== '') {
+          res[k] = v;
+        }
+      }
     }
   }
-  if (!res.ca && baseValue) {
-    res.ca = baseValue;
+  if ((!res.ca || res.ca.trim() === '') && effectiveBase) {
+    res.ca = effectiveBase;
   }
   return res;
 };
@@ -71,15 +79,23 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   
   // States for multi-language fields
   const [titles, setTitles] = useState<Record<string, string>>(() =>
-    getInitialTranslations(poi?.titleTranslations || poi?.title_translations, poi?.title)
+    getInitialTranslations(poi?.titleTranslations || poi?.title_translations, poi?.title || poi?.name)
   );
   
   const [descriptions, setDescriptions] = useState<Record<string, string>>(() =>
-    getInitialTranslations(poi?.descriptionTranslations || poi?.description_translations, poi?.description)
+    getInitialTranslations(
+      poi?.descriptionTranslations || poi?.description_translations, 
+      poi?.description, 
+      poi?.textContent || poi?.text_content
+    )
   );
 
   const [textContents, setTextContents] = useState<Record<string, string>>(() =>
-    getInitialTranslations(poi?.textContentTranslations || poi?.text_content_translations, poi?.textContent || poi?.text_content)
+    getInitialTranslations(
+      poi?.textContentTranslations || poi?.text_content_translations, 
+      poi?.textContent || poi?.text_content, 
+      poi?.description
+    )
   );
 
   const [activeLocale, setActiveLocale] = useState('ca');
@@ -107,13 +123,13 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [carouselImages, setCarouselImages] = useState<string[]>(() => {
     if (poi?.carouselImages && poi.carouselImages.length > 0) return poi.carouselImages;
     if (poi?.carousel_images && poi.carousel_images.length > 0) return poi.carousel_images;
-    if (poi?.images && poi.images.length > 1) {
-      return poi.images.slice(1);
+    if (poi?.images && poi.images.length > 0) {
+      return poi.images;
     }
     return [];
   });
   const [carouselFiles, setCarouselFiles] = useState<(File | null)[]>(() =>
-    new Array((poi?.carouselImages?.length || poi?.carousel_images?.length || (poi?.images?.length > 1 ? poi.images.length - 1 : 0))).fill(null)
+    new Array((poi?.carouselImages?.length || poi?.carousel_images?.length || (poi?.images?.length || 0))).fill(null)
   );
   const [newCarouselUrl, setNewCarouselUrl] = useState('');
   const [newCarouselFile, setNewCarouselFile] = useState<File | null>(null);
@@ -135,9 +151,9 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
   // Sync form states whenever poi prop changes
   useEffect(() => {
-    setTitles(getInitialTranslations(poi?.titleTranslations || poi?.title_translations, poi?.title));
-    setDescriptions(getInitialTranslations(poi?.descriptionTranslations || poi?.description_translations, poi?.description));
-    setTextContents(getInitialTranslations(poi?.textContentTranslations || poi?.text_content_translations, poi?.textContent || poi?.text_content));
+    setTitles(getInitialTranslations(poi?.titleTranslations || poi?.title_translations, poi?.title || poi?.name));
+    setDescriptions(getInitialTranslations(poi?.descriptionTranslations || poi?.description_translations, poi?.description, poi?.textContent || poi?.text_content));
+    setTextContents(getInitialTranslations(poi?.textContentTranslations || poi?.text_content_translations, poi?.textContent || poi?.text_content, poi?.description));
     setRouteId(poi?.routeId || poi?.route_id || defaultRouteId || '');
     setLatitude(poi?.latitude !== undefined && poi?.latitude !== null ? poi.latitude.toString() : '');
     setLongitude(poi?.longitude !== undefined && poi?.longitude !== null ? poi.longitude.toString() : '');
@@ -155,7 +171,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
       ? poi.carouselImages
       : ((poi?.carousel_images && poi.carousel_images.length > 0)
         ? poi.carousel_images
-        : (poi?.images && poi.images.length > 1 ? poi.images.slice(1) : []));
+        : (poi?.images && poi.images.length > 0 ? poi.images : []));
     setCarouselImages(carImages);
     setCarouselFiles(new Array(carImages.length).fill(null));
 
