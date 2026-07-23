@@ -619,7 +619,7 @@ export async function updatePoi(id: string, formData: FormData) {
         header16x9,
         carouselImages: finalCarouselImages,
         icon,
-        manualQuiz,
+        manualQuiz: manualQuiz ? (manualQuiz as any) : undefined,
         type: type ? (type as any) : (existingPoi.type || undefined)
       }
     });
