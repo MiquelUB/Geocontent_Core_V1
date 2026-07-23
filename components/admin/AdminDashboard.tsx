@@ -710,20 +710,6 @@ export default function AdminDashboard({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-purple-600 hover:text-purple-800 hover:bg-purple-50"
-                              disabled={translatingRouteId === legend.id}
-                              onClick={() => handleTranslateRouteDirect(legend.id)}
-                            >
-                              {translatingRouteId === legend.id ? (
-                                <Loader2 className="w-3 h-3 animate-spin mr-1 inline" />
-                              ) : (
-                                <Globe className="w-3 h-3 mr-1 inline" />
-                              )}
-                              Traduir IA
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
                               className="text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={() => handleDeleteRoute(legend.id)}
                             >

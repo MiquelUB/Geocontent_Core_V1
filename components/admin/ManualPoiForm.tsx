@@ -484,13 +484,13 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             ))}
           </Tabs>
 
-          {/* Botons d'IA per a Text i Àudio */}
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-stone-100">
+          {/* Botó d'IA per a Traducció de Text */}
+          <div className="pt-4 border-t border-stone-100">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="bg-stone-50 border-stone-200 text-stone-600 hover:bg-white hover:text-primary transition-all text-[11px] h-9"
+              className="w-full bg-stone-50 border-stone-200 text-stone-600 hover:bg-white hover:text-primary transition-all text-[11px] h-9"
               onClick={handleAutoTranslate}
               disabled={isTranslating || !titles.ca}
             >
@@ -499,24 +499,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               ) : (
                 <Sparkles className="w-3 h-3 mr-2 text-amber-500" />
               )}
-              {isTranslating ? 'Traduint...' : 'Auto-Tradueix'}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="bg-stone-50 border-stone-200 text-stone-600 hover:bg-white hover:text-primary transition-all text-[11px] h-9"
-              onClick={handleGenerateAudios}
-              disabled={isGeneratingAudio || !poi?.id}
-              title={!poi?.id ? "Guarda el punt primer per generar àudios" : ""}
-            >
-              {isGeneratingAudio ? (
-                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-              ) : (
-                <Music className="w-3 h-3 mr-2 text-indigo-500" />
-              )}
-              {isGeneratingAudio ? 'Generant...' : 'Audioguies IA'}
+              {isTranslating ? 'Traduint...' : 'Auto-Tradueix Continguts (IA)'}
             </Button>
           </div>
 
@@ -650,10 +633,28 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           </div>
 
           <div className="grid gap-2">
-            <Label className="flex items-center gap-2">
-              <Music className="w-4 h-4 text-stone-400" />
-              Àudio (MP3)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <Music className="w-4 h-4 text-stone-400" />
+                Àudio (MP3)
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="bg-indigo-50/70 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 transition-all text-[10px] h-7 px-2.5 flex items-center gap-1.5"
+                onClick={handleGenerateAudios}
+                disabled={isGeneratingAudio || !poi?.id}
+                title={!poi?.id ? "Guarda el punt primer per generar àudios" : "Genera les audioguies MP3 en tots els idiomes amb IA"}
+              >
+                {isGeneratingAudio ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Music className="w-3 h-3 text-indigo-500" />
+                )}
+                {isGeneratingAudio ? 'Generant...' : 'Audioguies IA'}
+              </Button>
+            </div>
             {audioUrl && !audioFile && (
               <div className="flex items-center gap-2 mb-1 p-2 bg-stone-50 rounded-lg border border-stone-200">
                 <audio src={audioUrl} controls className="h-8 w-full" />
