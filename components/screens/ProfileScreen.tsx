@@ -151,31 +151,37 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
                     </div>
 
                     {/* Stamps Grid Container */}
-                    <PassportGrid initialStamps={passportData} currentUser={currentUser} />
+                    <PassportGrid
+                        initialStamps={passportData}
+                        currentUser={currentUser}
+                        onStampUpdate={(updatedStamp: any) => {
+                            setPassportData(prev => prev.map(s => s.id === updatedStamp.id ? { ...s, ...updatedStamp } : s));
+                        }}
+                    />
 
                     {/* Helper tip */}
                     <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 bg-primary/5 rounded-xl py-2.5 px-3 border border-primary/10">
                         <span className="text-amber-500">💡</span>
-                        <span>Fes clic a un segell completat per valorar la ruta i escriure el teu comentari.</span>
+                        <span>Fes clic a un segell per valorar la ruta i escriure el teu comentari.</span>
                     </div>
                 </div>
 
                 {/* 📝 OPINIONS I COMENTARIS DELS USUARIS */}
                 <div className="px-4 mt-6">
                     <h3 className="font-serif text-2xl font-bold text-[#1e2b25] dark:text-white italic mb-3">Les Teves Opinions</h3>
-                    {passportData.filter((s: any) => s.isCompleted && (s.rating > 0 || s.comment)).length === 0 ? (
+                    {passportData.filter((s: any) => (s.rating > 0 || (s.comment && s.comment.trim().length > 0))).length === 0 ? (
                         <div className="bg-white dark:bg-white/5 rounded-2xl p-6 border border-primary/10 text-center">
                             <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                                 Encara no has afegit cap valoració o comentari.
                             </p>
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                                Completa rutes i fes clic sobre els seus segells daurats per opinar-hi!
+                                Fes clic sobre els teus segells per deixar la teva opinió i puntuació!
                             </p>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {passportData
-                                .filter((s: any) => s.isCompleted && (s.rating > 0 || s.comment))
+                                .filter((s: any) => (s.rating > 0 || (s.comment && s.comment.trim().length > 0)))
                                 .map((stamp: any) => (
                                     <div key={stamp.id} className="bg-white dark:bg-[#1e2a22] rounded-2xl p-4 border border-primary/10 shadow-[0_2px_8px_-2px_rgba(86,143,114,0.1)]">
                                         <div className="flex items-center justify-between mb-2">

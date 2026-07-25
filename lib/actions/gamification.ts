@@ -274,17 +274,36 @@ export async function completeFinalRouteQuizAction(routeId: string, _clientUserI
 /**
  * Permet a l'usuari valorar una ruta completada (afegir estrelles i comentari).
  */
-export async function rateRouteAction(userId: string, routeId: string, rating: number, comment: string) {
+export async function rateRouteAction(clientUserId: string, routeId: string, rating: number, comment: string) {
   try {
+    let userId = clientUserId;
+    try {
+      const sessionUserId = await requireAuth();
+      if (sessionUserId) userId = sessionUserId;
+    } catch {
+      // Fallback a clientUserId si no s'utilitza sessió de galetes
+    }
+
     if (!userId || !routeId) {
       return { success: false, error: "Dades incompletes." };
+    }
+
+    let finalRouteId = routeId;
+    const routeExists = await prisma.route.findUnique({ where: { id: routeId }, select: { id: true } });
+    if (!routeExists) {
+      const rp = await prisma.routePoi.findFirst({ where: { poiId: routeId }, select: { routeId: true } });
+      if (rp?.routeId) {
+        finalRouteId = rp.routeId;
+      } else {
+        return { success: false, error: "No s'ha trobat la ruta associada." };
+      }
     }
 
     const cleanRating = Math.min(Math.max(rating, 0), 5);
 
     const progress = await prisma.userRouteProgress.upsert({
       where: {
-        userId_routeId: { userId, routeId }
+        userId_routeId: { userId, routeId: finalRouteId }
       },
       update: {
         rating: cleanRating,
@@ -292,12 +311,13 @@ export async function rateRouteAction(userId: string, routeId: string, rating: n
       },
       create: {
         userId,
-        routeId,
+        routeId: finalRouteId,
         rating: cleanRating,
         comment: comment || "",
         completedAt: new Date()
       }
     });
+
     revalidatePath('/profile');
     return { success: true, progress };
   } catch (err: any) {
@@ -309,15 +329,30 @@ export async function rateRouteAction(userId: string, routeId: string, rating: n
 /**
  * Obté el progrés (incloent valoració i comentari) d'una ruta per a un usuari.
  */
-export async function getUserRouteProgressAction(userId: string, routeId: string) {
+export async function getUserRouteProgressAction(clientUserId: string, routeId: string) {
   try {
+    let userId = clientUserId;
+    try {
+      const sessionUserId = await requireAuth();
+      if (sessionUserId) userId = sessionUserId;
+    } catch {
+      // Fallback
+    }
+
     if (!userId || !routeId) {
       return { success: false, error: "Dades incompletes." };
     }
 
+    let finalRouteId = routeId;
+    const routeExists = await prisma.route.findUnique({ where: { id: routeId }, select: { id: true } });
+    if (!routeExists) {
+      const rp = await prisma.routePoi.findFirst({ where: { poiId: routeId }, select: { routeId: true } });
+      if (rp?.routeId) finalRouteId = rp.routeId;
+    }
+
     const progress = await prisma.userRouteProgress.findUnique({
       where: {
-        userId_routeId: { userId, routeId }
+        userId_routeId: { userId, routeId: finalRouteId }
       }
     });
 
@@ -336,7 +371,13 @@ export async function getUserRouteReviews(userId: string) {
     if (!userId) return [];
 
     const reviews = await prisma.userRouteProgress.findMany({
-      where: { userId },
+      where: {
+        userId,
+        OR: [
+          { rating: { gt: 0 } },
+          { comment: { not: "" } }
+        ]
+      },
       include: {
         route: {
           select: { name: true }

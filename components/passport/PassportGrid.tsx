@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 interface PassportGridProps {
   initialStamps?: any[];
   currentUser?: any;
+  onStampUpdate?: (stamp: any) => void;
 }
 
-export function PassportGrid({ initialStamps = [], currentUser }: PassportGridProps) {
+export function PassportGrid({ initialStamps = [], currentUser, onStampUpdate }: PassportGridProps) {
   const [stamps, setStamps] = useState<any[]>(initialStamps);
   const [selectedStamp, setSelectedStamp] = useState<any | null>(null);
   const [rating, setRating] = useState<number>(0);
@@ -27,13 +28,9 @@ export function PassportGrid({ initialStamps = [], currentUser }: PassportGridPr
   }, [initialStamps]);
 
   const handleStampClick = (stamp: any) => {
-    if (stamp.isCompleted) {
-      setSelectedStamp(stamp);
-      setRating(stamp.rating || 0);
-      setComment(stamp.comment || "");
-    } else {
-      console.log('[Passport] Stamp clicked — incomplete route:', stamp.name);
-    }
+    setSelectedStamp(stamp);
+    setRating(stamp.rating || 0);
+    setComment(stamp.comment || "");
   };
 
   const handleSubmitFeedback = async () => {
@@ -47,8 +44,9 @@ export function PassportGrid({ initialStamps = [], currentUser }: PassportGridPr
       const res = await rateRouteAction(currentUser.id, selectedStamp.id, rating, comment);
       if (res.success) {
         toast.success("Moltes gràcies pel teu comentari!");
-        // Actualitzar localment els segells
-        setStamps(prev => prev.map(s => s.id === selectedStamp.id ? { ...s, rating, comment } : s));
+        const updated = { ...selectedStamp, rating, comment, isCompleted: true };
+        setStamps(prev => prev.map(s => s.id === selectedStamp.id ? updated : s));
+        if (onStampUpdate) onStampUpdate(updated);
         setSelectedStamp(null);
       } else {
         toast.error(res.error || "No s'ha pogut guardar la teva opinió.");
