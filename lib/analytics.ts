@@ -133,6 +133,38 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     const quizDetails = Object.values(quizBreakdown).sort((a, b) => b.total - a.total);
 
+    // 3.5. Route Ratings & Reviews Statistics
+    const allRouteProgressWithReviews = await prisma.userRouteProgress.findMany({
+        where: {
+            route: { municipalityId },
+            createdAt: { gte: startDate, lte: endDate },
+            OR: [
+                { rating: { gt: 0 } },
+                { comment: { not: "" } }
+            ]
+        },
+        include: {
+            route: { select: { id: true, name: true } },
+            user: { select: { username: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    const ratedProgress = allRouteProgressWithReviews.filter(r => (r.rating || 0) > 0);
+    const totalReviewsCount = allRouteProgressWithReviews.length;
+    const avgRatingNumber = ratedProgress.length > 0
+        ? Math.round((ratedProgress.reduce((sum, r) => sum + (r.rating || 0), 0) / ratedProgress.length) * 10) / 10
+        : 0;
+
+    const reviewsDetails = allRouteProgressWithReviews.map(r => ({
+        id: r.id,
+        routeName: r.route?.name || 'Ruta',
+        username: r.user?.username || 'Anònim',
+        rating: r.rating || 0,
+        comment: r.comment || '',
+        createdAt: r.createdAt.toISOString()
+    }));
+
     // 4. Daily Traffic (for the chart) - Real grouping by day
     const allPeriodUnlocks = await prisma.userUnlock.findMany({
         where: {
@@ -163,9 +195,12 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         value: userSet.size
     }));
 
-    const generateInsights = (users: number, completes: number, quizRate: number, abandonment: number): string => {
+    const generateInsights = (users: number, completes: number, quizRate: number, abandonment: number, avgRating: number, reviewCount: number): string => {
         if (users === 0) return "S'espera aplegar dades del primer visitant per generar conclusions.";
         let insight = `S'han registrat ${users} visitants interactuant en aquest període. `;
+        if (reviewCount > 0 && avgRating > 0) {
+            insight += `La satisfacció mitjana dels visitants és de ${avgRating}/5 estrelles (basat en ${reviewCount} valoracions). `;
+        }
         if (abandonment > 40) insight += `L'abandonament és elevat (${abandonment}%). `;
         if (quizRate > 80) insight += `L'èxit als reptes és excel·lent (${quizRate}%).`;
         return insight;
@@ -185,11 +220,16 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
                 total: totalUnlocks,
                 details: quizDetails
             },
-            abandonmentRate: { value: abandonmentRate }
+            abandonmentRate: { value: abandonmentRate },
+            ratingStats: {
+                average: avgRatingNumber,
+                totalCount: totalReviewsCount,
+                details: reviewsDetails
+            }
         },
         routeCompletions: Object.values(completionsPerRoute),
         weeklyTraffic: weeklyTrafficData,
-        aiInsights: generateInsights(activeUserCount, totalCompleted, quizSuccessRate, abandonmentRate)
+        aiInsights: generateInsights(activeUserCount, totalCompleted, quizSuccessRate, abandonmentRate, avgRatingNumber, totalReviewsCount)
     };
 }
 

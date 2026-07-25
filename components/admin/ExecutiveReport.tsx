@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatsCard } from "@/components/ui/StatsCard";
-import { Users, Clock, Map as MapIcon, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
+import { Users, Clock, Map as MapIcon, TrendingUp, TrendingDown, Sparkles, Star, MessageSquare } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area } from 'recharts';
 import MapLibreMap from "@/components/map/MapLibreMap";
+import { Marker } from 'react-map-gl/maplibre';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Calendar, Download, RefreshCw, FileCheck, AlertCircle, Info } from "lucide-react";
@@ -157,11 +158,13 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
         users: { value: 0, active: 0, change: 0 },
         abandonmentRate: { value: 0 },
         routesCompleted: { value: 0 },
-        quizStats: { value: 0, solved: 0, total: 0, details: [] }
+        quizStats: { value: 0, solved: 0, total: 0, details: [] },
+        ratingStats: { average: 0, totalCount: 0, details: [] }
     };
     const routeCompletions = data.routeCompletions || [];
     const aiInsights = data.aiInsights || "No hi ha conclusions disponibles.";
     const heatmap = data.heatmap || [];
+    const municipalityPois = data.pois || [];
 
     const getChangeBadge = (change: number) => {
         if (change === 0) return null;
@@ -251,7 +254,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                 variants={{
                     visible: { transition: { staggerChildren: 0.1 } }
                 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+                className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4"
             >
                 <motion.div variants={{ hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1 } }}>
                     <StatsCard
@@ -260,13 +263,77 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                             <span className="text-2xl font-bold">{metrics.users.value}</span>
                             <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline" className="text-[10px] font-normal border-stone-200">
-                                    {metrics.users.active} actius al període
+                                    {metrics.users.active} actius
                                 </Badge>
                                 {getChangeBadge(metrics.users.change)}
                             </div>
                         </>}
                         icon={<Users className={`w-6 h-6 ${activeTheme.mainText}`} />}
                     />
+                </motion.div>
+
+                {/* KPI 2: Valoració i Reseñes de Visitants */}
+                <motion.div variants={{ hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1 } }}>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <div className="cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                                <StatsCard
+                                    title="Valoració Visitants"
+                                    description={<>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-2xl font-bold text-amber-600">{metrics.ratingStats?.average || 0}</span>
+                                            <Star className="w-5 h-5 fill-amber-500 text-amber-500 inline" />
+                                        </div>
+                                        <div className="mt-1 text-[10px] text-stone-500 font-bold flex items-center justify-between">
+                                            <span>{metrics.ratingStats?.totalCount || 0} valoracions</span>
+                                            <span className="text-primary font-bold">Veure opinions →</span>
+                                        </div>
+                                    </>}
+                                    icon={<Star className={`w-6 h-6 text-amber-500 fill-amber-500`} />}
+                                />
+                            </div>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[650px] bg-white border-stone-200">
+                            <DialogHeader>
+                                <DialogTitle className="font-serif text-2xl text-stone-800 flex items-center gap-2">
+                                    <Star className="w-6 h-6 text-amber-500 fill-amber-500" />
+                                    Opinions i Valoracions dels Usuaris
+                                </DialogTitle>
+                                <DialogDescription className="text-stone-500">
+                                    Puntuacions en estrelles i ressenyes escrites pels visitants a les rutes del municipi.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="max-h-[60vh] overflow-y-auto pr-2 mt-4 space-y-3">
+                                {metrics.ratingStats?.details?.map((item: any, i: number) => (
+                                    <div key={i} className="p-4 rounded-xl border border-amber-200/60 bg-amber-50/40 shadow-sm space-y-1.5">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-serif font-bold text-stone-800 text-sm">{item.routeName}</span>
+                                            <div className="flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-full text-amber-800 text-xs font-bold">
+                                                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                                                <span>{item.rating} / 5</span>
+                                            </div>
+                                        </div>
+                                        {item.comment ? (
+                                            <p className="text-xs text-stone-700 italic bg-white/80 p-2.5 rounded-lg border border-amber-100">
+                                                &ldquo;{item.comment}&rdquo;
+                                            </p>
+                                        ) : (
+                                            <p className="text-[11px] text-stone-400 italic">Sense comentari escrit</p>
+                                        )}
+                                        <div className="flex justify-between text-[10px] text-stone-400 font-medium">
+                                            <span>Usuari: {item.username}</span>
+                                            <span>{new Date(item.createdAt).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!metrics.ratingStats?.details || metrics.ratingStats.details.length === 0) && (
+                                    <div className="py-12 text-center text-stone-400 italic border border-dashed border-stone-200 rounded-xl">
+                                        Encara no hi ha valoracions registrades en aquest període.
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </motion.div>
 
                 <motion.div variants={{ hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1 } }}>
@@ -489,12 +556,24 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                     </CardHeader>
                     <CardContent className="h-[400px] p-0 overflow-hidden rounded-b-xl relative border-t border-stone-100">
                         <MapLibreMap
+                            key={data.mapCenter ? `${data.mapCenter[0]}-${data.mapCenter[1]}` : 'map'}
                             className="w-full h-full"
                             heatmapData={heatmap || []}
                             center={data.mapCenter || [1.5209, 41.5912]}
-                            zoom={15}
+                            zoom={13}
                             showUserLocation={false}
-                        />
+                        >
+                            {municipalityPois.map((poi: any) => (
+                                <Marker key={poi.id} longitude={poi.longitude} latitude={poi.latitude} anchor="center">
+                                    <div className="group relative flex items-center justify-center cursor-pointer">
+                                        <div className="w-3.5 h-3.5 bg-amber-500 border-2 border-white rounded-full shadow-lg group-hover:scale-125 transition-transform" />
+                                        <div className="absolute bottom-5 bg-stone-900/90 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20">
+                                            {poi.title}
+                                        </div>
+                                    </div>
+                                </Marker>
+                            ))}
+                        </MapLibreMap>
                         <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-stone-200/50 max-w-xs animate-in slide-in-from-left-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <Info className="w-4 h-4 text-primary" />

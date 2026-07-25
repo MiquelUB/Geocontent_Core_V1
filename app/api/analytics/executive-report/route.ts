@@ -53,67 +53,94 @@ export async function GET(req: Request) {
       throw new Error(`Error processant analítiques base: ${err.message}`);
     }
 
-    // 4. Heatmap Data (Telemetry) - Extracció mitjançant PostGIS
-    let telemetry: any[] = [];
+    // 4. Heatmap Data & Real-Time User Condensation
+    let heatmapPoints: any[] = [];
     try {
-      telemetry = await prisma.$queryRaw<any[]>`
+      // a) Punts GPS de la taula user_telemetry
+      const telemetry = await prisma.$queryRaw<any[]>`
         SELECT 
           ST_X(location::geometry) as longitude, 
           ST_Y(location::geometry) as latitude, 
           timestamp
         FROM user_telemetry
         WHERE timestamp >= ${startDate} AND timestamp <= ${endDate}
-        AND user_id IN (
-            SELECT user_id FROM user_unlocks uu
-            JOIN route_pois rp ON uu.poi_id = rp.poi_id
-            JOIN routes r ON rp.route_id = r.id
-            WHERE r.municipality_id = ${municipalityId}::uuid
-        )
         LIMIT 2000
       `;
+
+      // b) Punts de desbloqueig de POIs en temps real pels usuaris al període
+      const unlocks = await prisma.userUnlock.findMany({
+        where: {
+          poi: { routePois: { some: { route: { municipalityId } } } },
+          unlockedAt: { gte: startDate, lte: endDate }
+        },
+        select: {
+          unlockedAt: true,
+          poi: { select: { id: true, title: true, latitude: true, longitude: true } }
+        }
+      });
+
+      const unlockPoints = unlocks
+        .filter(u => u.poi?.latitude && u.poi?.longitude)
+        .map(u => ({
+          latitude: u.poi.latitude!,
+          longitude: u.poi.longitude!,
+          timestamp: u.unlockedAt.toISOString(),
+          weight: 2 // Major pes visual per activitats directes
+        }));
+
+      const telemetryPoints = telemetry
+        .filter(t => t.latitude && t.longitude)
+        .map(t => ({
+          latitude: Number(t.latitude),
+          longitude: Number(t.longitude),
+          timestamp: t.timestamp,
+          weight: 1
+        }));
+
+      heatmapPoints = [...telemetryPoints, ...unlockPoints];
     } catch (err: any) {
-      console.error("Error fetching telemetry heatmap:", err);
-      // No fem fallar tota la request si només falla el heatmap
-      telemetry = [];
+      console.error("Error fetching heatmap points:", err);
+      heatmapPoints = [];
     }
 
-    // 5. Calculate Center from POIs using PostGIS
+    // 5. Calculate Municipality Map Center & POIs List
     let municipalityPois: any[] = [];
     try {
-      municipalityPois = await prisma.$queryRaw<any[]>`
-        SELECT 
-          ST_X(location::geometry) as longitude, 
-          ST_Y(location::geometry) as latitude
-        FROM pois
-        WHERE id IN (
-          SELECT poi_id FROM route_pois rp
-          JOIN routes r ON rp.route_id = r.id
-          WHERE r.municipality_id = ${municipalityId}::uuid
-        )
-        LIMIT 50
-      `;
+      const poisRaw = await prisma.poi.findMany({
+        where: {
+          routePois: {
+            some: { route: { municipalityId } }
+          }
+        },
+        select: {
+          id: true,
+          title: true,
+          latitude: true,
+          longitude: true
+        }
+      });
+
+      municipalityPois = poisRaw.filter(p => typeof p.latitude === 'number' && typeof p.longitude === 'number' && (p.latitude !== 0 || p.longitude !== 0));
     } catch (err: any) {
       console.error("Error fetching municipality POIs for center calculation:", err);
       municipalityPois = [];
     }
 
-    let mapCenter = [1.13404, 42.44391]; // Default to Rialp center [Lng, Lat]
+    let mapCenter: [number, number] = [1.5209, 41.5912]; // Default fallback
 
     if (municipalityPois.length > 0) {
-      const validPois = municipalityPois.filter(p => p.latitude && p.longitude);
-      if (validPois.length > 0) {
-        const avgLat = validPois.reduce((s, p) => s + (p.latitude as number), 0) / validPois.length;
-        const avgLng = validPois.reduce((s, p) => s + (p.longitude as number), 0) / validPois.length;
-        mapCenter = [avgLng, avgLat];
-      }
+      const avgLat = municipalityPois.reduce((s, p) => s + p.latitude!, 0) / municipalityPois.length;
+      const avgLng = municipalityPois.reduce((s, p) => s + p.longitude!, 0) / municipalityPois.length;
+      mapCenter = [avgLng, avgLat];
     }
 
     return NextResponse.json({
       success: true,
       data: {
         ...analytics,
-        heatmap: telemetry,
-        mapCenter
+        heatmap: heatmapPoints,
+        mapCenter,
+        pois: municipalityPois
       }
     });
 
