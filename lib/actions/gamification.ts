@@ -298,6 +298,35 @@ export async function rateRouteAction(userId: string, routeId: string, rating: n
         completedAt: new Date()
       }
     });
+    revalidatePath('/profile');
+    return { success: true, progress };
+  } catch (err: any) {
+    console.error('[rateRouteAction error]', err);
+    return { success: false, error: "Error desant la valoració." };
+  }
+}
+
+/**
+ * Obté el progrés (incloent valoració i comentari) d'una ruta per a un usuari.
+ */
+export async function getUserRouteProgressAction(userId: string, routeId: string) {
+  try {
+    if (!userId || !routeId) {
+      return { success: false, error: "Dades incompletes." };
+    }
+
+    const progress = await prisma.userRouteProgress.findUnique({
+      where: {
+        userId_routeId: { userId, routeId }
+      }
+    });
+
+    return { success: true, progress };
+  } catch (err: any) {
+    console.error('[getUserRouteProgressAction error]', err);
+    return { success: false, error: "Error en carregar el progrés." };
+  }
+}
 
 /**
  * Obté les valoracions i comentaris escrits de les rutes per a un usuari concret.
