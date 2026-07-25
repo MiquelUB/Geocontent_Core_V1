@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getUserVisits } from "@/lib/actions/gamification";
-import { Download as DownloadIcon } from "lucide-react";
+import { getUserVisits, getUserRouteReviews } from "@/lib/actions/gamification";
+import { Download as DownloadIcon, Star, MapPin, MessageSquare } from "lucide-react";
 
 interface UserProfile {
   id: string;
   username: string | null;
-  email: string | null; // Note: email might be in User model, not Profile. Need to handle this.
+  email: string | null;
   role: string;
   level: number;
   created_at: string;
@@ -25,6 +25,14 @@ interface Visit {
   rating: number | null;
 }
 
+interface RouteReview {
+  id: string;
+  routeName: string;
+  rating: number;
+  comment: string;
+  completedAt: string;
+}
+
 export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }) {
   const activeTheme = theme || {
     hex: "#2D4636",
@@ -36,22 +44,28 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
   };
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
-  const [isLoadingVisits, setIsLoadingVisits] = useState(false);
+  const [reviews, setReviews] = useState<RouteReview[]>([]);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleUserClick = async (user: any) => {
     setSelectedUser(user);
     setIsDialogOpen(true);
-    setIsLoadingVisits(true);
+    setIsLoadingDetails(true);
     setVisits([]);
+    setReviews([]);
 
     try {
-      const data = await getUserVisits(user.id);
-      setVisits(data);
+      const [visitsData, reviewsData] = await Promise.all([
+        getUserVisits(user.id),
+        getUserRouteReviews(user.id)
+      ]);
+      setVisits(visitsData);
+      setReviews(reviewsData);
     } catch (e) {
-      console.error("Exception fetching visits:", e);
+      console.error("Exception fetching user details:", e);
     } finally {
-      setIsLoadingVisits(false);
+      setIsLoadingDetails(false);
     }
   };
 
@@ -143,46 +157,94 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
       </CardContent>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] bg-white border-stone-200">
+        <DialogContent className="sm:max-w-[650px] bg-white border-stone-200">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-stone-800">
-              Activitat de {selectedUser?.username || 'Usuari'}
+              Detalls de {selectedUser?.username || 'Usuari'}
             </DialogTitle>
             <DialogDescription className="text-stone-500">
-              Historial de visites als Punts d'Interès.
+              Valoracions, comentaris de rutes i historial de visites.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[60vh] overflow-y-auto pr-2">
-            {isLoadingVisits ? (
-              <div className="py-8 text-center text-stone-400">Carregant historial...</div>
-            ) : visits.length > 0 ? (
-              <div className="space-y-4">
-                {visits.map((visit) => (
-                  <div key={visit.id} className="flex items-start justify-between p-4 rounded-lg bg-stone-50 border border-stone-100">
-                    <div>
-                      <h4 className="font-medium text-stone-800">{visit.poi?.title || 'POI Desconegut'}</h4>
-                      <p className="text-xs text-stone-500 mt-1">
-                        {new Date(visit.entryTime).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${visit.rating === 5 ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-stone-600'}`}>
-                        {visit.rating === 5 ? 'Quiz Superat ✓' : 'Desbloquejat'}
-                      </div>
-                      {visit.durationSeconds && (
-                        <div className={`text-xs ${activeTheme.mainText}`}>
-                          ⏱ {Math.floor(visit.durationSeconds / 60)} min
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="max-h-[65vh] overflow-y-auto pr-2 space-y-6">
+            {isLoadingDetails ? (
+              <div className="py-8 text-center text-stone-400">Carregant detalls d'activitat...</div>
             ) : (
-              <div className="py-8 text-center text-stone-400 border-2 border-dashed border-stone-100 rounded-lg">
-                Aquest usuari encara no ha visitat cap ruta.
-              </div>
+              <>
+                {/* Secció 1: Valoracions i Comentaris de Rutes */}
+                <div>
+                  <h3 className="font-serif text-base font-bold text-stone-800 mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-amber-500" />
+                    Valoracions i Comentaris de Rutes
+                  </h3>
+                  {reviews.length > 0 ? (
+                    <div className="space-y-3">
+                      {reviews.map((rev) => (
+                        <div key={rev.id} className="p-3.5 rounded-xl bg-amber-50/40 border border-amber-200/50 shadow-sm">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-serif font-bold text-stone-800 text-sm">{rev.routeName}</h4>
+                            <div className="flex items-center gap-1 bg-amber-100/80 px-2 py-0.5 rounded-full text-amber-800 text-xs font-bold">
+                              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                              <span>{rev.rating} / 5</span>
+                            </div>
+                          </div>
+                          {rev.comment ? (
+                            <p className="text-xs text-stone-700 italic bg-white/80 p-2.5 rounded-lg border border-amber-100 mt-2">
+                              &ldquo;{rev.comment}&rdquo;
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-stone-400 italic mt-1">Sense comentari escrit</p>
+                          )}
+                          <p className="text-[10px] text-stone-400 text-right mt-1.5">
+                            {new Date(rev.completedAt).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-4 px-4 text-center text-xs text-stone-400 bg-stone-50 border border-dashed border-stone-200 rounded-lg">
+                      L'usuari encara no ha deixat cap valoració ni comentari de ruta.
+                    </div>
+                  )}
+                </div>
+
+                {/* Secció 2: Historial de Visites a POIs */}
+                <div>
+                  <h3 className="font-serif text-base font-bold text-stone-800 mb-3 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-stone-600" />
+                    Historial de Punts d'Interès (POIs)
+                  </h3>
+                  {visits.length > 0 ? (
+                    <div className="space-y-3">
+                      {visits.map((visit) => (
+                        <div key={visit.id} className="flex items-start justify-between p-3.5 rounded-lg bg-stone-50 border border-stone-100">
+                          <div>
+                            <h4 className="font-medium text-stone-800 text-sm">{visit.poi?.title || 'POI Desconegut'}</h4>
+                            <p className="text-xs text-stone-500 mt-0.5">
+                              {new Date(visit.entryTime).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-1">
+                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${visit.rating === 5 ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-stone-600'}`}>
+                              {visit.rating === 5 ? 'Quiz Superat ✓' : 'Desbloquejat'}
+                            </div>
+                            {visit.durationSeconds && (
+                              <div className={`text-xs ${activeTheme.mainText}`}>
+                                ⏱ {Math.floor(visit.durationSeconds / 60)} min
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-4 px-4 text-center text-xs text-stone-400 border border-dashed border-stone-200 rounded-lg">
+                      No hi ha visites a POIs registrades.
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </DialogContent>

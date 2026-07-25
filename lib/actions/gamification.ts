@@ -299,32 +299,33 @@ export async function rateRouteAction(userId: string, routeId: string, rating: n
       }
     });
 
-    revalidatePath('/profile');
-    return { success: true, progress };
-  } catch (err: any) {
-    console.error('[rateRouteAction error]', err);
-    return { success: false, error: "Error desant la valoració." };
-  }
-}
-
 /**
- * Obté el progrés (incloent valoració i comentari) d'una ruta per a un usuari.
+ * Obté les valoracions i comentaris escrits de les rutes per a un usuari concret.
  */
-export async function getUserRouteProgressAction(userId: string, routeId: string) {
+export async function getUserRouteReviews(userId: string) {
   try {
-    if (!userId || !routeId) {
-      return { success: false, error: "Dades incompletes." };
-    }
+    if (!userId) return [];
 
-    const progress = await prisma.userRouteProgress.findUnique({
-      where: {
-        userId_routeId: { userId, routeId }
-      }
+    const reviews = await prisma.userRouteProgress.findMany({
+      where: { userId },
+      include: {
+        route: {
+          select: { name: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
     });
 
-    return { success: true, progress };
-  } catch (err: any) {
-    console.error('[getUserRouteProgressAction error]', err);
-    return { success: false, error: "Error en carregar el progrés." };
+    return reviews.map(r => ({
+      id: r.id,
+      routeName: r.route?.name || 'Ruta',
+      rating: r.rating || 0,
+      comment: r.comment || '',
+      completedAt: r.completedAt ? r.completedAt.toISOString() : r.createdAt.toISOString()
+    }));
+  } catch (error) {
+    console.error('Error fetching user route reviews:', error);
+    return [];
   }
 }
+
