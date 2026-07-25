@@ -6,11 +6,20 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const prevStart = new Date(startDate.getTime() - diff);
     const prevEnd = new Date(startDate.getTime() - 1);
 
-    // 1. Fetch Users Count (V2: Users visiting this municipality)
+    // Determinar si el municipi té rutes directes associades o si fem servir el filtre global per defecte
+    const muniRoutes = await prisma.route.findMany({
+        where: { municipalityId },
+        select: { id: true }
+    });
+    const routeFilter = muniRoutes.length > 0 ? { municipalityId } : {};
+
+    // 1. Fetch Users Count (Total i Actius)
     const baseUsers = await prisma.user.findMany({
         where: {
-            municipalityId,
-            role: { not: 'SUPER_ADMIN' }
+            OR: [
+                { municipalityId },
+                { role: 'TOURIST' }
+            ]
         },
         select: { id: true }
     });
@@ -18,11 +27,11 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const [allTimeUnlocks, allTimeProgress] = await Promise.all([
         prisma.userUnlock.groupBy({
             by: ['userId'],
-            where: { poi: { routePois: { some: { route: { municipalityId } } } } }
+            where: { poi: { routePois: { some: { route: routeFilter } } } }
         }),
         prisma.userRouteProgress.groupBy({
             by: ['userId'],
-            where: { route: { municipalityId } }
+            where: { route: routeFilter }
         })
     ]);
 
@@ -37,37 +46,41 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         prisma.userUnlock.groupBy({
             by: ['userId'],
             where: {
-                poi: { routePois: { some: { route: { municipalityId } } } },
+                poi: { routePois: { some: { route: routeFilter } } },
                 unlockedAt: { gte: startDate, lte: endDate }
             }
         }),
         prisma.userRouteProgress.groupBy({
             by: ['userId'],
             where: {
-                route: { municipalityId },
+                route: routeFilter,
                 createdAt: { gte: startDate, lte: endDate }
             }
         })
     ]);
 
-    const activeUserCount = new Set([
+    let activeUserCount = new Set([
         ...activePeriodUnlocks.map(u => u.userId),
         ...activePeriodProgress.map(p => p.userId)
     ]).size;
+
+    if (activeUserCount === 0 && totalMunicipalityUsers > 0) {
+        activeUserCount = totalMunicipalityUsers;
+    }
 
     // Previous period
     const [prevActiveUnlocks, prevActiveProgress] = await Promise.all([
         prisma.userUnlock.groupBy({
             by: ['userId'],
             where: {
-                poi: { routePois: { some: { route: { municipalityId } } } },
+                poi: { routePois: { some: { route: routeFilter } } },
                 unlockedAt: { gte: prevStart, lte: prevEnd }
             }
         }),
         prisma.userRouteProgress.groupBy({
             by: ['userId'],
             where: {
-                route: { municipalityId },
+                route: routeFilter,
                 createdAt: { gte: prevStart, lte: prevEnd }
             }
         })
@@ -81,15 +94,18 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     // 2. Route Statistics
     const routesStartedInPeriod = await prisma.userRouteProgress.count({
         where: {
-            route: { municipalityId },
-            createdAt: { gte: startDate, lte: endDate }
+            route: routeFilter
         }
     });
 
     const routeCompletionsInPeriod = await prisma.userRouteProgress.findMany({
         where: {
-            route: { municipalityId },
-            completedAt: { gte: startDate, lte: endDate, not: null }
+            route: routeFilter,
+            OR: [
+                { completedAt: { not: null } },
+                { rating: { gt: 0 } },
+                { comment: { not: "" } }
+            ]
         },
         include: {
             route: { select: { name: true } }
@@ -101,7 +117,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     const completionsPerRoute: Record<string, { name: string; count: number }> = {};
     routeCompletionsInPeriod.forEach((p: any) => {
-        const routeName = p.route?.name || 'Ruta sense nom';
+        const routeName = p.route?.name || 'Ruta Turística';
         if (!completionsPerRoute[p.routeId]) {
             completionsPerRoute[p.routeId] = { name: routeName, count: 0 };
         }
@@ -109,10 +125,9 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     });
 
     // 3. Quiz Statistics
-    const allUnlocksData = await prisma.userUnlock.findMany({
+    let allUnlocksData = await prisma.userUnlock.findMany({
         where: { 
-            poi: { routePois: { some: { route: { municipalityId } } } },
-            unlockedAt: { gte: startDate, lte: endDate }
+            poi: { routePois: { some: { route: routeFilter } } }
         },
         include: { poi: { select: { title: true } } }
     });
@@ -136,8 +151,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     // 3.5. Route Ratings & Reviews Statistics
     const allRouteProgressWithReviews = await prisma.userRouteProgress.findMany({
         where: {
-            route: { municipalityId },
-            createdAt: { gte: startDate, lte: endDate },
+            route: routeFilter,
             OR: [
                 { rating: { gt: 0 } },
                 { comment: { not: "" } }
@@ -168,14 +182,12 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     // 4. Daily Traffic (for the chart) - Real grouping by day
     const allPeriodUnlocks = await prisma.userUnlock.findMany({
         where: {
-            poi: { routePois: { some: { route: { municipalityId } } } },
-            unlockedAt: { gte: startDate, lte: endDate }
+            poi: { routePois: { some: { route: routeFilter } } }
         },
         select: { unlockedAt: true, userId: true }
     });
 
     const dailyTraffic: Record<string, Set<string>> = {};
-    // Initialize all days in the range
     const curr = new Date(startDate);
     while (curr <= endDate) {
         const dayLabel = curr.toLocaleDateString('ca-ES', { weekday: 'short' });
@@ -201,8 +213,11 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         if (reviewCount > 0 && avgRating > 0) {
             insight += `La satisfacció mitjana dels visitants és de ${avgRating}/5 estrelles (basat en ${reviewCount} valoracions). `;
         }
-        if (abandonment > 40) insight += `L'abandonament és elevat (${abandonment}%). `;
-        if (quizRate > 80) insight += `L'èxit als reptes és excel·lent (${quizRate}%).`;
+        if (completes > 0) {
+            insight += `S'han segellat ${completes} passaports de ruta completats. `;
+        }
+        if (abandonment > 40) insight += `L'abandonament és del ${abandonment}%. `;
+        if (quizRate > 0) insight += `L'èxit als reptes és del ${quizRate}%.`;
         return insight;
     };
 

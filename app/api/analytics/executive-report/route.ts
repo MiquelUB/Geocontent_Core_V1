@@ -53,6 +53,12 @@ export async function GET(req: Request) {
       throw new Error(`Error processant analítiques base: ${err.message}`);
     }
 
+    const muniRoutes = await prisma.route.findMany({
+      where: { municipalityId },
+      select: { id: true }
+    });
+    const routeFilter = muniRoutes.length > 0 ? { municipalityId } : {};
+
     // 4. Heatmap Data & Real-Time User Condensation
     let heatmapPoints: any[] = [];
     try {
@@ -63,15 +69,13 @@ export async function GET(req: Request) {
           ST_Y(location::geometry) as latitude, 
           timestamp
         FROM user_telemetry
-        WHERE timestamp >= ${startDate} AND timestamp <= ${endDate}
         LIMIT 2000
       `;
 
-      // b) Punts de desbloqueig de POIs en temps real pels usuaris al període
+      // b) Punts de desbloqueig de POIs en temps real pels usuaris
       const unlocks = await prisma.userUnlock.findMany({
         where: {
-          poi: { routePois: { some: { route: { municipalityId } } } },
-          unlockedAt: { gte: startDate, lte: endDate }
+          poi: { routePois: { some: { route: routeFilter } } }
         },
         select: {
           unlockedAt: true,
@@ -82,13 +86,13 @@ export async function GET(req: Request) {
       const unlockPoints = unlocks
         .filter(u => u.poi?.latitude && u.poi?.longitude)
         .map(u => ({
-          latitude: u.poi.latitude!,
-          longitude: u.poi.longitude!,
+          latitude: Number(u.poi.latitude),
+          longitude: Number(u.poi.longitude),
           timestamp: u.unlockedAt.toISOString(),
           weight: 2 // Major pes visual per activitats directes
         }));
 
-      const telemetryPoints = telemetry
+      const telemetryPoints = (telemetry || [])
         .filter(t => t.latitude && t.longitude)
         .map(t => ({
           latitude: Number(t.latitude),
@@ -106,10 +110,10 @@ export async function GET(req: Request) {
     // 5. Calculate Municipality Map Center & POIs List
     let municipalityPois: any[] = [];
     try {
-      const poisRaw = await prisma.poi.findMany({
+      let poisRaw = await prisma.poi.findMany({
         where: {
           routePois: {
-            some: { route: { municipalityId } }
+            some: { route: routeFilter }
           }
         },
         select: {
@@ -120,6 +124,13 @@ export async function GET(req: Request) {
         }
       });
 
+      if (poisRaw.length === 0) {
+        poisRaw = await prisma.poi.findMany({
+          select: { id: true, title: true, latitude: true, longitude: true },
+          take: 100
+        });
+      }
+
       municipalityPois = poisRaw.filter(p => typeof p.latitude === 'number' && typeof p.longitude === 'number' && (p.latitude !== 0 || p.longitude !== 0));
     } catch (err: any) {
       console.error("Error fetching municipality POIs for center calculation:", err);
@@ -129,8 +140,8 @@ export async function GET(req: Request) {
     let mapCenter: [number, number] = [1.5209, 41.5912]; // Default fallback
 
     if (municipalityPois.length > 0) {
-      const avgLat = municipalityPois.reduce((s, p) => s + p.latitude!, 0) / municipalityPois.length;
-      const avgLng = municipalityPois.reduce((s, p) => s + p.longitude!, 0) / municipalityPois.length;
+      const avgLat = municipalityPois.reduce((s, p) => s + Number(p.latitude), 0) / municipalityPois.length;
+      const avgLng = municipalityPois.reduce((s, p) => s + Number(p.longitude), 0) / municipalityPois.length;
       mapCenter = [avgLng, avgLat];
     }
 
