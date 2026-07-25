@@ -44,7 +44,7 @@ export default function Header({ visitedCount = 0, unvisitedCount = 0, nearbyCou
             {brand?.logoUrl ? (
               <img src={brand.logoUrl} alt="Logo" className="w-full h-full object-contain" />
             ) : (
-              <img src="/logo_web.png" alt="Logo de defecte" className="w-full h-full object-contain p-1" />
+              <div className="w-full h-full bg-white/10 animate-pulse rounded-lg" />
             )}
           </div>
           

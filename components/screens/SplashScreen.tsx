@@ -55,9 +55,9 @@ export function SplashScreen({ onComplete, brand }: SplashScreenProps) {
               className="w-24 h-24 mx-auto mb-6 bg-background rounded-full flex items-center justify-center shadow-lg"
             >
               {brand?.logoUrl ? (
-                <img src={brand.logoUrl} alt="Logo" className="w-full h-full object-contain p-4" />
+                <img src={brand.logoUrl} alt={brand.name || "Logo"} className="w-full h-full object-contain p-4" />
               ) : (
-                <img src="/logo_web.png" alt="Logo default" className="w-full h-full object-contain p-4" />
+                <div className="w-full h-full bg-white/10 animate-pulse rounded-full" />
               )}
             </motion.div>
           </div>
