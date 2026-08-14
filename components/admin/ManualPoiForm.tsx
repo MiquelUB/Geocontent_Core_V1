@@ -655,10 +655,20 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                 {isGeneratingAudio ? 'Generant...' : 'Audioguies IA'}
               </Button>
             </div>
-            {audioUrl && !audioFile && (
-              <div className="flex items-center gap-2 mb-1 p-2 bg-stone-50 rounded-lg border border-stone-200">
-                <audio src={audioUrl} controls className="h-8 w-full" />
-              </div>
+            {poi?.audioTranslations && Object.keys(poi.audioTranslations).length > 0 ? (
+              Object.entries(poi.audioTranslations).map(([loc, url]) => (
+                <div key={loc} className="flex items-center gap-2 mb-1 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                  <span className="text-[10px] font-bold w-6 text-center uppercase text-stone-500">{loc}</span>
+                  <audio src={url as string} controls className="h-8 w-full" />
+                </div>
+              ))
+            ) : (
+              audioUrl && !audioFile && (
+                <div className="flex items-center gap-2 mb-1 p-2 bg-stone-50 rounded-lg border border-stone-200">
+                  <span className="text-[10px] font-bold w-6 text-center uppercase text-stone-500">CA</span>
+                  <audio src={audioUrl} controls className="h-8 w-full" />
+                </div>
+              )
             )}
             <Input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} />
           </div>

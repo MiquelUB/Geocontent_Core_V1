@@ -386,7 +386,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                       >
                         {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
                       </Button>
-                      <audio ref={audioRef} src={effectiveAudioUrl} onEnded={() => setIsPlaying(false)} />
+                      <audio key={effectiveAudioUrl} ref={audioRef} src={effectiveAudioUrl} onEnded={() => setIsPlaying(false)} />
                     </div>
                   ) : isUnlocked && !isRoute && (
                     <div className="mt-4 p-2 rounded-lg bg-red-50 border border-red-100 flex items-center gap-2 text-[10px] text-red-500 font-bold uppercase tracking-wider">
