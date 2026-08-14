@@ -19,6 +19,19 @@ export async function getRouteWithPois(routeId: string) {
   return _getRouteWithPois(routeId);
 }
 
+function mergeTranslations(existing: any, incoming: any): any {
+  if (!existing || typeof existing !== 'object') existing = {};
+  const result = { ...existing };
+  if (incoming && typeof incoming === 'object') {
+    for (const [key, value] of Object.entries(incoming)) {
+      if (typeof value === 'string' && value.trim() !== '') {
+        result[key] = value.trim();
+      }
+    }
+  }
+  return result;
+}
+
 
 
 // --- Validació de Dades (Zod) ---
@@ -302,8 +315,8 @@ export async function updateRoute(id: string, formData: FormData) {
     try {
       const nt = formData.get('name_translations') as string;
       const dt = formData.get('description_translations') as string;
-      if (nt) nameTranslations = { ...nameTranslations, ...JSON.parse(nt) };
-      if (dt) descTranslations = { ...descTranslations, ...JSON.parse(dt) };
+      if (nt) nameTranslations = mergeTranslations(nameTranslations, JSON.parse(nt));
+      if (dt) descTranslations = mergeTranslations(descTranslations, JSON.parse(dt));
     } catch (e) { }
 
     await prisma.route.update({
@@ -587,10 +600,10 @@ export async function updatePoi(id: string, formData: FormData) {
       const dt = formData.get('description_translations') as string;
       const tct = formData.get('text_content_translations') as string;
       const at = formData.get('audio_translations') as string;
-      if (tt) titleTranslations = { ...titleTranslations, ...JSON.parse(tt) };
-      if (dt) descriptionTranslations = { ...descriptionTranslations, ...JSON.parse(dt) };
-      if (tct) textContentTranslations = { ...textContentTranslations, ...JSON.parse(tct) };
-      if (at) audioTranslations = { ...audioTranslations, ...JSON.parse(at) };
+      if (tt) titleTranslations = mergeTranslations(titleTranslations, JSON.parse(tt));
+      if (dt) descriptionTranslations = mergeTranslations(descriptionTranslations, JSON.parse(dt));
+      if (tct) textContentTranslations = mergeTranslations(textContentTranslations, JSON.parse(tct));
+      if (at) audioTranslations = mergeTranslations(audioTranslations, JSON.parse(at));
     } catch (e) { }
 
     const type = formData.get('type') as string;
