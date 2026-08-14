@@ -22,6 +22,7 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
     const [isUploading, setIsUploading] = useState(false);
     const [totalScore, setTotalScore] = useState(currentUser?.xp || 0);
     const [solvedQuizzes, setSolvedQuizzes] = useState(0);
+    const [visitedCount, setVisitedCount] = useState(currentUser?.visitedCount || 0);
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -29,6 +30,7 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
             getUserScore(currentUser.id).then(res => {
                 setTotalScore(res.totalScore);
                 setSolvedQuizzes(res.solvedQuizzesCount);
+                setVisitedCount(res.visitedCount || 0);
             });
         }
     }, [currentUser?.id, currentUser?.xp]);
@@ -125,7 +127,7 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
                 <div className="px-4">
                     <div className="bg-white dark:bg-white/5 rounded-2xl p-6 shadow-[0_2px_8px_-2px_rgba(86,143,114,0.15)] border border-primary/10 flex justify-between divide-x divide-primary/10">
                         <div className="flex-1 flex flex-col items-center justify-center gap-1 px-2">
-                            <span className="font-serif text-3xl font-bold text-primary">{currentUser?.visitedCount || 0}</span>
+                            <span className="font-serif text-3xl font-bold text-primary">{visitedCount}</span>
                             <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">{t('visitedPlaces')}</span>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center gap-1 px-2">

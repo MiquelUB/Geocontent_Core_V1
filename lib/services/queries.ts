@@ -245,11 +245,12 @@ export async function getUserScore(userId: string) {
 
     return {
       totalScore,
-      solvedQuizzesCount
+      solvedQuizzesCount,
+      visitedCount: unlocks.length
     };
   } catch (err) {
     console.error('[getUserScore error]', err);
-    return { totalScore: 0, solvedQuizzesCount: 0 };
+    return { totalScore: 0, solvedQuizzesCount: 0, visitedCount: 0 };
   }
 }
 
