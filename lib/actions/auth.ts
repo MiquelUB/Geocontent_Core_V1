@@ -140,7 +140,8 @@ export async function verifyAdminPassword(municipalityId: string, password: stri
 
 export async function loginOrRegister(
   name: string,
-  email: string
+  email: string,
+  emailConsent: boolean = true
 ): Promise<{success: boolean, user?: any, error?: string}> {
   try {
     // 1. Rate limiting per IP (prevenir spam massiu)
@@ -175,16 +176,22 @@ export async function loginOrRegister(
     // 4. Upsert amb resposta uniforme (evitar enumeració d'usuaris)
     const user = await prisma.user.upsert({
       where: { email: emailParse.data },
-      update: { username: nameParse.data },
+      update: { 
+        username: nameParse.data,
+        emailConsent: emailConsent,
+        termsAcceptedAt: new Date()
+      },
       create: {
         email: emailParse.data,
         username: nameParse.data,
         role: 'TOURIST',
         xp: 0,
         level: 1,
-        municipalityId: defaultMunicipality?.id || null
+        municipalityId: defaultMunicipality?.id || null,
+        emailConsent: emailConsent,
+        termsAcceptedAt: new Date()
       },
-      select: { id: true, email: true, role: true, username: true, municipalityId: true } // NO retornar password_hash ni camps interns
+      select: { id: true, email: true, role: true, username: true, municipalityId: true, emailConsent: true } // NO retornar password_hash ni camps interns
     });
 
     return { success: true, user };

@@ -23,6 +23,8 @@ model User {
   createdAt      DateTime            @default(now()) @map("created_at")
   updatedAt      DateTime            @updatedAt @map("updated_at")
   municipalityId String?             @map("municipality_id") @db.Uuid
+  emailConsent    Boolean?            @default(true) @map("email_consent")
+  termsAcceptedAt DateTime?           @map("terms_accepted_at")
   accounts       Account[]
   sessions       Session[]
   routeProgress  UserRouteProgress[]
