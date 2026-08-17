@@ -95,6 +95,13 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
       return lines.join('\n');
     }
 
+    if (data.route?.name || data.route?.description) {
+      lines.push(`=== RUTA PROPOSADA ===`);
+      lines.push(`Nom de la ruta: ${data.route?.name || '—'}`);
+      lines.push(`Descripció general: ${data.route?.description || '—'}`);
+      lines.push('');
+    }
+
     lines.push(`=== TERRITORI ===`);
     lines.push(`Nom: ${data.territory?.name || '—'}`);
     lines.push(`Context: ${data.territory?.context || '—'}`);
@@ -289,13 +296,50 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
                 </>
               ) : (
                 <>
-                  <Badge className="mb-2 bg-stone-800 text-stone-100 hover:bg-stone-700">🔍 Dossier d'Investigació</Badge>
-                  <CardTitle className="font-serif text-2xl text-stone-900">{result.territory?.name || "Territori Analitzat"}</CardTitle>
-                  <p className="text-sm text-stone-600 mt-2 max-w-2xl border-l-2 border-stone-200 pl-4 py-1 italic">
-                    {result.territory?.context}
-                  </p>
+                  <Badge className="mb-2 bg-stone-800 text-stone-100 hover:bg-stone-700">🔍 Dossier d'Investigació & Ruta IA</Badge>
+                  
+                  {/* Nom Proposat per a la Ruta */}
+                  <div className="mt-2 mb-3">
+                    <label className="text-[10px] font-bold uppercase text-stone-500 block mb-1 flex items-center gap-1">
+                      🗺️ Nom Proposat per a la Ruta
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full font-serif text-xl font-bold text-stone-900 bg-white border border-stone-300 rounded px-3 py-1.5 focus:outline-none focus:border-stone-500 shadow-sm"
+                      value={result.route?.name || result.territory?.name || ''}
+                      onChange={(e) => {
+                        const newRoute = { ...(result.route || {}), name: e.target.value };
+                        setResult({ ...result, route: newRoute });
+                      }}
+                      placeholder="Nom comercial i atractiu de la ruta..."
+                    />
+                  </div>
+
+                  {/* Descripció General de la Ruta */}
+                  <div className="mb-3">
+                    <label className="text-[10px] font-bold uppercase text-stone-500 block mb-1 flex items-center gap-1">
+                      📖 Descripció General de la Ruta
+                    </label>
+                    <textarea
+                      className="w-full text-sm text-stone-700 bg-white border border-stone-300 rounded p-2.5 focus:outline-none focus:border-stone-500 italic shadow-sm"
+                      rows={3}
+                      value={result.route?.description || result.territory?.context || ''}
+                      onChange={(e) => {
+                        const newRoute = { ...(result.route || {}), description: e.target.value };
+                        setResult({ ...result, route: newRoute });
+                      }}
+                      placeholder="Descripció del fil conductor de la ruta, entorn i què descobrirà el visitant..."
+                    />
+                  </div>
+
+                  {result.territory?.name && result.territory.name !== result.route?.name && (
+                    <div className="text-[11px] text-stone-500 italic mb-2">
+                      📍 Territori/Municipi: <span className="font-semibold text-stone-700">{result.territory.name}</span>
+                    </div>
+                  )}
+
                   {result.territory?.suggested_themes && (
-                    <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {result.territory.suggested_themes.map((theme: string, i: number) => (
                         <span key={i} className={`text-[10px] font-bold uppercase tracking-wider ${activeTheme.text} ${activeTheme.bg} px-2 py-0.5 rounded border ${activeTheme.border}`}>
                           #{theme}

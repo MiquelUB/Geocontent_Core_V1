@@ -125,8 +125,12 @@ Cada POI ha de portar un camp confidence_level:
 
 5. INSTRUCCIONS DE REDACCIÓ PER CAMP
 
+5.0 route (NOM I DESCRIPCIÓ DE LA RUTA)
+- route.name: Nom comercial, atractiu i suggerent per a la ruta turística basat en el text (Ex: "Ruta pel Bressol de Sants d'Aitona" o "Sender del Patrimoni Romànic").
+- route.description: Descripció general de la ruta, explicant el seu fil conductor, l'entorn i què descobrirà el visitant (2-3 paràgrafs ben redactats).
+
 5.1 description (BREU, 50-150 caràcters)
-Descripció curta i atractiva que servirà de "preview" a l'app mòbil.
+Descripció curta i atractiva que servirà de "preview" a l'app mòbil per a cada POI.
 Ha de captar l'atenció del visitant en una línia. Exemple:
 "Castell medieval del s. XI amb vistes espectaculars sobre la vall."
 
@@ -172,8 +176,12 @@ Si el text NO té prou informació:
 Si el text SÍ té prou informació:
 
 {
+  "route": {
+    "name": "Nom comercial, atractiu i suggerent per a la ruta basada en el document",
+    "description": "Descripció general de la ruta, explicant el seu fil conductor, entorn i descobriment del visitant"
+  },
   "territory": {
-    "name": "Nom del territori o comarca",
+    "name": "Nom del territori, municipi o comarca",
     "context": "Resum del caràcter del territori (max 400 caràcters)",
     "suggested_themes": ["Temàtiques de ruta detectades"]
   },
