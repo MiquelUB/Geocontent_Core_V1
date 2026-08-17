@@ -4,6 +4,7 @@ import { withRLS } from "../database/prisma-rls";
 import { unstable_noStore as noStore } from 'next/cache';
 
 export async function getAppBranding() {
+  noStore();
   try {
     const m = await prisma.municipality.findFirst({
       orderBy: { createdAt: 'asc' },
@@ -16,7 +17,7 @@ export async function getAppBranding() {
     });
     return m;
   } catch (e) {
-    console.error(" [Error in getAppBranding]:", e);
+    // Graceful fallback during build-time static generation when DB is not reachable
     return null;
   }
 }

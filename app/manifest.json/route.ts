@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAppBranding } from '@/lib/actions/queries';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   let brand = null;
   try {
