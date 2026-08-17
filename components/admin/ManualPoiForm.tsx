@@ -138,6 +138,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [appThumbnailFile, setAppThumbnailFile] = useState<File | null>(null);
   const [headerFile, setHeaderFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioTranslations, setAudioTranslations] = useState<Record<string, string>>(poi?.audioTranslations || poi?.audio_translations || {});
 
   const initVideoSlots = (): VideoSlot[] => {
     const existingUrls: string[] = poi?.videoUrls || poi?.video_urls || (poi?.videoUrl ? [poi.videoUrl] : (poi?.video_url ? [poi.video_url] : []));
@@ -165,6 +166,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     setAppThumbnail(poi?.appThumbnail || poi?.app_thumbnail || poi?.image_url || poi?.thumbnail_1x1 || '');
     setHeader16x9(poi?.header16x9 || poi?.header_16x9 || poi?.hero_image_url || '');
     setAudioUrl(poi?.audioUrl || poi?.audio_url || poi?.audio || (poi?.audioTranslations?.ca || (poi?.audioTranslations && Object.values(poi.audioTranslations)[0])) || '');
+    setAudioTranslations(poi?.audioTranslations || poi?.audio_translations || {});
     setAppThumbnailFile(null);
     setHeaderFile(null);
     setAudioFile(null);
@@ -237,15 +239,47 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     }
   };
 
-  const handleGenerateAudios = async () => {
-    if (!poi?.id) {
-      alert("Primer has de guardar el punt per generar els àudios.");
-      return;
-    }
+  const handleGenerateVoiceScriptAudio = async () => {
     setIsGeneratingAudio(true);
     try {
-      const res = await generatePoiAudiosAction(poi.id);
-      if (res.success) {
+      const formTexts = {
+        ca: voiceScript || textContents.ca || descriptions.ca || titles.ca || '',
+        es: textContents.es || descriptions.es || titles.es || '',
+        en: textContents.en || descriptions.en || titles.en || '',
+        fr: textContents.fr || descriptions.fr || titles.fr || ''
+      };
+
+      const res = await generatePoiAudiosAction(poi?.id, formTexts);
+      if (res.success && res.data) {
+        setAudioTranslations(res.data);
+        const defaultUrl = res.data.ca || Object.values(res.data)[0] || '';
+        if (defaultUrl) setAudioUrl(defaultUrl);
+        alert("Audioguia generada correctament! Els fitxers s'han enviat a la caixa d'Àudio (MP3).");
+      } else {
+        alert("Error generant l'audioguia: " + (res.error || "Error desconegut"));
+      }
+    } catch (err: any) {
+      console.error("Audio Generation Error:", err);
+      alert("Error de connexió en la generació de l'audioguia");
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
+  const handleGenerateAudios = async () => {
+    setIsGeneratingAudio(true);
+    try {
+      const formTexts = {
+        ca: voiceScript || textContents.ca || descriptions.ca || titles.ca || '',
+        es: textContents.es || descriptions.es || titles.es || '',
+        en: textContents.en || descriptions.en || titles.en || '',
+        fr: textContents.fr || descriptions.fr || titles.fr || ''
+      };
+      const res = await generatePoiAudiosAction(poi?.id, formTexts);
+      if (res.success && res.data) {
+        setAudioTranslations(res.data);
+        const defaultUrl = res.data.ca || Object.values(res.data)[0] || '';
+        if (defaultUrl) setAudioUrl(defaultUrl);
         alert("Àudios generats correctament per a tots els idiomes!");
       } else {
         alert("Error generant àudios: " + res.error);
@@ -335,6 +369,9 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
         finalAudioUrl = await uploadFileClient(audioFile);
       }
       formData.append('audio_url', finalAudioUrl);
+      if (audioTranslations && Object.keys(audioTranslations).length > 0) {
+        formData.append('audio_translations', JSON.stringify(audioTranslations));
+      }
 
       // 4. Upload Carousel Images
       setUploadStatus("Pujant imatges del carrusel...");
@@ -507,11 +544,29 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           </div>
 
           <div className="grid gap-2 pt-4 border-t border-stone-100">
-            <Label htmlFor="voiceScript" className="flex items-center gap-2 font-bold text-stone-600">
-              🎙️ Guió de Veu (Audioguia IA)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="voiceScript" className="flex items-center gap-2 font-bold text-stone-600">
+                🎙️ Guió de Veu (Audioguia IA)
+              </Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 transition-all text-[11px] h-8 px-3 flex items-center gap-1.5"
+                onClick={handleGenerateVoiceScriptAudio}
+                disabled={isGeneratingAudio || (!voiceScript && !textContents.ca && !descriptions.ca)}
+                title="Genera l'àudio MP3 des d'aquest guió per a tots els idiomes i passa'l a la caixa d'àudio"
+              >
+                {isGeneratingAudio ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                )}
+                {isGeneratingAudio ? 'Generant àudios...' : 'Generar Audioguia (IA)'}
+              </Button>
+            </div>
             <p className="text-[10px] text-stone-400 italic">
-              Text expressiu que el motor de veu llegirà només per l'idioma base (Català). Pots incloure indicacions especials o pauses. Si és buit, s'usarà el Text Històric.
+              Text expressiu que el motor de veu llegirà per a l'idioma base (Català). En prémer "Generar Audioguia", l'arxiu passarà directament a la caixa d'Àudio (MP3) per a tots els idiomes.
             </p>
             <Textarea 
               id="voiceScript" 
@@ -663,8 +718,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                 size="sm"
                 className="bg-indigo-50/70 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 transition-all text-[10px] h-7 px-2.5 flex items-center gap-1.5"
                 onClick={handleGenerateAudios}
-                disabled={isGeneratingAudio || !poi?.id}
-                title={!poi?.id ? "Guarda el punt primer per generar àudios" : "Genera les audioguies MP3 en tots els idiomes amb IA"}
+                disabled={isGeneratingAudio || (!voiceScript && !textContents.ca && !descriptions.ca)}
+                title="Genera les audioguies MP3 en tots els idiomes amb IA"
               >
                 {isGeneratingAudio ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -674,8 +729,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                 {isGeneratingAudio ? 'Generant...' : 'Audioguies IA'}
               </Button>
             </div>
-            {poi?.audioTranslations && Object.keys(poi.audioTranslations).length > 0 ? (
-              Object.entries(poi.audioTranslations).map(([loc, url]) => (
+            {audioTranslations && Object.keys(audioTranslations).length > 0 ? (
+              Object.entries(audioTranslations).map(([loc, url]) => (
                 <div key={loc} className="flex items-center gap-2 mb-1 p-2 bg-stone-50 rounded-lg border border-stone-200">
                   <span className="text-[10px] font-bold w-6 text-center uppercase text-stone-500">{loc}</span>
                   <audio src={url as string} controls className="h-8 w-full" />

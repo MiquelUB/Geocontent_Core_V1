@@ -13,53 +13,55 @@ const OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/audio/speech";
  * Genera audioguies per a tots els idiomes suportats d'un POI específic.
  * Utilitza el model gpt-4o-mini-tts via OpenRouter.
  */
-export async function generatePoiAudiosAction(poiId: string) {
+export async function generatePoiAudiosAction(poiId?: string, formTexts?: Record<string, string>) {
   try {
     const session = await auth();
     if (!session) {
       return { success: false, error: 'Sessió requerida.' };
     }
 
-    const rl = await rateLimit(`audio:${poiId}`, 5, 60);
+    const idToUse = poiId || `temp-${Date.now()}`;
+    const rl = await rateLimit(`audio:${idToUse}`, 5, 60);
     if (!rl.success) {
       return { success: false, error: "Massa peticions de generació d'àudio. Espera un minut." };
     }
 
-    const poi = await prisma.poi.findUnique({ where: { id: poiId } });
-    if (!poi) return { success: false, error: "POI no trobat." };
+    let poi = poiId ? await prisma.poi.findUnique({ where: { id: poiId } }) : null;
 
     const locales = ['ca', 'es', 'en', 'fr'];
     const texts: Record<string, string> = {};
 
     for (const locale of locales) {
-      let text: string | undefined = '';
-      if (locale === 'ca' && poi.voiceScript) {
-        text = poi.voiceScript;
-      } else {
-        // Regla de contingut: Prioritzem textContent, si no description, si no el títol.
-        text = getLocalizedContent(poi, 'textContent', locale) || 
-               getLocalizedContent(poi, 'description', locale) || 
-               getLocalizedContent(poi, 'title', locale);
+      let text: string | undefined = formTexts?.[locale];
+      if (!text && poi) {
+        if (locale === 'ca' && poi.voiceScript) {
+          text = poi.voiceScript;
+        } else {
+          // Regla de contingut: Prioritzem textContent, si no description, si no el títol.
+          text = getLocalizedContent(poi, 'textContent', locale) || 
+                 getLocalizedContent(poi, 'description', locale) || 
+                 getLocalizedContent(poi, 'title', locale);
+        }
       }
       
-      if (text) {
-        texts[locale] = text;
+      if (text && text.trim()) {
+        texts[locale] = text.trim();
       } else {
-        console.warn(`[Audio] No text found for POI ${poiId} in locale ${locale}`);
+        console.warn(`[Audio] No text found for POI ${idToUse} in locale ${locale}`);
       }
     }
 
     if (Object.keys(texts).length === 0) {
-      return { success: false, error: "No hi ha text per generar àudios." };
+      return { success: false, error: "No hi ha text per generar àudios en cap idioma." };
     }
 
     const fastApiUrl = process.env.INTERNAL_API_URL || 'http://127.0.0.1:8000';
-    console.log(`[Audio] Cridant FastAPI (Múscul) per generar àudios sincrònicament pel POI ${poiId}...`);
+    console.log(`[Audio] Cridant FastAPI (Múscul) per generar àudios sincrònicament pel POI ${idToUse}...`);
 
     const response = await fetch(`${fastApiUrl}/audio/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ poi_id: poiId, texts })
+      body: JSON.stringify({ poi_id: idToUse, texts })
     });
 
     if (!response.ok) {
@@ -73,18 +75,22 @@ export async function generatePoiAudiosAction(poiId: string) {
       return { success: false, error: "Error intern en la generació d'àudio a FastAPI." };
     }
 
-    const currentTranslations = (poi.audioTranslations as any) || {};
+    const currentTranslations = poi ? ((poi.audioTranslations as any) || {}) : {};
     const newTranslations = { ...currentTranslations, ...result.urls };
-    const defaultAudioUrl = poi.audioUrl || newTranslations['ca'] || Object.values(newTranslations)[0] || '';
+    const defaultAudioUrl = (poi?.audioUrl) || newTranslations['ca'] || Object.values(newTranslations)[0] || '';
 
-    // Actualitzem la base de dades amb les noves URLs i el camp base audioUrl
-    await prisma.poi.update({
-      where: { id: poiId },
-      data: { 
-        audioTranslations: newTranslations,
-        ...(defaultAudioUrl ? { audioUrl: defaultAudioUrl } : {})
-      }
-    });
+    if (poiId && poi) {
+      // Actualitzem la base de dades si el POI ja existeix
+      await prisma.poi.update({
+        where: { id: poiId },
+        data: { 
+          audioTranslations: newTranslations,
+          ...(defaultAudioUrl ? { audioUrl: defaultAudioUrl } : {})
+        }
+      });
+    }
+
+    return { success: true, data: newTranslations };
 
     return { success: true, data: newTranslations };
   } catch (error: any) {
