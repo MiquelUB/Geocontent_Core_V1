@@ -118,17 +118,23 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
         lines.push(`--- ${poi.title} [${poi.id}] ---`);
         lines.push(`Nucli: ${poi.nucleus || '—'}`);
         lines.push(`Categoria: ${poi.category?.replace('_', ' ') || '—'}`);
+        lines.push(`Confiança: ${poi.confidence_level || '—'}`);
         lines.push(`Estat: ${poi.status || '—'}`);
         lines.push(`Període: ${poi.historical_period || 'No consta'}`);
         if (poi.altitude_m) lines.push(`Altitud: ${poi.altitude_m}m`);
         lines.push(`Coordenades: ${poi.coordinates_available ? 'Disponibles' : 'No disponibles'}`);
         lines.push(`Potencial visitant: ${poi.visitor_potential || '—'} — ${poi.visitor_potential_reason || ''}`);
         lines.push('');
-        lines.push(`Descripció:`);
+        lines.push(`📝 Descripció Breu:`);
         lines.push(poi.description || '—');
+        if (poi.text_content) {
+          lines.push('');
+          lines.push(`📖 Text Històric / Contingut:`);
+          lines.push(poi.text_content);
+        }
         if (poi.voice_script) {
           lines.push('');
-          lines.push(`Guió de Veu (IA):`);
+          lines.push(`🎙️ Guió Audioguia:`);
           lines.push(poi.voice_script);
         }
         if (poi.unique_facts?.length) {
@@ -367,21 +373,76 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
                         </div>
                       </div>
 
-                      <p className="text-sm text-stone-700 leading-relaxed mb-4">{poi.description}</p>
+                      {/* === 4 CAMPS DE TEXT EDITABLES === */}
                       
-                      <div className="mb-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
-                        <h6 className="text-[10px] font-bold uppercase text-indigo-600 mb-1 flex items-center gap-1">
-                          🎙️ Guió de Veu (IA)
+                      {/* 📌 Títol */}
+                      <div className="mb-3">
+                        <h6 className="text-[10px] font-bold uppercase text-stone-500 mb-1 flex items-center gap-1">
+                          📌 Títol
+                        </h6>
+                        <input
+                          type="text"
+                          className="w-full text-sm font-bold text-stone-900 bg-white border border-stone-200 rounded px-2 py-1.5 focus:outline-none focus:border-stone-400"
+                          value={poi.title || ''}
+                          onChange={(e) => {
+                            const newPois = [...result.pois];
+                            newPois[idx] = { ...newPois[idx], title: e.target.value };
+                            setResult({ ...result, pois: newPois });
+                          }}
+                        />
+                      </div>
+
+                      {/* 📝 Descripció Breu */}
+                      <div className="mb-3">
+                        <h6 className="text-[10px] font-bold uppercase text-stone-500 mb-1 flex items-center gap-1">
+                          📝 Descripció Breu <span className="font-normal text-stone-400">(preview app)</span>
                         </h6>
                         <textarea
-                          className="w-full text-sm text-stone-700 italic bg-white/50 border border-indigo-100 rounded p-2 focus:outline-none focus:border-indigo-300 min-h-[80px]"
+                          className="w-full text-sm text-stone-700 bg-white border border-stone-200 rounded p-2 focus:outline-none focus:border-stone-400"
+                          rows={2}
+                          value={poi.description || ''}
+                          onChange={(e) => {
+                            const newPois = [...result.pois];
+                            newPois[idx] = { ...newPois[idx], description: e.target.value };
+                            setResult({ ...result, pois: newPois });
+                          }}
+                          placeholder="Descripció breu i atractiva..."
+                        />
+                      </div>
+
+                      {/* 📖 Text Històric / Contingut */}
+                      <div className="mb-3 p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                        <h6 className="text-[10px] font-bold uppercase text-amber-700 mb-1 flex items-center gap-1">
+                          📖 Text Històric / Contingut <span className="font-normal text-amber-500">(fitxa del POI)</span>
+                        </h6>
+                        <textarea
+                          className="w-full text-sm text-stone-700 bg-white/50 border border-amber-100 rounded p-2 focus:outline-none focus:border-amber-300"
+                          rows={5}
+                          value={poi.text_content || ''}
+                          onChange={(e) => {
+                            const newPois = [...result.pois];
+                            newPois[idx] = { ...newPois[idx], text_content: e.target.value };
+                            setResult({ ...result, pois: newPois });
+                          }}
+                          placeholder="Text divulgatiu complet amb context històric, anècdotes..."
+                        />
+                      </div>
+
+                      {/* 🎙️ Guió Audioguia */}
+                      <div className="mb-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                        <h6 className="text-[10px] font-bold uppercase text-indigo-600 mb-1 flex items-center gap-1">
+                          🎙️ Guió Audioguia <span className="font-normal text-indigo-400">(TTS / veu IA)</span>
+                        </h6>
+                        <textarea
+                          className="w-full text-sm text-stone-700 italic bg-white/50 border border-indigo-100 rounded p-2 focus:outline-none focus:border-indigo-300"
+                          rows={4}
                           value={poi.voice_script || ''}
                           onChange={(e) => {
                             const newPois = [...result.pois];
-                            newPois[idx].voice_script = e.target.value;
+                            newPois[idx] = { ...newPois[idx], voice_script: e.target.value };
                             setResult({ ...result, pois: newPois });
                           }}
-                          placeholder="Sense guió proposat. Pots escriure'l aquí..."
+                          placeholder="Guió narratiu per a l'audioguia..."
                         />
                       </div>
 
