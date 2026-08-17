@@ -176,8 +176,9 @@ function mapRoute(route: any) {
       manualQuiz: p.manualQuiz,
       type: p.type,
       userUnlocks: p.userUnlocks || [],
-      routeId: route.id,
       audioTranslations: p.audioTranslations || {},
+      routeId: route.id,
+      voiceScript: p.voiceScript || p.voice_script || '',
     };
   }) ?? [];
 

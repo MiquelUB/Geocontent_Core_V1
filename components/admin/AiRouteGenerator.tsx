@@ -369,14 +369,21 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
 
                       <p className="text-sm text-stone-700 leading-relaxed mb-4">{poi.description}</p>
                       
-                      {poi.voice_script && (
-                        <div className="mb-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
-                          <h6 className="text-[10px] font-bold uppercase text-indigo-600 mb-1 flex items-center gap-1">
-                            🎙️ Guió de Veu (IA)
-                          </h6>
-                          <p className="text-sm text-stone-700 italic">{poi.voice_script}</p>
-                        </div>
-                      )}
+                      <div className="mb-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                        <h6 className="text-[10px] font-bold uppercase text-indigo-600 mb-1 flex items-center gap-1">
+                          🎙️ Guió de Veu (IA)
+                        </h6>
+                        <textarea
+                          className="w-full text-sm text-stone-700 italic bg-white/50 border border-indigo-100 rounded p-2 focus:outline-none focus:border-indigo-300 min-h-[80px]"
+                          value={poi.voice_script || ''}
+                          onChange={(e) => {
+                            const newPois = [...result.pois];
+                            newPois[idx].voice_script = e.target.value;
+                            setResult({ ...result, pois: newPois });
+                          }}
+                          placeholder="Sense guió proposat. Pots escriure'l aquí..."
+                        />
+                      </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
