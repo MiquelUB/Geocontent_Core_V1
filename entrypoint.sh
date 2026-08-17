@@ -7,8 +7,8 @@ echo "🔧 Node version: $(node --version)"
 echo "🔧 Build: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Arrancar el servidor Next.js
-echo "🚀 [Entrypoint] Aplicant migracions de base de dades..."
-npx prisma migrate deploy
+echo "🚀 [Entrypoint] Assegurant que la base de dades està al dia..."
+node run_migration.js
 
 echo "🚀 [Entrypoint] Arrencant Next.js..."
 exec node server.js

@@ -75,6 +75,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/config/node_
 
 # Copiar l'entrypoint i el seed de producció
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
+COPY --from=builder --chown=nextjs:nodejs /app/run_migration.js ./run_migration.js
 COPY --from=builder --chown=nextjs:nodejs /app/seed-production.js ./seed-production.js
 
 USER nextjs
