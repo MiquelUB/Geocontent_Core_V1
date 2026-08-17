@@ -115,6 +115,7 @@ export async function POST(req: Request) {
             "coordinates_available": false,
             "historical_period": "Segle o època si consta al text",
             "description": "Descripció rica i atractiva basada estrictament en el text. Inclou: valor patrimonial, anècdota o fet singular, context històric, estat actual si consta (min 200, max 400 caràcters)",
+            "voice_script": "Guió narratiu expressiu pensat per ser locutat per un motor de veu IA. Pots incloure pauses emocionals o to. Ha de ser informatiu però llegidor (1-3 paràgrafs).",
             "unique_facts": [
               "Fet o dada singular extreta del text que el diferencia d'altres elements similars. No repeteixis informació ja present a description. Si no hi ha cap fet singular al text, usa []."
             ],
