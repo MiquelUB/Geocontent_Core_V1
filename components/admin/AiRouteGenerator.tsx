@@ -64,8 +64,15 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
       }
 
       console.log("Response data:", result.data);
-      setResult(result.data);
-      console.log("Set result to:", result.data);
+      const data = result.data || {};
+      if (!data.route && !data.insufficient_input) {
+        data.route = {
+          name: data.territory?.name ? `Ruta per ${data.territory.name}` : 'Ruta Turística Proposada',
+          description: data.territory?.context || 'Descripció general de la ruta turística.'
+        };
+      }
+      setResult(data);
+      console.log("Set result to:", data);
 
     } catch (err: any) {
       console.error("Error in handleGenerate:", err);
@@ -95,10 +102,13 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
       return lines.join('\n');
     }
 
-    if (data.route?.name || data.route?.description) {
+    const routeName = data.route?.name || (data.territory?.name ? `Ruta per ${data.territory.name}` : '');
+    const routeDesc = data.route?.description || data.territory?.context || '';
+
+    if (routeName || routeDesc) {
       lines.push(`=== RUTA PROPOSADA ===`);
-      lines.push(`Nom de la ruta: ${data.route?.name || '—'}`);
-      lines.push(`Descripció general: ${data.route?.description || '—'}`);
+      lines.push(`Nom de la ruta: ${routeName || '—'}`);
+      lines.push(`Descripció general: ${routeDesc || '—'}`);
       lines.push('');
     }
 
