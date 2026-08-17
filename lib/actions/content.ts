@@ -62,6 +62,7 @@ const CreatePoiSchema = z.object({
   longitude: z.coerce.number().min(0, "Longitud fora de rang (Catalunya)").max(4, "Longitud fora de rang (Catalunya)"),
   route_id: z.string().uuid().optional().nullable().catch(null),
   text_content: z.string().optional(),
+  voice_script: z.string().optional(),
   type: z.string().optional(),
   manual_quiz: z.string().optional().transform(val => {
     try { return val ? JSON.parse(val) : null } catch { return null }
@@ -375,7 +376,7 @@ export async function createPoi(formData: FormData) {
 
     console.log('[createPoi] 2/8 - Validating Schema...');
     const validated = CreatePoiSchema.parse(Object.fromEntries(formData.entries()));
-    const { title, description, latitude, longitude, route_id, text_content, video_urls, carousel_images, icon, title_translations, description_translations, text_content_translations } = validated;
+    const { title, description, latitude, longitude, route_id, text_content, voice_script, video_urls, carousel_images, icon, title_translations, description_translations, text_content_translations } = validated;
     console.log('[createPoi] 2/8 - Schema OK. lat=%s, lng=%s, route_id=%s', latitude, longitude, route_id);
 
     const appThumbFile = formData.get('app_thumbnail_file') as File || null
@@ -467,6 +468,7 @@ export async function createPoi(formData: FormData) {
           audioTranslations: audio_translations as any,
           videoUrls: finalVideoUrls,
           textContent: text_content,
+          voiceScript: voice_script || null,
           textContentTranslations: text_content_translations as any,
           type: validated.type ? (validated.type as any) : null,
           manualQuiz: validated.manual_quiz,
@@ -518,6 +520,9 @@ export async function updatePoi(id: string, formData: FormData) {
 
     const textContentParam = formData.get('text_content') as string;
     const textContent = textContentParam || existingPoi.textContent || '';
+
+    const voiceScriptParam = formData.get('voice_script') as string;
+    const voiceScript = voiceScriptParam || existingPoi.voiceScript || null;
 
     const latStr = formData.get('latitude') as string;
     const lngStr = formData.get('longitude') as string;
@@ -627,6 +632,7 @@ export async function updatePoi(id: string, formData: FormData) {
         audioTranslations: audioTranslations as any,
         videoUrls,
         textContent,
+        voiceScript,
         textContentTranslations: textContentTranslations as any,
         appThumbnail,
         header16x9,

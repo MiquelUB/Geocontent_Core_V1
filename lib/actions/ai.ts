@@ -1,11 +1,25 @@
 'use server';
 
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
+import { auth } from '@/auth';
+import { rateLimit } from '@/lib/services/ratelimit';
+import { SECURITY_CONFIG } from '@/lib/config/constants';
 // All heavy/Node dependencies (OpenAI, pdf-parse) are dynamically imported inside actions.
 
 
 export async function generateRouteFromDocumentAction(formData: FormData) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: 'No autoritzat.' };
+    }
+
+    const { attempts, windowSeconds } = SECURITY_CONFIG.RATE_LIMITS.AI_GENERATE;
+    const rl = await rateLimit(`ai:${session.user.id}`, attempts, windowSeconds);
+    if (!rl.success) {
+      return { success: false, error: 'Massa peticions. Espera un minut.' };
+    }
+
     const file = formData.get('file') as File | null;
 
     if (!file) {
@@ -188,6 +202,7 @@ Si el text SÍ té prou informació:
       "coordinates_available": false,
       "historical_period": "Segle o època si consta al text, si no null",
       "description": "Descripció basada estrictament en el text disponible. Sense mínim de caràcters; null si confidence_level és 'insuficient'.",
+      "voice_script": "Guió narratiu expressiu pensat per ser locutat per un motor de veu. Opcionalment inclou instruccions de pausa o to. Null si confidence_level és 'insuficient'.",
       "unique_facts": [
         "Fet singular extret literalment del text. [] si no n'hi ha."
       ],

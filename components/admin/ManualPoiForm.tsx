@@ -106,6 +106,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [icon, setIcon] = useState(poi?.icon || '');
   const [poiType, setPoiType] = useState(poi?.type || 'CIVIL');
   const [manualQuiz, setManualQuiz] = useState<any>(poi?.manualQuiz || poi?.manual_quiz || null);
+  const [voiceScript, setVoiceScript] = useState(poi?.voiceScript || poi?.voice_script || '');
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -160,6 +161,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     setIcon(poi?.icon || '');
     setPoiType(poi?.type || 'CIVIL');
     setManualQuiz(poi?.manualQuiz || poi?.manual_quiz || null);
+    setVoiceScript(poi?.voiceScript || poi?.voice_script || '');
     setAppThumbnail(poi?.appThumbnail || poi?.app_thumbnail || poi?.image_url || poi?.thumbnail_1x1 || '');
     setHeader16x9(poi?.header16x9 || poi?.header_16x9 || poi?.hero_image_url || '');
     setAudioUrl(poi?.audioUrl || poi?.audio_url || poi?.audio || (poi?.audioTranslations?.ca || (poi?.audioTranslations && Object.values(poi.audioTranslations)[0])) || '');
@@ -294,6 +296,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     formData.append('title', titles.ca || titles[Object.keys(titles)[0]] || '');
     formData.append('description', descriptions.ca || '');
     formData.append('text_content', textContents.ca || '');
+    formData.append('voice_script', voiceScript || '');
     
     // We send the full translation objects as JSON
     formData.append('title_translations', JSON.stringify(titles));
@@ -503,7 +506,23 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             </Button>
           </div>
 
-          <div className="grid gap-2 pt-2 border-t border-stone-100">
+          <div className="grid gap-2 pt-4 border-t border-stone-100">
+            <Label htmlFor="voiceScript" className="flex items-center gap-2 font-bold text-stone-600">
+              🎙️ Guió de Veu (Audioguia IA)
+            </Label>
+            <p className="text-[10px] text-stone-400 italic">
+              Text expressiu que el motor de veu llegirà només per l'idioma base (Català). Pots incloure indicacions especials o pauses. Si és buit, s'usarà el Text Històric.
+            </p>
+            <Textarea 
+              id="voiceScript" 
+              value={voiceScript} 
+              onChange={(e) => setVoiceScript(e.target.value)} 
+              className="min-h-[100px] text-sm bg-indigo-50/30 border-indigo-100 focus:border-indigo-300"
+              placeholder="Escriu el guió narratiu per a la veu..."
+            />
+          </div>
+
+          <div className="grid gap-2 pt-4 border-t border-stone-100">
             <Label htmlFor="routeId" className="flex items-center gap-2">
               <FolderIcon className="w-4 h-4 text-stone-400" />
               Assignar a Carpeta (Ruta) <span className="text-red-500">*</span>

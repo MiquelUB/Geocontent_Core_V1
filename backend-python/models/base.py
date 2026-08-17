@@ -97,6 +97,7 @@ class Poi(SQLModel, table=True):
     manual_quiz: Optional[Dict[str, Any]] = Field(default=None, sa_column=Column(JSONB))
     text_content_translations: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSONB))
     audio_translations: Dict[str, str] = Field(default_factory=dict, sa_column=Column(JSONB))
+    voice_script: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

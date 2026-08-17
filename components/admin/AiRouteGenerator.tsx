@@ -126,6 +126,11 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
         lines.push('');
         lines.push(`Descripció:`);
         lines.push(poi.description || '—');
+        if (poi.voice_script) {
+          lines.push('');
+          lines.push(`Guió de Veu (IA):`);
+          lines.push(poi.voice_script);
+        }
         if (poi.unique_facts?.length) {
           lines.push('');
           lines.push(`Fets singulars:`);
@@ -363,6 +368,15 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
                       </div>
 
                       <p className="text-sm text-stone-700 leading-relaxed mb-4">{poi.description}</p>
+                      
+                      {poi.voice_script && (
+                        <div className="mb-4 p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                          <h6 className="text-[10px] font-bold uppercase text-indigo-600 mb-1 flex items-center gap-1">
+                            🎙️ Guió de Veu (IA)
+                          </h6>
+                          <p className="text-sm text-stone-700 italic">{poi.voice_script}</p>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">

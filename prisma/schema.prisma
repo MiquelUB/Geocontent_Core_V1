@@ -138,6 +138,7 @@ model Poi {
   updatedAt                 DateTime                 @default(now()) @updatedAt @map("updated_at")
   textContentTranslations Json                     @default("{}") @map("text_content_translations")
   audioTranslations       Json                     @default("{}") @map("audio_translations")
+  voiceScript             String?                  @map("voice_script")
   visits                    PoiVisits[]
   routePois                 RoutePoi[]
   userUnlocks               UserUnlock[]

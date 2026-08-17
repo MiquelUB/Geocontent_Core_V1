@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/database/prisma';
 import { getDefaultMunicipalityId } from '@/lib/actions/queries';
 import { getLocalizedContent } from '@/lib/i18n-db';
+import { auth } from '@/auth';
+import { rateLimit } from '@/lib/services/ratelimit';
+import { SECURITY_CONFIG } from '@/lib/config/constants';
 
 const OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/audio/speech";
 
@@ -12,6 +15,16 @@ const OPENROUTER_TTS_URL = "https://openrouter.ai/api/v1/audio/speech";
  */
 export async function generatePoiAudiosAction(poiId: string) {
   try {
+    const session = await auth();
+    if (!session) {
+      return { success: false, error: 'Sessió requerida.' };
+    }
+
+    const rl = await rateLimit(`audio:${poiId}`, 5, 60);
+    if (!rl.success) {
+      return { success: false, error: "Massa peticions de generació d'àudio. Espera un minut." };
+    }
+
     const poi = await prisma.poi.findUnique({ where: { id: poiId } });
     if (!poi) return { success: false, error: "POI no trobat." };
 
@@ -19,10 +32,15 @@ export async function generatePoiAudiosAction(poiId: string) {
     const texts: Record<string, string> = {};
 
     for (const locale of locales) {
-      // Regla de contingut: Prioritzem textContent, si no description, si no el títol.
-      const text = getLocalizedContent(poi, 'textContent', locale) || 
-                   getLocalizedContent(poi, 'description', locale) || 
-                   getLocalizedContent(poi, 'title', locale);
+      let text: string | undefined = '';
+      if (locale === 'ca' && poi.voiceScript) {
+        text = poi.voiceScript;
+      } else {
+        // Regla de contingut: Prioritzem textContent, si no description, si no el títol.
+        text = getLocalizedContent(poi, 'textContent', locale) || 
+               getLocalizedContent(poi, 'description', locale) || 
+               getLocalizedContent(poi, 'title', locale);
+      }
       
       if (text) {
         texts[locale] = text;
