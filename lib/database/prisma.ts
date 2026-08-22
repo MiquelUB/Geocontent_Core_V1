@@ -6,8 +6,6 @@ import 'server-only';
  */
 
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -16,18 +14,8 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL || "";
   
-  // En l'arquitectura sobirana (Hetzner), usem PgBouncer local si cal,
-  // però ja no depenem de les URLs de l'antic Pooler.
-  const pool = new Pool({
-    connectionString: connectionString,
-    max: process.env.NODE_ENV === 'development' ? 2 : 20, // Ajustem segons necessitats Hetzner
-    idleTimeoutMillis: 30000
-  });
-
-  const adapter = new PrismaPg(pool as any);
-
   const client = new PrismaClient({
-    adapter,
+    datasourceUrl: connectionString,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
