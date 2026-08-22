@@ -25,42 +25,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   trustHost: true,
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as any).role;
-        token.municipalityId = (user as any).municipalityId;
+    ...authConfig.callbacks,
+    async jwt(params) {
+      // 1. Executem la lògica base compatible amb Edge (mapeig de rols, etc)
+      let token = params.token;
+      if (authConfig.callbacks?.jwt) {
+        token = (await authConfig.callbacks.jwt(params)) as any;
       }
       
-      // PATRÓ D'IMPERSONACIÓ PER A SUPER ADMINS
-      if (trigger === "update" && session?.impersonateMunicipalityId) {
+      // 2. Afegim lògica Node.js (Auditoria de Base de dades)
+      if (params.trigger === "update" && params.session?.impersonateMunicipalityId) {
         if (token.role === 'SUPER_ADMIN') {
-          token.municipalityId = session.impersonateMunicipalityId;
-
-          // ✅ AFEGIR: Registre d'auditoria (Pas 7.2)
+          // ✅ AFEGIR: Registre d'auditoria (Pas 7.2 - Seguretat DIS-03)
           await prisma.adminAuditLog.create({
             data: {
               adminUserId: token.id as string,
               action: 'impersonate',
-              targetMunicipalityId: session.impersonateMunicipalityId,
+              targetMunicipalityId: params.session.impersonateMunicipalityId,
               metadata: { timestamp: new Date().toISOString() }
             }
           }).catch(err => console.error('[AuditLog] Failed to log impersonation:', err));
         }
       }
       return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as any;
-        session.user.municipalityId = token.municipalityId as string | null;
-      }
-      return session;
-    },
-    authorized() {
-      return true;
-    },
+    }
   },
   providers: [
     ...authConfig.providers,
