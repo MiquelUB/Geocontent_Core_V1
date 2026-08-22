@@ -1,4 +1,5 @@
 # STAGE 1: Builder
+# CACHE BUSTER FOR RUN_MIGRATION: 2026-08-22T21:33:00Z
 FROM node:22-alpine AS builder
 RUN apk add --no-cache openssl libc6-compat chromium nss
 
