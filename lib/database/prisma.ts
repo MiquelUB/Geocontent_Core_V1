@@ -12,10 +12,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL || "";
-  
   const client = new PrismaClient({
-    datasourceUrl: connectionString,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
