@@ -9,8 +9,8 @@ Aquest document resumeix la cadena d'errors crítics ocorreguts durant el desple
 
 ## 2. Error de Constructor de Prisma (`PrismaClientConstructorValidationError`)
 *   **Símptoma:** Al eliminar la dependència `@prisma/adapter-pg`, l'aplicació llançava en temps d'execució: `Using engine type "client" requires either "adapter" or "accelerateUrl"`.
-*   **Arrel:** Les versions 6/7 de Prisma tenen comportaments de generació de memòria cau que persisteixen en la configuració del client generat. Com que l'adaptador havia estat prèviament instal·lat o detectat, el client es generava esperant rebre'l en el constructor, tot i no figurar a la base del codi.
-*   **Solució:** Forçar explícitament `engineType = "library"` dins de l'arxiu `schema.prisma` per denegar absolutament qualsevol inferència d'adaptadors de client durant l'etapa `prisma generate`.
+*   **Arrel Real (Descoberta fa uns minuts):** A la versió 7 de Prisma, el motor de consultes natiu en Rust (*Query Engine*) s'ha eliminat per complet a favor del compilador Wasm. Això vol dir que la directiva `engineType = "library"` ha quedat obsoleta i **Prisma 7 requereix OBLIGATÒRIAMENT un adaptador (`@prisma/adapter-pg`)** per connectar-se a PostgreSQL. L'error apareixia justament perquè havíem eliminat aquest adaptador i l'aplicació es quedava sense cap mètode de connexió TCP.
+*   **Solució Real Aplicada:** Re-instal·lar `pg` i `@prisma/adapter-pg` al `package.json`, i instanciar manualment l'adaptador dins de `lib/database/prisma.ts` i `run_migration.js` per subministrar-lo al constructor de PrismaClient.
 
 ## 3. Fallida de construcció de Docker per mòduls desapareguts
 *   **Símptoma:** El procés de compilació d'Easypanel fallava a la fase de creació de la imatge Docker amb l'error `failed to compute cache key: "/app/node_modules/split2": not found`.
