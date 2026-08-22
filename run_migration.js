@@ -1,10 +1,16 @@
 const { PrismaClient } = require('@prisma/client');
+const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
 
 async function run() {
   const directUrl = process.env.DATABASE_DIRECT_URL || process.env.Direct_URL;
   const pgbouncerUrl = process.env.DATABASE_URL;
   
+  const pool = new Pool({ connectionString: directUrl || pgbouncerUrl });
+  const adapter = new PrismaPg(pool);
+  
   let client = new PrismaClient({ 
+    adapter,
     datasources: { db: { url: directUrl || pgbouncerUrl } } 
   });
 
@@ -14,7 +20,10 @@ async function run() {
     } catch (e) {
       if (directUrl && pgbouncerUrl && directUrl !== pgbouncerUrl) {
         console.warn(`[Migration] Direct connection failed (${e.message}). Falling back to PgBouncer...`);
+        const poolBouncer = new Pool({ connectionString: pgbouncerUrl });
+        const adapterBouncer = new PrismaPg(poolBouncer);
         client = new PrismaClient({ 
+          adapter: adapterBouncer,
           datasources: { db: { url: pgbouncerUrl } } 
         });
         await client.$connect();
