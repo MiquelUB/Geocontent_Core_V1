@@ -16,8 +16,9 @@ interface MapLibreMapProps {
   zoom?: number;
   userLocation?: { latitude: number; longitude: number } | null;
   children?: React.ReactNode;
-  heatmapData?: Array<{ latitude: number; longitude: number; weight?: number }>; // NEW: Heatmap support
-  showUserLocation?: boolean; // NEW: Option to hide the user marker
+  heatmapData?: Array<{ latitude: number; longitude: number; weight?: number }>;
+  showUserLocation?: boolean;
+  id?: string;
 }
 
 export default function MapLibreMap({
@@ -27,7 +28,8 @@ export default function MapLibreMap({
   userLocation: propUserLocation,
   children,
   heatmapData,
-  showUserLocation = true
+  showUserLocation = true,
+  id = "default"
 }: MapLibreMapProps) {
   const { location: hookCoordinates } = useGeolocation();
   const coordinates = showUserLocation ? (propUserLocation || hookCoordinates) : null;
@@ -66,6 +68,8 @@ export default function MapLibreMap({
   return (
     <div className={`w-full h-full relative ${className || ''}`} id="map-container">
       <Map
+        id={id}
+        reuseMaps={true}
         ref={mapRef}
         initialViewState={initialView}
         style={{ width: '100%', height: '100%' }}
