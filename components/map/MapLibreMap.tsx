@@ -67,6 +67,7 @@ export default function MapLibreMap({
     <div className={`w-full h-full relative ${className || ''}`} id="map-container">
       <Map
         ref={mapRef}
+        reuseMaps
         initialViewState={initialView}
         style={{ width: '100%', height: '100%' }}
         mapStyle={MAP_STYLE}
