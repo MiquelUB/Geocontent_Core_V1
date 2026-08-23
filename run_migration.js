@@ -15,8 +15,7 @@ async function run() {
   const adapter = new PrismaPg(pool);
   
   let client = new PrismaClient({ 
-    adapter,
-    datasources: { db: { url: directUrl || pgbouncerUrl } } 
+    adapter 
   });
 
   try {
@@ -32,8 +31,7 @@ async function run() {
         });
         const adapterBouncer = new PrismaPg(poolBouncer);
         client = new PrismaClient({ 
-          adapter: adapterBouncer,
-          datasources: { db: { url: pgbouncerUrl } } 
+          adapter: adapterBouncer 
         });
         await client.$connect();
       } else {
