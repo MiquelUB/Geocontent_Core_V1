@@ -63,15 +63,16 @@ export function useGeolocation() {
     saveLastKnown(loc);
     
     setState(prev => {
-      // Check if coordinates and accuracy are effectively the same to avoid useless re-renders
-      if (
-        prev.location &&
-        Math.abs(prev.location.latitude - loc.latitude) < 0.000001 &&
-        Math.abs(prev.location.longitude - loc.longitude) < 0.000001 &&
-        prev.location.accuracy === loc.accuracy
-      ) {
-        if (!prev.loading && !prev.error && !prev.isLastKnown) {
-          return prev; // No meaningful change, skip React state update
+      // Check if coordinates are effectively the same (~5 meters) to avoid useless re-renders.
+      // We completely ignore accuracy fluctuations because mobile GPS accuracy bounces every second!
+      if (prev.location) {
+        const latDiff = Math.abs(prev.location.latitude - loc.latitude);
+        const lngDiff = Math.abs(prev.location.longitude - loc.longitude);
+        
+        if (latDiff < 0.00005 && lngDiff < 0.00005) {
+          if (!prev.loading && !prev.error && !prev.isLastKnown) {
+            return prev; // No meaningful movement, skip React state update
+          }
         }
       }
       return {

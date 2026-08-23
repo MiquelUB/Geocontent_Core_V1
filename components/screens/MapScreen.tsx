@@ -139,6 +139,7 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
     ? legends
     : legends.filter(legend => legend.id === selectedRoute);
 
+  // Sort all map points by distance to user, filter out NaNs, and limit to max 150 to prevent WebGL crashes
   const allMapPoints = filteredLegends.flatMap(legend =>
     legend.pois.map((poi: any) => ({
       ...poi,
@@ -151,7 +152,18 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
       parentRoutePois: legend.pois,
       coordinates: { lat: poi.latitude, lng: poi.longitude }
     }))
-  );
+  ).filter((poi: any) => 
+    typeof poi.latitude === 'number' && 
+    typeof poi.longitude === 'number' && 
+    !isNaN(poi.latitude) && 
+    !isNaN(poi.longitude)
+  ).sort((a, b) => {
+    // Only sort if we have a user location, otherwise just let it be (it will be sliced below)
+    if (!userLocation) return 0;
+    const distA = Math.pow(a.longitude - userLocation.longitude, 2) + Math.pow(a.latitude - userLocation.latitude, 2);
+    const distB = Math.pow(b.longitude - userLocation.longitude, 2) + Math.pow(b.latitude - userLocation.latitude, 2);
+    return distA - distB;
+  }).slice(0, 150);
 
   return (
     <div className="screen-full bg-background flex flex-col h-full">

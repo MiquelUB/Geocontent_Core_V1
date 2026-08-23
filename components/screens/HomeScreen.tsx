@@ -154,7 +154,12 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
       }
     });
 
-    const validPois = allPois.filter(p => typeof p.latitude === 'number' && typeof p.longitude === 'number');
+    const validPois = allPois.filter(p => 
+      typeof p.latitude === 'number' && 
+      typeof p.longitude === 'number' &&
+      !isNaN(p.latitude) && 
+      !isNaN(p.longitude)
+    );
 
     const uniquePoisMap = new Map();
     validPois.forEach(p => {
@@ -162,14 +167,14 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
         uniquePoisMap.set(p.id, p);
       }
     });
-    const uniqueMapPois = Array.from(uniquePoisMap.values());
+    
+    // Sort all unique valid POIs by distance to user
+    const allSortedPois = Array.from(uniquePoisMap.values())
+      .sort((a, b) => a.distanceRaw - b.distanceRaw);
 
-    const sortedPois = [...uniqueMapPois]
-      .sort((a, b) => a.distanceRaw - b.distanceRaw)
-      .slice(0, 3);
-
-    setNearbyPois(sortedPois);
-    setMapPois(uniqueMapPois);
+    // Limit nearby to 3, and map POIs to 30 to prevent WebGL Marker DOM crashes
+    setNearbyPois(allSortedPois.slice(0, 3));
+    setMapPois(allSortedPois.slice(0, 30));
   }, [userLocation, allLegends, locale, t]);
 
   const defaultLoc = { latitude: 42.4140, longitude: 0.9870 };
