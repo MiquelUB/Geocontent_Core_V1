@@ -15,6 +15,7 @@ interface LegendsScreenProps {
     onNavigate: (screen: string, data?: any) => void;
     onOpenHelp: () => void;
     brand?: any;
+    currentUser?: any;
 }
 
 // Difficulty derived deterministically from POI count (no Math.random)
@@ -59,13 +60,6 @@ function hexToHsl(hex: string) {
     return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
-
-export interface LegendsScreenProps {
-    onNavigate: (screen: string, data?: any) => void;
-    onOpenHelp: () => void;
-    brand?: any;
-    currentUser?: any;
-}
 
 export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand, currentUser }: LegendsScreenProps) {
     const t = useTranslations('legends');
