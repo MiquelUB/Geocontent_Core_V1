@@ -48,7 +48,11 @@ export async function getAdminLegends() {
         routePois: {
           include: {
             poi: {
-              include: { userUnlocks: true }
+              include: {
+                _count: {
+                  select: { userUnlocks: true }
+                }
+              }
             }
           }
         }
@@ -70,7 +74,7 @@ export async function getAdminLegends() {
       thumbnail_1x1: route.thumbnail1x1 || '',
       header_16x9: route.header16x9 || '',
       pois_count: route.routePois?.length || 0,
-      total_visits: route.routePois?.reduce((acc: number, rp: any) => acc + (rp.poi?.userUnlocks?.length || 0), 0) || 0,
+      total_visits: route.routePois?.reduce((acc: number, rp: any) => acc + (rp.poi?._count?.userUnlocks || 0), 0) || 0,
       created_at: route.createdAt
     }));
 
@@ -123,7 +127,7 @@ export async function getAllProfiles() {
   }
 }
 
-export async function getLegends() {
+export async function getLegends(userId?: string) {
   noStore();
   try {
     const routes = await prisma.route.findMany({
@@ -132,7 +136,9 @@ export async function getLegends() {
         routePois: {
           include: {
             poi: {
-              include: { userUnlocks: true }
+              include: { 
+                userUnlocks: userId ? { where: { userId } } : false 
+              }
             }
           },
           orderBy: { orderIndex: 'asc' }

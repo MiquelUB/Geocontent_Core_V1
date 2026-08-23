@@ -60,7 +60,14 @@ function hexToHsl(hex: string) {
 }
 
 
-export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand }: LegendsScreenProps) {
+export interface LegendsScreenProps {
+    onNavigate: (screen: string, data?: any) => void;
+    onOpenHelp: () => void;
+    brand?: any;
+    currentUser?: any;
+}
+
+export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand, currentUser }: LegendsScreenProps) {
     const t = useTranslations('legends');
     const tCommon = useTranslations('common');
     const locale = useLocale();
@@ -81,7 +88,7 @@ export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand }: Lege
     useEffect(() => {
         async function fetchData() {
             const [data, brandData] = await Promise.all([
-                getLegends(),
+                getLegends(currentUser?.id),
                 !propBrand ? getAppBranding() : Promise.resolve(propBrand)
             ]);
             if (!propBrand) setBrand(brandData);

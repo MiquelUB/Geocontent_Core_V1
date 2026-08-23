@@ -263,14 +263,14 @@ export default function Home() {
       case "login":
         return <SimpleLogin onLoginSuccess={handleLoginSuccess} />;
       case "home":
-        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} />;
+        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} currentUser={currentUser} />;
 
       case "legends":
-        return <LegendsScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} />;
+        return <LegendsScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} currentUser={currentUser} />;
       case "legend-detail":
         return <LegendDetailScreen legend={navigationData} onNavigate={handleNavigate} brand={brand} userLocation={location} currentUser={currentUser} onUserUpdate={handleUserUpdate} />;
       case "map":
-        return <MapScreen onNavigate={handleNavigate} focusLegend={navigationData} brand={brand} userLocation={location} onOpenHelp={reopenOnboarding} />;
+        return <MapScreen onNavigate={handleNavigate} focusLegend={navigationData} brand={brand} userLocation={location} onOpenHelp={reopenOnboarding} currentUser={currentUser} />;
 
       case "profile":
         return <ProfileScreen onNavigate={handleNavigate} currentUser={currentUser} onUserUpdate={handleUserUpdate} />;
@@ -284,7 +284,7 @@ export default function Home() {
           />
         );
       default:
-        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} />;
+        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} currentUser={currentUser} />;
     }
   };
 

@@ -60,9 +60,10 @@ interface MapScreenProps {
   brand?: any;
   userLocation: { latitude: number; longitude: number } | null;
   error?: string | null;
+  currentUser?: any;
 }
 
-export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLocation, error: geoError }: MapScreenProps) {
+export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLocation, error: geoError, currentUser }: MapScreenProps) {
   const t = useTranslations('map');
   const tHome = useTranslations('home');
   const tCommon = useTranslations('common');
@@ -83,7 +84,7 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
 
   useEffect(() => {
     async function fetchData() {
-      const data = await getLegends();
+      const data = await getLegends(currentUser?.id);
       if (data) {
         const activeCategory = brand?.themeId || 'mountain';
         const theme = PxxConfig.chameleonThemes[activeCategory as keyof typeof PxxConfig.chameleonThemes] || PxxConfig.chameleonThemes['mountain'];

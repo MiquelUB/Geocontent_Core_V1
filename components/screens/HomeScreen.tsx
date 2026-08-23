@@ -113,9 +113,10 @@ interface HomeScreenProps {
   brand?: any;
   userLocation?: { latitude: number; longitude: number } | null;
   error?: string | null;
+  currentUser?: any;
 }
 
-export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocation, error: geoError }: HomeScreenProps) {
+export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocation, error: geoError, currentUser }: HomeScreenProps) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
   const locale = useLocale();
@@ -130,14 +131,14 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
   useEffect(() => {
     async function fetchInitialData() {
       const [legendsData, brandData] = await Promise.all([
-        getLegends(),
+        getLegends(currentUser?.id),
         !propBrand ? getAppBranding() : Promise.resolve(propBrand)
       ]);
       if (!propBrand) setBrand(brandData);
       if (legendsData) setAllLegends(legendsData);
     }
     fetchInitialData();
-  }, [propBrand]);
+  }, [propBrand, currentUser?.id]);
 
   // 2. Recalculate distances only when userLocation or allLegends changes
   useEffect(() => {
