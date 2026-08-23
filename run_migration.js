@@ -1,10 +1,14 @@
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const { Pool } = require('pg');
 const { PrismaPg } = require('@prisma/adapter-pg');
 
 async function run() {
-  const directUrl = process.env.DATABASE_DIRECT_URL || process.env.Direct_URL;
-  const pgbouncerUrl = process.env.DATABASE_URL;
+  let directUrl = process.env.DATABASE_DIRECT_URL || process.env.Direct_URL;
+  let pgbouncerUrl = process.env.DATABASE_URL;
+
+  if (directUrl) directUrl = directUrl.replace('5434', '5432');
+  if (pgbouncerUrl) pgbouncerUrl = pgbouncerUrl.replace('5434', '5432');
   
   const connString = directUrl || pgbouncerUrl;
   const hasSsl = connString && connString.includes('sslmode=require');
@@ -45,6 +49,7 @@ async function run() {
     await client.$executeRawUnsafe('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "terms_accepted_at" TIMESTAMP WITH TIME ZONE;');
     await client.$executeRawUnsafe('ALTER TABLE "municipalities" ADD COLUMN IF NOT EXISTS "voice_persona" TEXT DEFAULT \'Persona gran, veu càlida, serena i amb experiència patrimonial\';');
     await client.$executeRawUnsafe('ALTER TABLE "pois" ADD COLUMN IF NOT EXISTS "video_translations" JSONB DEFAULT \'{}\';');
+    await client.$executeRawUnsafe('ALTER TABLE "pois" ADD COLUMN IF NOT EXISTS "voice_id" TEXT;');
     console.log("Columns added or already exist.");
   } catch (e) {
     console.error("Migration failed:", e);
