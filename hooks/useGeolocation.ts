@@ -61,12 +61,26 @@ export function useGeolocation() {
       accuracy: position.coords.accuracy,
     };
     saveLastKnown(loc);
-    setState({
-      location: loc,
-      isLastKnown: false,
-      error: null,
-      loading: false,
-      accuracy: position.coords.accuracy,
+    
+    setState(prev => {
+      // Check if coordinates and accuracy are effectively the same to avoid useless re-renders
+      if (
+        prev.location &&
+        Math.abs(prev.location.latitude - loc.latitude) < 0.000001 &&
+        Math.abs(prev.location.longitude - loc.longitude) < 0.000001 &&
+        prev.location.accuracy === loc.accuracy
+      ) {
+        if (!prev.loading && !prev.error && !prev.isLastKnown) {
+          return prev; // No meaningful change, skip React state update
+        }
+      }
+      return {
+        location: loc,
+        isLastKnown: false,
+        error: null,
+        loading: false,
+        accuracy: position.coords.accuracy,
+      };
     });
   }, []);
 

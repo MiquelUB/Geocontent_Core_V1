@@ -105,66 +105,72 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
   const [mapPois, setMapPois] = useState<any[]>([]);
   const [brand, setBrand] = useState<any>(propBrand);
 
-  useEffect(() => {
-    const defaultLoc = { latitude: 42.4140, longitude: 0.9870 };
-    const currentLoc = userLocation || defaultLoc;
+  const [allLegends, setAllLegends] = useState<any[]>([]);
 
-    async function fetchData() {
+  // 1. Fetch data from server ONCE
+  useEffect(() => {
+    async function fetchInitialData() {
       const [legendsData, brandData] = await Promise.all([
         getLegends(),
         !propBrand ? getAppBranding() : Promise.resolve(propBrand)
       ]);
-
       if (!propBrand) setBrand(brandData);
-
-      if (legendsData) {
-        const allPois: any[] = [];
-        legendsData.forEach((l: any) => {
-          if (l.pois && Array.isArray(l.pois)) {
-            l.pois.forEach((poi: any) => {
-              allPois.push({
-                ...poi,
-                parentRoute: l,
-                distance: calculateDistance(
-                  currentLoc.latitude,
-                  currentLoc.longitude,
-                  poi.latitude,
-                  poi.longitude
-                ),
-                distanceRaw: calculateDistanceRaw(
-                  currentLoc.latitude,
-                  currentLoc.longitude,
-                  poi.latitude,
-                  poi.longitude
-                ),
-                image: poi.image_url || l.image_url,
-                rating: l.rating || 4.5,
-                location: getLocalizedContent(l, 'location_name', locale) || t('defaultLocationName'),
-              });
-            });
-          }
-        });
-
-        const validPois = allPois.filter(p => typeof p.latitude === 'number' && typeof p.longitude === 'number');
-
-        const uniquePoisMap = new Map();
-        validPois.forEach(p => {
-          if (!uniquePoisMap.has(p.id)) {
-            uniquePoisMap.set(p.id, p);
-          }
-        });
-        const uniqueMapPois = Array.from(uniquePoisMap.values());
-
-        const sortedPois = [...uniqueMapPois]
-          .sort((a, b) => a.distanceRaw - b.distanceRaw)
-          .slice(0, 3);
-
-        setNearbyPois(sortedPois);
-        setMapPois(uniqueMapPois);
-      }
+      if (legendsData) setAllLegends(legendsData);
     }
-    fetchData();
-  }, [userLocation, propBrand, t]);
+    fetchInitialData();
+  }, [propBrand]);
+
+  // 2. Recalculate distances only when userLocation or allLegends changes
+  useEffect(() => {
+    if (allLegends.length === 0) return;
+
+    const defaultLoc = { latitude: 42.4140, longitude: 0.9870 };
+    const currentLoc = userLocation || defaultLoc;
+
+    const allPois: any[] = [];
+    allLegends.forEach((l: any) => {
+      if (l.pois && Array.isArray(l.pois)) {
+        l.pois.forEach((poi: any) => {
+          allPois.push({
+            ...poi,
+            parentRoute: l,
+            distance: calculateDistance(
+              currentLoc.latitude,
+              currentLoc.longitude,
+              poi.latitude,
+              poi.longitude
+            ),
+            distanceRaw: calculateDistanceRaw(
+              currentLoc.latitude,
+              currentLoc.longitude,
+              poi.latitude,
+              poi.longitude
+            ),
+            image: poi.image_url || l.image_url,
+            rating: l.rating || 4.5,
+            location: getLocalizedContent(l, 'location_name', locale) || t('defaultLocationName'),
+          });
+        });
+      }
+    });
+
+    const validPois = allPois.filter(p => typeof p.latitude === 'number' && typeof p.longitude === 'number');
+
+    const uniquePoisMap = new Map();
+    validPois.forEach(p => {
+      if (!uniquePoisMap.has(p.id)) {
+        uniquePoisMap.set(p.id, p);
+      }
+    });
+    const uniqueMapPois = Array.from(uniquePoisMap.values());
+
+    const sortedPois = [...uniqueMapPois]
+      .sort((a, b) => a.distanceRaw - b.distanceRaw)
+      .slice(0, 3);
+
+    setNearbyPois(sortedPois);
+    setMapPois(uniqueMapPois);
+  }, [userLocation, allLegends, locale, t]);
 
   const defaultLoc = { latitude: 42.4140, longitude: 0.9870 };
   const currentLoc = userLocation || defaultLoc;
