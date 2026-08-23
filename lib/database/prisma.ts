@@ -15,7 +15,13 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClient {
   const connectionString = `${process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres'}`;
-  const pool = new Pool({ connectionString });
+  
+  const hasSsl = connectionString.includes('sslmode=require');
+  const pool = new Pool({ 
+    connectionString,
+    ...(hasSsl ? { ssl: { rejectUnauthorized: false } } : {})
+  });
+  
   const adapter = new PrismaPg(pool);
 
   const client = new PrismaClient({

@@ -63,22 +63,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.name) return null;
-        
-        // Cridem a loginOrRegister per garantir validació Zod i Rate Limiting (VULN-03 mitigat)
-        const res = await loginOrRegister(credentials.name as string, credentials.email as string);
-        
-        if (!res.success || !res.user) {
-          return null;
-        }
+        try {
+          if (!credentials?.email || !credentials?.name) return null;
+          
+          const res = await loginOrRegister(credentials.name as string, credentials.email as string);
+          
+          if (!res.success || !res.user) {
+            console.error("[Tourist Login] loginOrRegister failed:", res.error);
+            return null;
+          }
 
-        return {
-          id: res.user.id,
-          email: res.user.email,
-          name: res.user.username,
-          role: res.user.role,
-          municipalityId: res.user.municipalityId,
-        };
+          return {
+            id: res.user.id,
+            email: res.user.email,
+            name: res.user.username,
+            role: res.user.role,
+            municipalityId: res.user.municipalityId,
+          };
+        } catch (error) {
+          console.error("[Tourist Login] Unexpected error:", error);
+          throw error;
+        }
       }
     }),
     CredentialsProvider({
@@ -89,27 +94,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Contrasenya", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        try {
+          if (!credentials?.email || !credentials?.password) return null;
 
-        const email = (credentials.email as string).toLowerCase().trim();
-        const user = await prisma.user.findUnique({
-          where: { email }
-        });
+          const email = (credentials.email as string).toLowerCase().trim();
+          const user = await prisma.user.findUnique({
+            where: { email }
+          });
 
-        if (!user || !user.passwordHash || user.role === UserRole.TOURIST) {
-          return null;
+          if (!user || !user.passwordHash || user.role === UserRole.TOURIST) {
+            console.error("[Admin Login] Invalid user or password hash missing");
+            return null;
+          }
+
+          const isPasswordValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+          if (!isPasswordValid) {
+            console.error("[Admin Login] Password comparison failed");
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.username,
+            role: user.role,
+            municipalityId: user.municipalityId,
+          };
+        } catch (error) {
+          console.error("[Admin Login] Unexpected error:", error);
+          throw error;
         }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
-        if (!isPasswordValid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.username,
-          role: user.role,
-          municipalityId: user.municipalityId,
-        };
       }
     })
   ],

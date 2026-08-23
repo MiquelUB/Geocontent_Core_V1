@@ -6,7 +6,12 @@ async function run() {
   const directUrl = process.env.DATABASE_DIRECT_URL || process.env.Direct_URL;
   const pgbouncerUrl = process.env.DATABASE_URL;
   
-  const pool = new Pool({ connectionString: directUrl || pgbouncerUrl });
+  const connString = directUrl || pgbouncerUrl;
+  const hasSsl = connString && connString.includes('sslmode=require');
+  const pool = new Pool({ 
+    connectionString: connString,
+    ...(hasSsl ? { ssl: { rejectUnauthorized: false } } : {})
+  });
   const adapter = new PrismaPg(pool);
   
   let client = new PrismaClient({ 
@@ -20,7 +25,11 @@ async function run() {
     } catch (e) {
       if (directUrl && pgbouncerUrl && directUrl !== pgbouncerUrl) {
         console.warn(`[Migration] Direct connection failed (${e.message}). Falling back to PgBouncer...`);
-        const poolBouncer = new Pool({ connectionString: pgbouncerUrl });
+        const hasSslBouncer = pgbouncerUrl && pgbouncerUrl.includes('sslmode=require');
+        const poolBouncer = new Pool({ 
+          connectionString: pgbouncerUrl,
+          ...(hasSslBouncer ? { ssl: { rejectUnauthorized: false } } : {})
+        });
         const adapterBouncer = new PrismaPg(poolBouncer);
         client = new PrismaClient({ 
           adapter: adapterBouncer,
