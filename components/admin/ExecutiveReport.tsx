@@ -556,7 +556,6 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                     </CardHeader>
                     <CardContent className="h-[400px] p-0 overflow-hidden rounded-b-xl relative border-t border-stone-100">
                         <MapLibreMap
-                          id="report-map"
                             key={data.mapCenter ? `${data.mapCenter[0]}-${data.mapCenter[1]}` : 'map'}
                             className="w-full h-full"
                             heatmapData={heatmap || []}

@@ -203,7 +203,6 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
 
       <div className="relative w-full h-full bg-gray-100">
         <MapLibreMap
-          id="main-map"
           center={
             selectedLegend
               ? [
