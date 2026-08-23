@@ -58,31 +58,50 @@ function MapBoundsFitter({ pois, userLoc }: { pois: any[], userLoc: any }) {
   useEffect(() => {
     if (!map || !pois || pois.length === 0) return;
 
-    let minLng = pois[0].longitude;
-    let maxLng = pois[0].longitude;
-    let minLat = pois[0].latitude;
-    let maxLat = pois[0].latitude;
+    // We must wait for the DOM to paint the map container, otherwise fitBounds 
+    // will calculate a NaN zoom (due to 0 height - padding) and CRASH WebGL!
+    const timer = setTimeout(() => {
+      let minLng = pois[0].longitude;
+      let maxLng = pois[0].longitude;
+      let minLat = pois[0].latitude;
+      let maxLat = pois[0].latitude;
 
-    pois.forEach(p => {
-      if (p.longitude < minLng) minLng = p.longitude;
-      if (p.longitude > maxLng) maxLng = p.longitude;
-      if (p.latitude < minLat) minLat = p.latitude;
-      if (p.latitude > maxLat) maxLat = p.latitude;
-    });
+      pois.forEach(p => {
+        if (p.longitude < minLng) minLng = p.longitude;
+        if (p.longitude > maxLng) maxLng = p.longitude;
+        if (p.latitude < minLat) minLat = p.latitude;
+        if (p.latitude > maxLat) maxLat = p.latitude;
+      });
 
-    try {
-      const isSinglePoint = minLng === maxLng && minLat === maxLat;
-      if (isSinglePoint) {
-        map.flyTo({ center: [minLng, minLat], zoom: 16, duration: 1000 });
-      } else {
-        map.fitBounds(
-          [[minLng, minLat], [maxLng, maxLat]],
-          { padding: 50, maxZoom: 15, duration: 1000 }
-        );
+      // Extra protection against NaN coordinates creeping into bounds
+      if (isNaN(minLng) || isNaN(maxLng) || isNaN(minLat) || isNaN(maxLat)) return;
+
+      try {
+        const container = map.getContainer();
+        const clientHeight = container?.clientHeight || 0;
+        const clientWidth = container?.clientWidth || 0;
+
+        // If the map hasn't rendered a valid size yet, do not fit bounds
+        if (clientHeight < 50 || clientWidth < 50) return;
+
+        // Dynamic safe padding (max 10% of container or 20px) to prevent negative viewport math
+        const safePadding = Math.min(20, Math.floor(Math.min(clientHeight, clientWidth) * 0.1));
+
+        const isSinglePoint = minLng === maxLng && minLat === maxLat;
+        if (isSinglePoint) {
+          map.flyTo({ center: [minLng, minLat], zoom: 16, duration: 1000 });
+        } else {
+          map.fitBounds(
+            [[minLng, minLat], [maxLng, maxLat]],
+            { padding: safePadding, maxZoom: 15, duration: 1000 }
+          );
+        }
+      } catch (e) {
+        console.error("Error fitting bounds", e);
       }
-    } catch (e) {
-      console.error("Error fitting bounds", e);
-    }
+    }, 500); // Wait 500ms for React and Maplibre to finish mounting and measuring
+
+    return () => clearTimeout(timer);
   }, [map, pois]);
 
   return null;
