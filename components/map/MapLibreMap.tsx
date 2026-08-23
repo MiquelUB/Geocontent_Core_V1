@@ -11,6 +11,7 @@ import { motion } from 'motion/react';
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 interface MapLibreMapProps {
+  id?: string;
   className?: string;
   center?: [number, number];
   zoom?: number;
@@ -21,6 +22,7 @@ interface MapLibreMapProps {
 }
 
 export default function MapLibreMap({
+  id = "default-map",
   className,
   center,
   zoom,
@@ -66,6 +68,7 @@ export default function MapLibreMap({
   return (
     <div className={`w-full h-full relative ${className || ''}`} id="map-container">
       <Map
+        id={id}
         ref={mapRef}
         reuseMaps
         initialViewState={initialView}

@@ -179,7 +179,7 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
         className="relative h-64 mx-4 mt-4 rounded-lg overflow-hidden bg-gradient-to-br from-green-100 to-blue-100 shadow-md pointer-events-none"
       >
         <div className="absolute inset-0 z-0">
-          <MapLibreMap center={[currentLoc.longitude, currentLoc.latitude]} zoom={12}>
+          <MapLibreMap id="home-map" center={[currentLoc.longitude, currentLoc.latitude]} zoom={12}>
             <MapBoundsFitter pois={mapPois.length > 0 ? mapPois : nearbyPois} userLoc={userLocation} />
             {mapPois.map((p, idx) => (
               <Marker key={`p-${idx}-${p.id}`} longitude=

@@ -20,6 +20,7 @@ export default function MapCard({ location }: MapCardProps) {
     return (
       <div className="fixed inset-0 z-50 bg-black">
         <MapLibreMap
+          id={`card-map-${location.lat}-${location.lng}`}
           center={[location.lng, location.lat]}
           zoom={13}
           className="h-full w-full"
@@ -37,6 +38,7 @@ export default function MapCard({ location }: MapCardProps) {
   return (
     <Card className="relative overflow-hidden h-64">
       <MapLibreMap
+        id={`card-map-thumb-${location.lat}-${location.lng}`}
         center={[location.lng, location.lat]}
         zoom={13}
         className="h-full w-full"
