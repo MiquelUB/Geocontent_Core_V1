@@ -1,4 +1,4 @@
-require('dotenv').config();
+
 const { PrismaClient } = require('@prisma/client');
 const { Pool } = require('pg');
 const { PrismaPg } = require('@prisma/adapter-pg');
@@ -7,8 +7,7 @@ async function run() {
   let directUrl = process.env.DATABASE_DIRECT_URL || process.env.Direct_URL;
   let pgbouncerUrl = process.env.DATABASE_URL;
 
-  if (directUrl) directUrl = directUrl.replace('5434', '5432');
-  if (pgbouncerUrl) pgbouncerUrl = pgbouncerUrl.replace('5434', '5432');
+
   
   const connString = directUrl || pgbouncerUrl;
   const hasSsl = connString && connString.includes('sslmode=require');
