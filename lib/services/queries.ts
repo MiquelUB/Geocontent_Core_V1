@@ -185,7 +185,7 @@ function mapRoute(route: any) {
       userUnlocks: p.userUnlocks || [],
       audioTranslations: p.audioTranslations || {},
       routeId: route.id,
-      voiceScript: p.voiceScript || p.voice_script || '',
+      // No enviem `voiceScript` ni `videoTranslations` al client perquè pesen massa i fan petar el Next.js
     };
   }) ?? [];
 
