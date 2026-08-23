@@ -13,7 +13,8 @@ import { compressImage } from "@/lib/imageOptimization";
 import { uploadFileClient } from "@/lib/upload-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { autoTranslateAction, translateFieldsAction } from '@/lib/actions/ai';
-import { generatePoiAudiosAction } from '@/lib/actions/audio';
+import { generatePoiAudiosAction } from '@/lib/actions/audio'; // Obsolet, mantingut per backward compat
+import { requestTtsGeneration } from '@/lib/actions/omnivoice';
 
 const SUPPORTED_LOCALES = [
   { id: 'ca', name: 'Català' },
@@ -107,6 +108,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [poiType, setPoiType] = useState(poi?.type || 'CIVIL');
   const [manualQuiz, setManualQuiz] = useState<any>(poi?.manualQuiz || poi?.manual_quiz || null);
   const [voiceScript, setVoiceScript] = useState(poi?.voiceScript || poi?.voice_script || '');
+  const [voiceId, setVoiceId] = useState(poi?.voiceId || poi?.voice_id || 'nova');
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -139,6 +141,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [headerFile, setHeaderFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioTranslations, setAudioTranslations] = useState<Record<string, string>>(poi?.audioTranslations || poi?.audio_translations || {});
+  const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
 
   const initVideoSlots = (): VideoSlot[] => {
     const existingUrls: string[] = poi?.videoUrls || poi?.video_urls || (poi?.videoUrl ? [poi.videoUrl] : (poi?.video_url ? [poi.video_url] : []));
@@ -163,10 +166,12 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     setPoiType(poi?.type || 'CIVIL');
     setManualQuiz(poi?.manualQuiz || poi?.manual_quiz || null);
     setVoiceScript(poi?.voiceScript || poi?.voice_script || '');
+    setVoiceId(poi?.voiceId || poi?.voice_id || 'nova');
     setAppThumbnail(poi?.appThumbnail || poi?.app_thumbnail || poi?.image_url || poi?.thumbnail_1x1 || '');
     setHeader16x9(poi?.header16x9 || poi?.header_16x9 || poi?.hero_image_url || '');
     setAudioUrl(poi?.audioUrl || poi?.audio_url || poi?.audio || (poi?.audioTranslations?.ca || (poi?.audioTranslations && Object.values(poi.audioTranslations)[0])) || '');
     setAudioTranslations(poi?.audioTranslations || poi?.audio_translations || {});
+    setVideoTranslations(poi?.videoTranslations || poi?.video_translations || {});
     setAppThumbnailFile(null);
     setHeaderFile(null);
     setAudioFile(null);
@@ -242,25 +247,21 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const handleGenerateVoiceScriptAudio = async () => {
     setIsGeneratingAudio(true);
     try {
-      const formTexts = {
-        ca: voiceScript || textContents.ca || descriptions.ca || titles.ca || '',
-        es: textContents.es || descriptions.es || titles.es || '',
-        en: textContents.en || descriptions.en || titles.en || '',
-        fr: textContents.fr || descriptions.fr || titles.fr || ''
-      };
-
-      const res = await generatePoiAudiosAction(poi?.id, formTexts);
-      if (res.success && res.data) {
-        setAudioTranslations(res.data);
-        const defaultUrl = res.data.ca || Object.values(res.data)[0] || '';
-        if (defaultUrl) setAudioUrl(defaultUrl);
-        alert("Audioguia generada correctament! Els fitxers s'han enviat a la caixa d'Àudio (MP3).");
+      if (!poi?.id) {
+        alert("Si us plau, guarda el POI (Crea'l) abans de generar l'àudio.");
+        setIsGeneratingAudio(false);
+        return;
+      }
+      
+      const res = await requestTtsGeneration(poi.id, voiceId);
+      if (res.success) {
+        alert("Generació d'àudio encuada correctament. El procés es farà en segon pla (pot trigar uns minuts). Torna a carregar la pàgina més tard per veure l'àudio.");
       } else {
-        alert("Error generant l'audioguia: " + (res.error || "Error desconegut"));
+        alert("Error encuant l'àudio: " + (res.error || "Error desconegut"));
       }
     } catch (err: any) {
       console.error("Audio Generation Error:", err);
-      alert("Error de connexió en la generació de l'audioguia");
+      alert("Error de connexió en la sol·licitud");
     } finally {
       setIsGeneratingAudio(false);
     }
@@ -269,18 +270,14 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const handleGenerateAudios = async () => {
     setIsGeneratingAudio(true);
     try {
-      const formTexts = {
-        ca: voiceScript || textContents.ca || descriptions.ca || titles.ca || '',
-        es: textContents.es || descriptions.es || titles.es || '',
-        en: textContents.en || descriptions.en || titles.en || '',
-        fr: textContents.fr || descriptions.fr || titles.fr || ''
-      };
-      const res = await generatePoiAudiosAction(poi?.id, formTexts);
-      if (res.success && res.data) {
-        setAudioTranslations(res.data);
-        const defaultUrl = res.data.ca || Object.values(res.data)[0] || '';
-        if (defaultUrl) setAudioUrl(defaultUrl);
-        alert("Àudios generats correctament per a tots els idiomes!");
+      if (!poi?.id) {
+        alert("Si us plau, guarda el POI primer.");
+        setIsGeneratingAudio(false);
+        return;
+      }
+      const res = await requestTtsGeneration(poi.id, voiceId);
+      if (res.success) {
+        alert("Petició enviada! Es generarà l'audioguia en segon pla.");
       } else {
         alert("Error generant àudios: " + res.error);
       }
@@ -331,6 +328,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     formData.append('description', descriptions.ca || '');
     formData.append('text_content', textContents.ca || '');
     formData.append('voice_script', voiceScript || '');
+    formData.append('voice_id', voiceId || 'nova');
     
     // We send the full translation objects as JSON
     formData.append('title_translations', JSON.stringify(titles));
@@ -371,6 +369,9 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
       formData.append('audio_url', finalAudioUrl);
       if (audioTranslations && Object.keys(audioTranslations).length > 0) {
         formData.append('audio_translations', JSON.stringify(audioTranslations));
+      }
+      if (videoTranslations && Object.keys(videoTranslations).length > 0) {
+        formData.append('video_translations', JSON.stringify(videoTranslations));
       }
 
       // 4. Upload Carousel Images
@@ -458,13 +459,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                       size="sm" 
                       className="h-6 text-[9px] border-purple-300 text-purple-600 hover:bg-purple-50"
                       disabled={isGeneratingAudio}
-                      onClick={async () => {
-                        setIsGeneratingAudio(true);
-                        const res = await generatePoiAudiosAction(poi.id);
-                        if (res.success) window.location.reload();
-                        else alert(res.error);
-                        setIsGeneratingAudio(false);
-                      }}
+                      onClick={handleGenerateAudios}
                     >
                       {isGeneratingAudio ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Music className="w-3 h-3 mr-1" />} Audioguies IA
                     </Button>
@@ -555,26 +550,47 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                 className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 transition-all text-[11px] h-8 px-3 flex items-center gap-1.5"
                 onClick={handleGenerateVoiceScriptAudio}
                 disabled={isGeneratingAudio || (!voiceScript && !textContents.ca && !descriptions.ca)}
-                title="Genera l'àudio MP3 des d'aquest guió per a tots els idiomes i passa'l a la caixa d'àudio"
+                title="Envia a la cua per generar àudio en segon pla"
               >
                 {isGeneratingAudio ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
                 )}
-                {isGeneratingAudio ? 'Generant àudios...' : 'Generar Audioguia (IA)'}
+                {isGeneratingAudio ? 'Encuant...' : 'Generar Audioguia (IA)'}
               </Button>
             </div>
-            <p className="text-[10px] text-stone-400 italic">
-              Text expressiu que el motor de veu llegirà per a l'idioma base (Català). En prémer "Generar Audioguia", l'arxiu passarà directament a la caixa d'Àudio (MP3) per a tots els idiomes.
-            </p>
-            <Textarea 
-              id="voiceScript" 
-              value={voiceScript} 
-              onChange={(e) => setVoiceScript(e.target.value)} 
-              className="min-h-[100px] text-sm bg-indigo-50/30 border-indigo-100 focus:border-indigo-300"
-              placeholder="Escriu el guió narratiu per a la veu..."
-            />
+            
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <p className="text-[10px] text-stone-400 italic mb-2">
+                  Text expressiu que el motor de veu llegirà per a l'idioma base (Català). Un procés en segon pla (Outbox) generarà l'àudio.
+                </p>
+                <Textarea 
+                  id="voiceScript" 
+                  value={voiceScript} 
+                  onChange={(e) => setVoiceScript(e.target.value)} 
+                  className="min-h-[100px] text-sm bg-indigo-50/30 border-indigo-100 focus:border-indigo-300"
+                  placeholder="Escriu el guió narratiu per a la veu..."
+                />
+              </div>
+              <div className="w-48 space-y-2">
+                <Label htmlFor="voiceId" className="text-xs font-bold text-stone-600">Veu (Persona)</Label>
+                <select
+                  id="voiceId"
+                  value={voiceId}
+                  onChange={(e) => setVoiceId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-medium"
+                >
+                  <option value="nova">Nova (Femenina, enèrgica)</option>
+                  <option value="alloy">Alloy (Andrògina, versàtil)</option>
+                  <option value="echo">Echo (Masculina, suau)</option>
+                  <option value="fable">Fable (Masc., britànica)</option>
+                  <option value="onyx">Onyx (Masculina, greu)</option>
+                  <option value="shimmer">Shimmer (Femenina, dolça)</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-2 pt-4 border-t border-stone-100">
@@ -767,23 +783,42 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                   </button>
                 </div>
                 {slot.url && (
-                  <div className="flex items-center justify-between gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
-                      <span className="font-mono text-[11px] text-stone-600 truncate" title={slot.url}>
-                        {slot.url.split('/').pop() || slot.url}
-                      </span>
+                  <div className="flex flex-col gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
+                        <span className="font-mono text-[11px] text-stone-600 truncate" title={slot.url}>
+                          {slot.url.split('/').pop() || slot.url}
+                        </span>
+                      </div>
+                      {slot.url.startsWith('http') && (
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={slot.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Veure
+                          </a>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50"
+                            onClick={async () => {
+                              if (!poi?.id) { alert("Guarda el POI primer."); return; }
+                              const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
+                              const res = await requestVideoTranslation(poi.id, slot.url);
+                              if (res.success) alert("Traducció de vídeo encuada! Trigarà una estona.");
+                              else alert("Error: " + res.error);
+                            }}
+                          >
+                            <Sparkles className="w-3 h-3 mr-1" /> Traduir Vídeo (IA)
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    {slot.url.startsWith('http') && (
-                      <a
-                        href={slot.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
-                      >
-                        <ExternalLink className="w-3 h-3" /> Veure Vídeo
-                      </a>
-                    )}
                   </div>
                 )}
                 <Input

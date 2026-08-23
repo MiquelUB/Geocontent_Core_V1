@@ -599,19 +599,24 @@ export async function updatePoi(id: string, formData: FormData) {
     let descriptionTranslations = (existingPoi.descriptionTranslations as any) || {};
     let textContentTranslations = (existingPoi.textContentTranslations as any) || {};
     let audioTranslations = (existingPoi.audioTranslations as any) || {};
+    let videoTranslations = (existingPoi.videoTranslations as any) || {};
 
     try {
       const tt = formData.get('title_translations') as string;
       const dt = formData.get('description_translations') as string;
       const tct = formData.get('text_content_translations') as string;
       const at = formData.get('audio_translations') as string;
+      const vt = formData.get('video_translations') as string;
       if (tt) titleTranslations = mergeTranslations(titleTranslations, JSON.parse(tt));
       if (dt) descriptionTranslations = mergeTranslations(descriptionTranslations, JSON.parse(dt));
       if (tct) textContentTranslations = mergeTranslations(textContentTranslations, JSON.parse(tct));
       if (at) audioTranslations = mergeTranslations(audioTranslations, JSON.parse(at));
+      if (vt) videoTranslations = mergeTranslations(videoTranslations, JSON.parse(vt));
     } catch (e) { }
 
     const type = formData.get('type') as string;
+    const voiceIdParam = formData.get('voice_id') as string;
+    const voiceId = formData.has('voice_id') ? voiceIdParam : existingPoi.voiceId;
     const manualQuizStr = formData.get('manual_quiz') as string;
     let manualQuiz = existingPoi.manualQuiz;
     try { if (manualQuizStr) manualQuiz = JSON.parse(manualQuizStr); } catch (e) { }
@@ -630,9 +635,11 @@ export async function updatePoi(id: string, formData: FormData) {
         longitude,
         audioUrl,
         audioTranslations: audioTranslations as any,
+        videoTranslations: videoTranslations as any,
         videoUrls,
         textContent,
         voiceScript,
+        voiceId,
         textContentTranslations: textContentTranslations as any,
         appThumbnail,
         header16x9,

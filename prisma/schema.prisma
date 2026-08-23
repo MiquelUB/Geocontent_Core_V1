@@ -86,6 +86,7 @@ model Municipality {
   adminMasterPassword String?   @map("admin_master_password")
   lastPublishedAt     DateTime? @map("last_published_at")
   packagingStatus     String    @default("IDLE") @map("packaging_status")
+  voicePersona        String?   @default("Persona gran, veu càlida, serena i amb experiència patrimonial") @map("voice_persona")
   reports             Report[]
   routes              Route[]
   users               User[]
@@ -140,7 +141,9 @@ model Poi {
   updatedAt                 DateTime                 @default(now()) @updatedAt @map("updated_at")
   textContentTranslations Json                     @default("{}") @map("text_content_translations")
   audioTranslations       Json                     @default("{}") @map("audio_translations")
+  videoTranslations       Json                     @default("{}") @map("video_translations")
   voiceScript             String?                  @map("voice_script")
+  voiceId                 String?                  @map("voice_id")
   visits                    PoiVisits[]
   routePois                 RoutePoi[]
   userUnlocks               UserUnlock[]
