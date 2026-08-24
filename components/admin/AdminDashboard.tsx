@@ -639,7 +639,7 @@ export default function AdminDashboard({
                       isLoading={isLoading}
                       routes={legends}
                       defaultRouteId={managingRoute?.id ?? (editingLegend?.id ?? undefined)}
-                      municipalityTheme={municipalityTheme}
+                      municipalityTheme={brand?.themeId || municipalityTheme}
                     />
 
                     {editingLegend && (
@@ -746,7 +746,7 @@ export default function AdminDashboard({
         {activeTab === 'config' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <MunicipalityManager municipalityId={municipalityId || ''} />
-            <S3Maintenance municipalityTheme={municipalityTheme} />
+            <S3Maintenance municipalityTheme={brand?.themeId || municipalityTheme} />
           </div>
         )}
       </main>
