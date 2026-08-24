@@ -86,7 +86,7 @@ export default function PoiQuiz({ poiId, userId, quiz, onComplete, isAlreadyComp
                         disabled={isCorrect !== null || isAlreadyCompleted}
                         onClick={() => handleAnswer(idx)}
                         className={`justify-start text-xs h-auto py-3 px-4 text-left font-sans transition-all border-stone-200 whitespace-normal min-h-[52px] ${selectedOption === idx
-                            ? (isCorrect ? 'bg-green-50 border-green-500 text-green-700 font-bold ring-2 ring-green-100 opacity-100' : 'bg-red-50 border-red-500 text-red-700 ring-2 ring-red-100 opacity-100')
+                            ? (isCorrect ? 'bg-primary/10 border-primary text-primary font-bold ring-2 ring-primary/20 opacity-100' : 'bg-red-50 border-red-500 text-red-700 ring-2 ring-red-100 opacity-100')
                             : (isCorrect !== null || isAlreadyCompleted) ? 'opacity-50 grayscale bg-stone-50' : 'hover:border-primary/50 hover:bg-stone-50'
                             }`}
                     >
@@ -105,7 +105,7 @@ export default function PoiQuiz({ poiId, userId, quiz, onComplete, isAlreadyComp
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`p-3 rounded-lg text-xs leading-snug ${isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+                        className={`p-3 rounded-lg text-xs leading-snug ${isCorrect ? 'bg-primary/10 text-primary font-medium' : 'bg-red-100 text-red-800'}`}
                     >
                         {isCorrect ? (
                             <div className="flex flex-col gap-1">
@@ -114,7 +114,7 @@ export default function PoiQuiz({ poiId, userId, quiz, onComplete, isAlreadyComp
                                     <span><strong>Molt bé!</strong> {isAlreadyCompleted ? 'Ja havies superat aquest repte.' : 'Has desbloquejat un tros del segell del passaport!'}</span>
                                 </div>
                                 {quiz.feedback && (
-                                    <p className="mt-2 text-green-700 opacity-90 italic border-t border-green-200/50 pt-2">{quiz.feedback}</p>
+                                    <p className="mt-2 text-primary/80 italic border-t border-primary/20 pt-2">{quiz.feedback}</p>
                                 )}
                             </div>
                         ) : (

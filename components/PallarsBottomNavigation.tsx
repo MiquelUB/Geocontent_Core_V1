@@ -30,7 +30,7 @@ export function PallarsBottomNavigation({ currentScreen, onScreenChange }: Palla
   ];
 
   return (
-    <div className="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-pallars-cream border-t border-pallars-green/20 flex flex-row justify-around items-center z-50">
+    <div className="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-[#F9F7F2] dark:bg-[#151c19] border-t border-primary/20 flex flex-row justify-around items-center z-50">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = currentScreen === item.id;
@@ -41,8 +41,8 @@ export function PallarsBottomNavigation({ currentScreen, onScreenChange }: Palla
             onClick={() => onScreenChange(item.id)}
             className={`flex flex-col items-center justify-center gap-1 touch-target rounded-lg transition-all duration-200 ${
               isActive 
-                ? "text-pallars-green bg-pallars-green/10 scale-105" 
-                : "text-pallars-brown hover:text-pallars-green hover:bg-pallars-green/5"
+                ? "text-primary bg-primary/10 scale-105" 
+                : "text-stone-500 hover:text-primary hover:bg-primary/5"
             }`}
           >
             <Icon size={20} />
@@ -50,7 +50,7 @@ export function PallarsBottomNavigation({ currentScreen, onScreenChange }: Palla
               {item.label}
             </span>
             {isActive && (
-              <div className="w-4 h-0.5 bg-pallars-green rounded-full"></div>
+              <div className="w-4 h-0.5 bg-primary rounded-full"></div>
             )}
           </button>
         );

@@ -418,7 +418,7 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
                         )}
                         <span>📍 Coordenades: {poi.coordinates_available ? 'Disponibles' : 'null'}</span>
                         <div className="flex items-center gap-1">
-                          <Badge variant="outline" className={`text-[9px] ${poi.visitor_potential === 'alt' ? 'border-green-200 text-green-700' : poi.visitor_potential === 'mitjà' ? 'border-orange-200 text-orange-700' : 'border-stone-200 text-stone-500'}`}>
+                          <Badge variant="outline" className={`text-[9px] ${poi.visitor_potential === 'alt' ? 'border-primary/50 text-primary' : poi.visitor_potential === 'mitjà' ? 'border-orange-200 text-orange-700' : 'border-stone-200 text-stone-500'}`}>
                             Potencial: {poi.visitor_potential}
                           </Badge>
                           {poi.visitor_potential_reason && (
@@ -540,11 +540,11 @@ export default function AiRouteGenerator({ theme }: { theme?: any }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Top POIs */}
                   {result.route_building_notes.top_pois && (
-                    <div className="bg-green-50/50 p-4 rounded-lg border border-green-100">
-                      <h5 className="text-[11px] font-bold text-green-800 uppercase mb-3">⭐ Punts Clau (Top 3)</h5>
+                    <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+                      <h5 className="text-[11px] font-bold text-primary uppercase mb-3">⭐ Punts Clau (Top 3)</h5>
                       <ul className="space-y-2">
                         {result.route_building_notes.top_pois.map((note: any, i: number) => (
-                          <li key={i} className="text-xs text-green-900 leading-snug">
+                          <li key={i} className="text-xs text-primary/80 leading-snug">
                             {typeof note === 'string' ? note : note.reason || note.id || JSON.stringify(note)}
                           </li>
                         ))}

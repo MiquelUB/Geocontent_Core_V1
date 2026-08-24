@@ -231,7 +231,7 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
       )}
 
       {state.phase === 'done' && (
-        <div className="text-xs px-3 py-2 rounded flex items-center gap-2 bg-green-50 text-green-700">
+        <div className="text-xs px-3 py-2 rounded flex items-center gap-2 bg-primary/10 text-primary">
           <CheckCircle className="w-3 h-3" />
           {state.type === 'snack'
             ? '⚡ Snack pujat · Transcodificant a MP4 480p offline'

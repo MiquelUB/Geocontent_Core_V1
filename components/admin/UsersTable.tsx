@@ -226,7 +226,7 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
                             </p>
                           </div>
                           <div className="text-right flex flex-col items-end gap-1">
-                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${visit.rating === 5 ? 'bg-green-100 text-green-700' : 'bg-stone-100 text-stone-600'}`}>
+                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${visit.rating === 5 ? 'bg-primary/10 text-primary' : 'bg-stone-100 text-stone-600'}`}>
                               {visit.rating === 5 ? 'Quiz Superat ✓' : 'Desbloquejat'}
                             </div>
                             {visit.durationSeconds && (

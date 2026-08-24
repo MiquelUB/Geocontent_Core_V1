@@ -88,7 +88,7 @@ export function PublishChangesButton({ municipalityId }: PublishChangesButtonPro
       case 'SUCCESS':
         return (
           <>
-            <CheckCircle2 className="w-5 h-5 mr-2 text-green-400" />
+            <CheckCircle2 className="w-5 h-5 mr-2 text-primary" />
             <span>Publicat correctament</span>
           </>
         );
@@ -125,7 +125,7 @@ export function PublishChangesButton({ municipalityId }: PublishChangesButtonPro
             : 'bg-white text-gray-900 border border-gray-200 shadow-sm hover:shadow-md hover:border-blue-200'}
           ${status === 'PROCESSING' ? 'bg-blue-50 border-blue-200 text-blue-600' : ''}
           ${status === 'ERROR' ? 'bg-red-50 border-red-200 text-red-600' : ''}
-          ${status === 'SUCCESS' ? 'bg-green-50 border-green-200 text-green-600' : ''}
+          ${status === 'SUCCESS' ? 'bg-primary/10 border-primary/30 text-primary' : ''}
         `}
       >
         <AnimatePresence mode="wait">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
-import { ArrowLeft, Settings, Edit, Trophy, ChevronRight, Star } from "lucide-react";
+import { ArrowLeft, Settings, Edit, Trophy, ChevronRight, Star, User } from "lucide-react";
 import { motion } from "motion/react";
 import { PassportGrid } from "@/components/passport/PassportGrid";
 import { handleAvatarUploadAction } from "@/lib/actions/storage";
@@ -92,11 +92,17 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
                                     <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                 </div>
                             ) : (
-                                <img
-                                    alt="Profile picture"
-                                    className="w-full h-full object-cover rounded-full"
-                                    src={currentUser?.avatarUrl || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234A5D23'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' /%3E%3C/svg%3E"}
-                                />
+                                currentUser?.avatarUrl ? (
+                                    <img
+                                        alt="Profile picture"
+                                        className="w-full h-full object-cover rounded-full"
+                                        src={currentUser.avatarUrl}
+                                    />
+                                ) : (
+                                    <div className="w-full h-full rounded-full bg-primary/10 flex items-center justify-center">
+                                        <User className="w-16 h-16 text-primary" />
+                                    </div>
+                                )
                             )}
                         </div>
                         <div className="absolute bottom-0 right-0 bg-primary text-white p-1.5 rounded-full border-2 border-[#F9F7F2] dark:border-[#1a211e] shadow-sm">

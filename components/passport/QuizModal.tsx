@@ -72,7 +72,7 @@ export function QuizModal({ isOpen, onClose, onSuccess, legendName }: QuizModalP
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0, opacity: 0 }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-green-500 text-white rounded-full p-1"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground rounded-full p-1"
                         >
                             <Check className="w-4 h-4" />
                         </motion.div>

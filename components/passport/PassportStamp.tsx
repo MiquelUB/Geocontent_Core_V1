@@ -167,8 +167,8 @@ export function PassportStamp({
         "transition-shadow duration-300",
         // Discovered vs locked
         hasAnyVisit
-          ? "bg-[#faf8f4] dark:bg-[#1e2a22] border-primary/20"
-          : "border-dashed border-[#b8cdc3] dark:border-[#2e3d35] bg-transparent",
+          ? "bg-primary/5 dark:bg-primary/10 border-primary/20"
+          : "border-dashed border-primary/30 dark:border-primary/20 bg-transparent",
         // Completion ring — muted amber ink, not neon gold
         isCompleted && "ring-2 ring-amber-500/40 shadow-sm shadow-amber-400/20"
       )}
@@ -258,7 +258,7 @@ export function PassportStamp({
                 style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
               >
                 <div className="w-4 h-4 rounded-full bg-white/50 dark:bg-black/30 flex items-center justify-center backdrop-blur-[1px]">
-                  <Lock className="w-2 h-2 text-[#8faba0] dark:text-[#4a6355]" />
+                  <Lock className="w-2 h-2 text-primary/60 dark:text-primary/70" />
                 </div>
               </div>
             );
@@ -290,7 +290,7 @@ export function PassportStamp({
           {/* ── Label strip ──────────────────────────────────────────── */}
           <div className="relative z-20 w-full px-1.5 pb-1.5">
             <div className="bg-white/75 dark:bg-[#0f1a14]/70 backdrop-blur-[4px] rounded-[6px] px-1.5 py-1">
-              <p className="font-serif text-[9px] font-bold text-center leading-tight text-[#1e2b25] dark:text-[#c8d8ce] line-clamp-1">
+              <p className="font-serif text-[9px] font-bold text-center leading-tight text-primary dark:text-primary-foreground line-clamp-1">
                 {name}
               </p>
               {isCompleted ? (
@@ -298,7 +298,7 @@ export function PassportStamp({
                   Complet · {date}
                 </p>
               ) : (
-                <p className="text-[8px] text-[#6a8c7e] dark:text-[#7aaa90] text-center tracking-tight">
+                <p className="text-[8px] text-primary/70 dark:text-primary-foreground/70 text-center tracking-tight">
                   {quizDonePois}/{totalPois} punts
                 </p>
               )}
@@ -321,16 +321,16 @@ export function PassportStamp({
         /* ── Undiscovered state ──────────────────────────────────────────── */
         <>
           <div className="flex-1 flex flex-col items-center justify-center gap-1.5 z-10 w-full">
-            <div className="w-9 h-9 rounded-full bg-[#e8f0eb] dark:bg-[#1e2a22] flex items-center justify-center">
-              <Lock className="w-4 h-4 text-[#9abfae] dark:text-[#3d5a4a]" />
+            <div className="w-9 h-9 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+              <Lock className="w-4 h-4 text-primary/60 dark:text-primary/70" />
             </div>
           </div>
           <div className="relative z-10 w-full px-1.5 pb-1.5">
             <div className="bg-white/60 dark:bg-[#0f1a14]/50 backdrop-blur-[2px] rounded-[6px] px-1.5 py-1">
-              <p className="font-serif text-[9px] text-center text-[#8faba0] dark:text-[#4a6355] line-clamp-1 leading-tight">
+              <p className="font-serif text-[9px] text-center text-primary/70 dark:text-primary/80 line-clamp-1 leading-tight">
                 {name}
               </p>
-              <p className="text-[8px] text-[#b8cdc3] dark:text-[#2e3d35] text-center tracking-tight">
+              <p className="text-[8px] text-primary/50 dark:text-primary/60 text-center tracking-tight">
                 Per descobrir
               </p>
             </div>
