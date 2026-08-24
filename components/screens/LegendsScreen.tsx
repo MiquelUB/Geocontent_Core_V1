@@ -250,9 +250,6 @@ export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand, curren
                                                 <span>{legend.location}</span>
                                             </div>
                                         )}
-                                        <div className="px-3 py-1 rounded shadow-sm bg-black/30 backdrop-blur-sm border border-white/10">
-                                            <span>{t('difficulty.' + legend.difficultyKey)}</span>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
