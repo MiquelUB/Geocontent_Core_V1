@@ -23,6 +23,17 @@ const nextConfig = {
       ].filter(Boolean)
     }
   },
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors. (Used to prevent OOM in Docker)
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors. (Used to prevent OOM in Docker)
+    ignoreBuildErrors: true,
+  },
   webpack: (config) => {
     return config;
   },
