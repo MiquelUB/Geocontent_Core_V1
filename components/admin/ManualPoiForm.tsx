@@ -863,7 +863,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {manualQuiz.opcions?.map((opt: string, idx: number) => (
-                <div key={idx} className={`space-y-1 p-2 rounded-lg border ${idx === manualQuiz.correcta ? 'border-primary/50 bg-primary/10' : 'border-stone-200 bg-white'}`}>
+                <div key={idx} className={`space-y-1 p-2 rounded-lg border ${idx === manualQuiz.correcta ? `${activeTheme.border} ${activeTheme.bg}` : 'border-stone-200 bg-white'}`}>
                   <Label className="text-[10px] text-stone-400">Opció {String.fromCharCode(65+idx)} {idx === manualQuiz.correcta && "✓"}</Label>
                   <Input 
                     value={opt} 
@@ -878,7 +878,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                     type="button" 
                     variant="ghost" 
                     size="sm" 
-                    className={`w-full h-6 text-[10px] mt-1 ${idx === manualQuiz.correcta ? 'text-primary font-bold' : 'text-stone-400'}`}
+                    className={`w-full h-6 text-[10px] mt-1 ${idx === manualQuiz.correcta ? `${activeTheme.text} font-bold` : 'text-stone-400'}`}
                     onClick={() => setManualQuiz({...manualQuiz, correcta: idx})}
                   >
                     {idx === manualQuiz.correcta ? 'Correcta' : 'Marcar Correcta'}

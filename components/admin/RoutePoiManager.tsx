@@ -131,15 +131,15 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
 
       {/* Route Status Banner */}
       {routeStatus === 'CLOSED' ? (
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
+        <div className={`${activeTheme.bg} border ${activeTheme.border} rounded-lg p-3 flex items-center justify-between`}>
           <div className="flex items-center gap-3">
-            <Trophy className="w-5 h-5 text-primary" />
+            <Trophy className={`w-5 h-5 ${activeTheme.text}`} />
             <div>
-              <p className="text-xs font-bold text-primary uppercase tracking-widest">Ruta Segellada</p>
-              <p className="text-[10px] text-primary/80">Aquesta ruta ja és visible per als usuaris i té un Repte Final.</p>
+              <p className={`text-xs font-bold ${activeTheme.mainText} uppercase tracking-widest`}>Ruta Segellada</p>
+              <p className={`text-[10px] ${activeTheme.text}`}>Aquesta ruta ja és visible per als usuaris i té un Repte Final.</p>
             </div>
           </div>
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">ACTIVA</Badge>
+          <Badge variant="outline" className={`${activeTheme.bgSoft} ${activeTheme.text} ${activeTheme.border}`}>ACTIVA</Badge>
         </div>
       ) : (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center justify-between">
@@ -178,7 +178,7 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
                   <p className="text-xs font-bold text-stone-800">{i + 1}. {q.pregunta}</p>
                   <div className="grid grid-cols-2 gap-1 mt-1">
                     {q.opcions?.map((o: string, idx: number) => (
-                      <div key={idx} className={`text-[10px] p-1.5 rounded border ${idx === q.correcta ? 'border-primary/50 bg-primary/10 text-primary font-bold' : 'border-stone-200 bg-white text-stone-500'}`}>
+                      <div key={idx} className={`text-[10px] p-1.5 rounded border ${idx === q.correcta ? `${activeTheme.border} ${activeTheme.bg} ${activeTheme.text} font-bold` : 'border-stone-200 bg-white text-stone-500'}`}>
                         {o} {idx === q.correcta && "✓"}
                       </div>
                     ))}
@@ -191,7 +191,7 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
               <p className="text-xs font-bold text-stone-800">{finalQuiz.pregunta}</p>
               <div className="grid grid-cols-2 gap-1 mt-1">
                 {finalQuiz.opcions?.map((o: string, idx: number) => (
-                  <div key={idx} className={`text-[10px] p-1.5 rounded border ${idx === finalQuiz.correcta ? 'border-primary/50 bg-primary/10 text-primary font-bold' : 'border-stone-200 bg-white text-stone-500'}`}>
+                  <div key={idx} className={`text-[10px] p-1.5 rounded border ${idx === finalQuiz.correcta ? `${activeTheme.border} ${activeTheme.bg} ${activeTheme.text} font-bold` : 'border-stone-200 bg-white text-stone-500'}`}>
                     {o} {idx === finalQuiz.correcta && "✓"}
                   </div>
                 ))}
@@ -236,7 +236,7 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
                       </p>
                     </div>
                     {(poi.latitude && poi.longitude) ? (
-                      <Badge variant="outline" className="text-[9px] border-primary/30 text-primary flex-shrink-0">
+                      <Badge variant="outline" className={`text-[9px] ${activeTheme.border} ${activeTheme.text} flex-shrink-0`}>
                         📍 GPS
                       </Badge>
                     ) : (

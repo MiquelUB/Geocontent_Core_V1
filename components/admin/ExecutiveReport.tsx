@@ -170,7 +170,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
         if (change === 0) return null;
         const isPositive = change >= 0;
         return (
-            <span className={`text-xs ml-2 font-medium ${isPositive ? 'text-primary' : 'text-red-600'} flex items-center inline-flex`}>
+            <span className={`text-xs ml-2 font-medium ${isPositive ? 'text-green-600' : 'text-red-600'} flex items-center inline-flex`}>
                 {isPositive ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
                 {Math.abs(change)}% vs mes anterior
             </span>
@@ -492,11 +492,11 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                         <div className="space-y-2">
                             <div className="flex justify-between text-xs font-bold">
                                 <span className="text-stone-600">TAXA D'ABANDONAMENT</span>
-                                <span className={metrics.abandonmentRate.value > 40 ? "text-red-500" : "text-primary"}>{metrics.abandonmentRate.value}%</span>
+                                <span className={metrics.abandonmentRate.value > 40 ? "text-red-500" : "text-green-600"}>{metrics.abandonmentRate.value}%</span>
                             </div>
                             <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden">
                                 <div
-                                    className={`${metrics.abandonmentRate.value > 40 ? "bg-red-400" : "bg-primary"} h-full`}
+                                    className={`${metrics.abandonmentRate.value > 40 ? "bg-red-400" : "bg-green-500"} h-full`}
                                     style={{ width: `${Math.min(100, metrics.abandonmentRate.value)}%` }}
                                 />
                             </div>
@@ -579,7 +579,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                                 <Info className="w-4 h-4 text-primary" />
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-stone-600">Llegenda de Calor</span>
                             </div>
-                            <div className="h-2 w-full bg-gradient-to-r from-blue-400 via-primary via-yellow-400 to-red-500 rounded-full mb-2" />
+                            <div className="h-2 w-full bg-gradient-to-r from-blue-400 via-green-400 via-yellow-400 to-red-500 rounded-full mb-2" />
                             <div className="flex justify-between text-[10px] text-stone-500 font-medium">
                                 <span>Poca activitat</span>
                                 <span>Molta activitat</span>
@@ -593,7 +593,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                     <CardHeader className="bg-stone-50/50">
                         <CardTitle className="text-lg flex items-center justify-between gap-2 w-full">
                             <div className="flex items-center gap-2">
-                                <FileCheck className="w-5 h-5 text-primary" />
+                                <FileCheck className={`w-5 h-5 ${activeTheme.text}`} />
                                 Arxiu d'Informes d'Impacte
                             </div>
                             {selectedReports.length > 0 && (
@@ -652,7 +652,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                                             <td className="px-6 py-4 font-medium text-stone-800">{report.title}</td>
                                             <td className="px-6 py-4">
                                                 <Badge className={
-                                                    report.status === 'COMPLETED' ? "bg-primary/10 text-primary hover:bg-primary/20" :
+                                                    report.status === 'COMPLETED' ? `${activeTheme.bg} ${activeTheme.text} ${activeTheme.hover}` :
                                                         report.status === 'ERROR' ? "bg-red-100 text-red-700 hover:bg-red-100" :
                                                             "bg-stone-100 text-stone-600 animate-pulse"
                                                 }>
