@@ -131,6 +131,10 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     }
     return [];
   });
+  const [carouselCaptions, setCarouselCaptions] = useState<Record<string, string>[]>(() => {
+    if (poi?.carouselCaptions && Array.isArray(poi.carouselCaptions)) return poi.carouselCaptions;
+    return [];
+  });
   const [carouselFiles, setCarouselFiles] = useState<(File | null)[]>(() =>
     new Array((poi?.carouselImages?.length || poi?.carousel_images?.length || (poi?.images?.length || 0))).fill(null)
   );
@@ -297,11 +301,13 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
       const blobUrl = URL.createObjectURL(newCarouselFile);
       setCarouselImages([...carouselImages, blobUrl]);
       setCarouselFiles([...carouselFiles, newCarouselFile]);
+      setCarouselCaptions([...carouselCaptions, {}]);
       setNewCarouselFile(null);
       setNewCarouselUrl('');
     } else if (newCarouselUrl) {
       setCarouselImages([...carouselImages, newCarouselUrl]);
       setCarouselFiles([...carouselFiles, null]);
+      setCarouselCaptions([...carouselCaptions, {}]);
       setNewCarouselUrl('');
     }
   };
@@ -313,6 +319,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     }
     setCarouselImages(carouselImages.filter((_, i) => i !== index));
     setCarouselFiles(carouselFiles.filter((_, i) => i !== index));
+    setCarouselCaptions(carouselCaptions.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -389,6 +396,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
         }
       }
       formData.append('carousel_images', JSON.stringify(finalCarouselUrls));
+      formData.append('carousel_captions', JSON.stringify(carouselCaptions));
 
       // 5. Upload Videos
       setUploadStatus("Pujant vídeos...");
@@ -950,11 +958,24 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
         </div>
         <div className="grid grid-cols-4 gap-4">
           {carouselImages.map((url, idx) => (
-            <div key={idx} className="relative aspect-square bg-stone-100 rounded-md overflow-hidden group">
-              <img src={url} alt={`Carousel ${idx}`} className="w-full h-full object-cover" />
-              <button type="button" onClick={() => handleRemoveCarouselImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100">
-                <X className="w-3 h-3" />
-              </button>
+            <div key={idx} className="flex flex-col gap-2">
+              <div className="relative aspect-square bg-stone-100 rounded-md overflow-hidden group">
+                <img src={url} alt={`Carousel ${idx}`} className="w-full h-full object-cover" />
+                <button type="button" onClick={() => handleRemoveCarouselImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <Textarea 
+                placeholder={`Text de la imatge (${activeLocale.toUpperCase()})`}
+                value={carouselCaptions[idx]?.[activeLocale] || ''}
+                onChange={(e) => {
+                  const newCaptions = [...carouselCaptions];
+                  if (!newCaptions[idx]) newCaptions[idx] = {};
+                  newCaptions[idx][activeLocale] = e.target.value;
+                  setCarouselCaptions(newCaptions);
+                }}
+                className="text-xs resize-none h-16"
+              />
             </div>
           ))}
         </div>

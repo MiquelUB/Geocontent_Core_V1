@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, History, Maximize, Minimize } from 'lucide-react';
 import { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ImageSliderProps {
   images: string[];
   isRecapture?: boolean;
+  captions?: Array<Record<string, string>>;
+  locale?: string;
 }
 
-export default function ImageSlider({ images: rawImages, isRecapture = false }: ImageSliderProps) {
+export default function ImageSlider({ images: rawImages, isRecapture = false, captions = [], locale = 'ca' }: ImageSliderProps) {
   const images = (rawImages || []).filter((url) => !!url && url.trim() !== '');
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +50,8 @@ export default function ImageSlider({ images: rawImages, isRecapture = false }: 
   const next = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prev = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
+  const currentCaption = captions?.[currentIndex]?.[locale] || captions?.[currentIndex]?.['ca'] || '';
+
   return (
     <div ref={containerRef} className={`relative w-full h-full group bg-stone-950 overflow-hidden ${isFullscreen ? 'fixed inset-0 z-[9999]' : ''}`}>
       {/* Recapture Badge */}
@@ -67,6 +72,24 @@ export default function ImageSlider({ images: rawImages, isRecapture = false }: 
             }`}
         />
       ))}
+
+      {/* Caption Overlay */}
+      <AnimatePresence mode="wait">
+        {currentCaption && (
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.3 }}
+            className="absolute bottom-12 left-0 right-0 z-20 px-5 flex justify-center pointer-events-none"
+          >
+            <p className="text-white text-sm font-serif text-center leading-snug drop-shadow-lg bg-black/40 backdrop-blur-md rounded-xl px-4 py-2 max-w-sm border border-white/10">
+              {currentCaption}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Navigation arrows — show on hover */}
       {images.length > 1 && (

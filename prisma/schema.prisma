@@ -134,6 +134,7 @@ model Poi {
   appThumbnail              String?                  @map("app_thumbnail")
   header16x9                String?                  @map("header_16x9")
   carouselImages            String[]                 @default([]) @map("carousel_images")
+  carouselCaptions          Json?                    @default("[]") @map("carousel_captions")
   icon                      String?
   type                      PoiType?
   manualQuiz                Json?                    @map("manual_quiz")

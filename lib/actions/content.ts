@@ -73,6 +73,9 @@ const CreatePoiSchema = z.object({
   carousel_images: z.string().optional().transform(val => {
     try { return val ? JSON.parse(val) : [] } catch { return [] }
   }),
+  carousel_captions: z.string().optional().transform(val => {
+    try { return val ? JSON.parse(val) : [] } catch { return [] }
+  }),
   icon: z.string().optional(),
   title_translations: z.string().optional().transform(val => {
     try { return val ? JSON.parse(val) : {} } catch { return {} }
@@ -376,7 +379,7 @@ export async function createPoi(formData: FormData) {
 
     console.log('[createPoi] 2/8 - Validating Schema...');
     const validated = CreatePoiSchema.parse(Object.fromEntries(formData.entries()));
-    const { title, description, latitude, longitude, route_id, text_content, voice_script, video_urls, carousel_images, icon, title_translations, description_translations, text_content_translations } = validated;
+    const { title, description, latitude, longitude, route_id, text_content, voice_script, video_urls, carousel_images, carousel_captions, icon, title_translations, description_translations, text_content_translations } = validated;
     console.log('[createPoi] 2/8 - Schema OK. lat=%s, lng=%s, route_id=%s', latitude, longitude, route_id);
 
     const appThumbFile = formData.get('app_thumbnail_file') as File || null
@@ -475,7 +478,8 @@ export async function createPoi(formData: FormData) {
           appThumbnail,
           header16x9,
           icon,
-          carouselImages: finalCarouselImages
+          carouselImages: finalCarouselImages,
+          carouselCaptions: carousel_captions
         }
       });
 
@@ -509,6 +513,9 @@ export async function createPoi(formData: FormData) {
 export async function updatePoi(id: string, formData: FormData) {
   try {
     console.log(`[updatePoi ${id}] 1/5 - Fetching existing POI...`);
+    const session = await auth();
+    if (!session) return { success: false, error: "Sessió requerida." };
+
     const existingPoi = await prisma.poi.findUnique({ where: { id } });
     if (!existingPoi) return { success: false, error: "POI no trobat." };
 
@@ -621,6 +628,10 @@ export async function updatePoi(id: string, formData: FormData) {
     let manualQuiz = existingPoi.manualQuiz;
     try { if (manualQuizStr) manualQuiz = JSON.parse(manualQuizStr); } catch (e) { }
 
+    const carouselCaptionsStr = formData.get('carousel_captions') as string;
+    let carouselCaptions = existingPoi.carouselCaptions;
+    try { if (carouselCaptionsStr) carouselCaptions = JSON.parse(carouselCaptionsStr); } catch (e) { }
+
     console.log(`[updatePoi ${id}] 3/5 - Updating database...`);
     await prisma.poi.update({
       where: { 
@@ -644,6 +655,7 @@ export async function updatePoi(id: string, formData: FormData) {
         appThumbnail,
         header16x9,
         carouselImages: finalCarouselImages,
+        carouselCaptions: carouselCaptions ? (carouselCaptions as any) : undefined,
         icon,
         manualQuiz: manualQuiz ? (manualQuiz as any) : undefined,
         type: type ? (type as any) : (existingPoi.type || undefined)

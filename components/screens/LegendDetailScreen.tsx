@@ -493,6 +493,8 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                   <ImageSlider
                       images={(safeLegend.carouselImages?.length > 0 ? safeLegend.carouselImages : safeLegend.images).map(proxifyUrl)}
                       isRecapture={safeLegend.is_recapture}
+                      captions={safeLegend.carouselCaptions || []}
+                      locale={locale}
                   />
                 </div>
               ) : (

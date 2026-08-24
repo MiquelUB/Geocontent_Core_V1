@@ -375,7 +375,12 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     if (type === 'poi') {
       const poi = await prisma.poi.findUnique({ where: { id } });
       if (!poi) return;
-      payload = { title: poi.title, description: poi.description, textContent: poi.textContent };
+      payload = { 
+        title: poi.title, 
+        description: poi.description, 
+        textContent: poi.textContent,
+        carouselCaptions: poi.carouselCaptions
+      } as any;
     } else {
       const route = await prisma.route.findUnique({ where: { id } });
       if (!route) return;
@@ -393,7 +398,10 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
 
     const completion = await openai.chat.completions.create({
       model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
+      messages: [
+        { role: "system", content: systemPrompt }, 
+        { role: "user", content: `<untrusted_document>\n${JSON.stringify(payload)}\n</untrusted_document>` }
+      ],
       response_format: { type: "json_object" },
       temperature: 0.1,
     });
@@ -406,7 +414,8 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
         data: { 
           titleTranslations: res.title || {}, 
           descriptionTranslations: res.description || {},
-          textContentTranslations: res.textContent || {}
+          textContentTranslations: res.textContent || {},
+          carouselCaptions: res.carouselCaptions || payload.carouselCaptions || []
         }
       });
       try {
