@@ -44,7 +44,7 @@ async function run() {
     
     console.log("Connected to DB via Prisma, adding columns if not exists...");
     
-    let retries = 5;
+    let retries = 15;
     while (retries > 0) {
       try {
         await client.$executeRawUnsafe('ALTER TABLE "pois" ADD COLUMN IF NOT EXISTS "voice_script" TEXT;');
@@ -61,7 +61,7 @@ async function run() {
           throw dbErr;
         }
         console.log(`Database not fully ready yet, retrying... (${retries} attempts left)`);
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 3000));
       }
     }
   } catch (e) {
