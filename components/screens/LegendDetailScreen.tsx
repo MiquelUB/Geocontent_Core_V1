@@ -290,7 +290,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
           className="absolute inset-0 w-full h-full"
         >
           <ImageWithFallback
-            src={proxifyUrl(safeLegend.hero || safeLegend.hero_image_url || safeLegend.header16x9 || safeLegend.image || safeLegend.image_url)}
+            src={proxifyUrl(safeLegend.appThumbnail || safeLegend.hero || safeLegend.hero_image_url || safeLegend.header16x9 || safeLegend.image || safeLegend.image_url)}
             alt={safeLegend.title}
             className="w-full h-full object-cover"
           />
@@ -566,7 +566,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                                 )}
                               </h4>
                               {distLabel && !isActive && (
-                                <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg ${poiUnlocked ? 'bg-primary/10 text-primary' : 'bg-stone-100 text-stone-300'}`}>
+                                <span className={`flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg ${poiUnlocked ? 'bg-primary/10 text-primary' : 'bg-primary/5 text-primary/50'}`}>
                                   {distLabel}
                                 </span>
                               )}
