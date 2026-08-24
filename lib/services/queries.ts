@@ -128,7 +128,6 @@ export async function getAllProfiles() {
 }
 
 export async function getLegends(userId?: string) {
-  noStore();
   try {
     const routes = await prisma.route.findMany({
       include: {

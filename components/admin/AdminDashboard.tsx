@@ -26,6 +26,7 @@ import RoutePoiManager from "./RoutePoiManager";
 import MunicipalityManager from "./MunicipalityManager";
 import AdminSecurityGate from "./AdminSecurityGate";
 import { PublishChangesButton } from "./PublishChangesButton";
+import S3Maintenance from "./S3Maintenance";
 
 interface Legend {
   id: string;
@@ -743,7 +744,10 @@ export default function AdminDashboard({
         )}
 
         {activeTab === 'config' && (
-          <MunicipalityManager municipalityId={municipalityId || ''} />
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <MunicipalityManager municipalityId={municipalityId || ''} />
+            <S3Maintenance />
+          </div>
         )}
       </main>
     </div>

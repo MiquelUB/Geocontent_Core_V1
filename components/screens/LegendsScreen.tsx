@@ -16,6 +16,7 @@ interface LegendsScreenProps {
     onOpenHelp: () => void;
     brand?: any;
     currentUser?: any;
+    globalLegends?: any[];
 }
 
 // Difficulty derived deterministically from POI count (no Math.random)
@@ -61,7 +62,7 @@ function hexToHsl(hex: string) {
 }
 
 
-export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand, currentUser }: LegendsScreenProps) {
+export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand, currentUser, globalLegends = [] }: LegendsScreenProps) {
     const t = useTranslations('legends');
     const tCommon = useTranslations('common');
     const locale = useLocale();
@@ -80,38 +81,34 @@ export function LegendsScreen({ onNavigate, onOpenHelp, brand: propBrand, curren
     const network = useNetworkStatus();
 
     useEffect(() => {
-        async function fetchData() {
-            const [data, brandData] = await Promise.all([
-                getLegends(currentUser?.id),
-                !propBrand ? getAppBranding() : Promise.resolve(propBrand)
-            ]);
-            if (!propBrand) setBrand(brandData);
-            if (data) {
-                const mapped = data.map((l: any) => ({
-                    ...l,
-                    location: getLocalizedContent(l, 'location_name', locale) || '',
-                    coordinates: { lat: l.latitude, lng: l.longitude },
-                    image: l.image_url,
-                    hero: l.hero_image_url,
-                    difficultyKey: getDifficultyKey(l.poiCount ?? 0),
-                    poiCount: l.poiCount ?? (l.pois?.length ?? 0),
-                }));
-                setLegends(mapped);
-
-                // Create chips for each individual route
-                const routeChips = [
-                    { id: "all", label: t('all'), category: "all" },
-                    ...mapped.map((l: any) => ({
-                        id: l.id,
-                        label: getLocalizedContent(l, 'title', locale),
-                        category: l.category
-                    }))
-                ];
-                setFilterChips(routeChips);
-            }
+        if (!propBrand) {
+            getAppBranding().then(b => setBrand(b));
         }
-        fetchData();
-    }, [locale, t, propBrand]);
+
+        if (globalLegends && globalLegends.length > 0) {
+            const mapped = globalLegends.map((l: any) => ({
+                ...l,
+                location: getLocalizedContent(l, 'location_name', locale) || '',
+                coordinates: { lat: l.latitude, lng: l.longitude },
+                image: l.image_url,
+                hero: l.hero_image_url,
+                difficultyKey: getDifficultyKey(l.poiCount ?? 0),
+                poiCount: l.poiCount ?? (l.pois?.length ?? 0),
+            }));
+            setLegends(mapped);
+
+            // Create chips for each individual route
+            const routeChips = [
+                { id: "all", label: t('all'), category: "all" },
+                ...mapped.map((l: any) => ({
+                    id: l.id,
+                    label: getLocalizedContent(l, 'title', locale),
+                    category: l.category
+                }))
+            ];
+            setFilterChips(routeChips);
+        }
+    }, [locale, t, propBrand, globalLegends]);
 
     // Initialize cached status
     useEffect(() => {

@@ -104,7 +104,7 @@ export function ErrorScreen({ type, onRetry, onNavigate, brand }: ErrorScreenPro
         >
           <Button 
             onClick={onRetry}
-            className="w-full pallars-button flex items-center justify-center space-x-2"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center space-x-2 rounded-lg py-3 font-bold transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             <span>{config.action}</span>
@@ -113,7 +113,7 @@ export function ErrorScreen({ type, onRetry, onNavigate, brand }: ErrorScreenPro
           <Button 
             variant="outline"
             onClick={() => onNavigate('home')}
-            className="w-full border-pallars-green text-primary hover:bg-primary/10"
+            className="w-full border-primary text-primary hover:bg-primary/10 rounded-lg py-3 font-bold transition-colors"
           >
             {t('backToHome')}
           </Button>
@@ -139,7 +139,7 @@ export function ErrorScreen({ type, onRetry, onNavigate, brand }: ErrorScreenPro
       </div>
 
       {/* Decoració de fons */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-pallars-green/5 to-transparent pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none"></div>
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-muted-foreground w-full text-center">
         {t('footer')}
       </div>

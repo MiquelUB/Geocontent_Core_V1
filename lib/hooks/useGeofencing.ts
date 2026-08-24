@@ -12,7 +12,8 @@ interface UseGeofencingReturn {
 
 export function useGeofencing(
   latitude: number | null,
-  longitude: number | null
+  longitude: number | null,
+  globalLegends: any[] = []
 ): UseGeofencingReturn {
   const [activeGeofences, setActiveGeofences] = useState<Location[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,11 +26,10 @@ export function useGeofencing(
       try {
         setLoading(true)
         
-        // Obtenim les rutes oficials igual que la HomeScreen
-        const routes = await getLegends();
-        const allPois = routes.flatMap(r => r.pois);
+        // Utilitzem els globalLegends ja descarregats per page.tsx
+        const allPois = globalLegends.flatMap(r => r.pois);
 
-        if (allPois.length > 0) {
+        if (allPois && allPois.length > 0) {
           // Convertir punts amb radi a format de geofencing (cercle de 50m)
           const locations: Location[] = allPois.map((loc: any) => {
             let zoneData = null;
@@ -63,7 +63,7 @@ export function useGeofencing(
     }
 
     loadGeofences()
-  }, [])
+  }, [globalLegends])
 
   // Verificar posición cuando cambia la ubicación
   const checkPosition = useCallback((lat: number, lon: number) => {

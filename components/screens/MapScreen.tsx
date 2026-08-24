@@ -61,9 +61,10 @@ interface MapScreenProps {
   userLocation: { latitude: number; longitude: number } | null;
   error?: string | null;
   currentUser?: any;
+  globalLegends?: any[];
 }
 
-export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLocation, error: geoError, currentUser }: MapScreenProps) {
+export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLocation, error: geoError, currentUser, globalLegends = [] }: MapScreenProps) {
   const t = useTranslations('map');
   const tHome = useTranslations('home');
   const tCommon = useTranslations('common');
@@ -83,38 +84,42 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
   const [hasInitialPosition, setHasInitialPosition] = useState(false);
 
   useEffect(() => {
-    async function fetchData() {
-      const data = await getLegends(currentUser?.id);
-      if (data) {
-        const activeCategory = brand?.themeId || 'mountain';
-        const theme = PxxConfig.chameleonThemes[activeCategory as keyof typeof PxxConfig.chameleonThemes] || PxxConfig.chameleonThemes['mountain'];
-        const biomeColor = theme.primary;
+    if (globalLegends && globalLegends.length > 0) {
+      const activeCategory = brand?.themeId || 'mountain';
+      const theme = PxxConfig.chameleonThemes[activeCategory as keyof typeof PxxConfig.chameleonThemes] || PxxConfig.chameleonThemes['mountain'];
+      const biomeColor = theme.primary;
 
-        const mapped = data.map((l: any) => ({
-          ...l,
-          location: l.location_name || "",
-          coordinates: { lat: l.latitude, lng: l.longitude },
-          image: l.image_url,
-          hero: l.hero_image_url,
-          audio: l.audio_url,
-          video: l.video_url,
-          color: biomeColor,
-        }));
-        setLegends(mapped);
+      const mapped = globalLegends.map((l: any) => ({
+        ...l,
+        location: l.location_name || "",
+        coordinates: { lat: l.latitude, lng: l.longitude },
+        image: l.image_url,
+        hero: l.hero_image_url,
+        audio: l.audio_url,
+        video: l.video_url,
+        color: biomeColor,
+        poiCount: l.poiCount ?? (l.pois?.length ?? 0),
+        category: l.category || activeCategory,
+        // Ensure child pois inherit the category for the icon generator
+        pois: l.pois?.map((p: any) => ({
+          ...p,
+          category: p.category || l.category || activeCategory
+        }))
+      }));
+      setLegends(mapped);
 
-        const chips = [
-          { id: "all", label: t('all'), color: biomeColor },
-          ...mapped.map(l => ({
-            id: l.id,
-            label: getLocalizedContent(l, 'title', locale),
-            color: biomeColor
-          }))
-        ];
-        setFilterChips(chips);
-      }
+      // Create chips for each individual route
+      const routeChips = [
+        { id: "all", label: t('all'), category: "all" },
+        ...mapped.map((l: any) => ({
+          id: l.id,
+          label: getLocalizedContent(l, 'title', locale),
+          category: l.category
+        }))
+      ];
+      setFilterChips(routeChips);
     }
-    fetchData();
-  }, [locale, t, brand]);
+  }, [locale, t, brand?.themeId, globalLegends]);
 
   useEffect(() => {
     if (focusLegend) {
@@ -207,7 +212,7 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
               </>
             ) : (
               <>
-                <div className="w-2 h-2 rounded-full bg-green-400" />
+                <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
                 <span className="text-[10px] text-primary-foreground/70 uppercase font-bold tracking-wider">{tHome('gpsActive')}</span>
               </>
             )}

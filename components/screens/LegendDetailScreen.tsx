@@ -546,9 +546,9 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                             }`}
                         >
                           <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-black ${isActive
-                            ? 'bg-primary text-white ring-4 ring-primary/20'
+                            ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
                             : poiUnlocked
-                              ? 'bg-primary/80 text-white'
+                              ? 'bg-primary/80 text-primary-foreground'
                               : 'bg-stone-200 text-stone-400'
                             }`}>
                             {idx + 1}
@@ -560,7 +560,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                                 }`}>
                                 {getLocalizedContent(poi, 'title', locale)}
                                 {isActive && (
-                                  <span className="ml-2 inline-flex items-center text-[9px] uppercase tracking-tighter bg-primary text-white px-2 py-0.5 rounded-full font-black animate-pulse">
+                                  <span className="ml-2 inline-flex items-center text-[9px] uppercase tracking-tighter bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-black animate-pulse">
                                     {t('youAreHere')}
                                   </span>
                                 )}
@@ -578,7 +578,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                           </div>
 
                           <div className="flex flex-col items-center justify-center p-1">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? 'bg-primary text-white rotate-90 shadow-lg' : poiUnlocked ? 'bg-primary/5 text-primary' : 'text-stone-200'
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isActive ? 'bg-primary text-primary-foreground rotate-90 shadow-lg' : poiUnlocked ? 'bg-primary/5 text-primary' : 'text-stone-200'
                               }`}>
                               <Navigation2 className="w-5 h-5" />
                             </div>

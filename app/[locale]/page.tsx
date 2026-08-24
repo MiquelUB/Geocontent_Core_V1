@@ -56,6 +56,28 @@ function hexToHsl(hex: string) {
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
 
+function getForegroundHsl(hex: string) {
+  if (!hex || typeof hex !== 'string') return "45 27% 96%"; // default cream
+
+  let r = 0, g = 0, b = 0;
+  const cleanHex = hex.startsWith('#') ? hex : `#${hex}`;
+
+  if (cleanHex.length === 4) {
+    r = parseInt(cleanHex[1], 16) * 17;
+    g = parseInt(cleanHex[2], 16) * 17;
+    b = parseInt(cleanHex[3], 16) * 17;
+  } else if (cleanHex.length === 7) {
+    r = parseInt(cleanHex.substring(1, 3), 16);
+    g = parseInt(cleanHex.substring(3, 5), 16);
+    b = parseInt(cleanHex.substring(5, 7), 16);
+  }
+
+  // Calculate relative luminance (YIQ)
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+  // If color is light, use dark ink text; if dark, use cream text
+  return (yiq >= 128) ? "120 5% 11%" : "45 27% 96%";
+}
+
 const ChameleonThemesFallback: any = {
   mountain: { primary: "#4A5D23", accent: "#BC5D36", bg: "#F9F7F2" },
   coast: { primary: "#1B6B93", accent: "#F4D160", bg: "#F5F5F0" },
@@ -75,13 +97,16 @@ export default function Home() {
   const [navigationData, setNavigationData] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [brand, setBrand] = useState<any>(null);
+  const [globalLegends, setGlobalLegends] = useState<any[]>([]);
 
   const themeId = brand?.themeId?.toLowerCase() || 'mountain';
   const theme = ChameleonThemesFallback[themeId] || ChameleonThemesFallback.mountain;
 
   const themeStyles = {
     '--primary': hexToHsl(theme.primary),
+    '--primary-foreground': getForegroundHsl(theme.primary),
     '--accent': hexToHsl(theme.accent),
+    '--accent-foreground': getForegroundHsl(theme.accent),
     '--background': hexToHsl(theme.bg),
   } as React.CSSProperties;
 
@@ -92,7 +117,7 @@ export default function Home() {
   const { isOpen: isOnboardingOpen, completeOnboarding, skipOnboarding, reopenOnboarding } = useOnboarding(currentScreen === "home");
   
   // Geofencing background monitor
-  useGeofencing(location?.latitude ?? null, location?.longitude ?? null);
+  useGeofencing(location?.latitude ?? null, location?.longitude ?? null, globalLegends);
 
   useEffect(() => {
     const handleEnter = async (event: any) => {
@@ -131,6 +156,8 @@ export default function Home() {
           return;
         }
 
+        let effectiveUserId: string | undefined = undefined;
+
         // Check if returning from magic link auth callback
         const urlParams = new URLSearchParams(window.location.search);
         const authSuccess = urlParams.get('auth_success');
@@ -152,6 +179,7 @@ export default function Home() {
             if (profile) {
               setCurrentUser(profile);
               localStorage.setItem("core_user", JSON.stringify(profile));
+              effectiveUserId = profile.id;
               console.log("Magic link login successful:", profile);
             } else {
               console.warn("Could not load profile after 3 attempts for uid:", uid);
@@ -175,6 +203,7 @@ export default function Home() {
                 if (profile) {
                   console.log("Session valid.");
                   setCurrentUser(profile);
+                  effectiveUserId = profile.id;
                 } else {
                   console.warn("Invalid session found. Clearing.");
                   localStorage.removeItem("core_user");
@@ -192,12 +221,19 @@ export default function Home() {
           }
         }
 
-        // Fetch branding data
+        // Fetch branding data & legends
         try {
-          const brands = await getAppBranding();
+          const { getLegends } = await import("@/lib/actions/queries");
+          const [brands, legendsData] = await Promise.all([
+             getAppBranding(),
+             getLegends(effectiveUserId)
+          ]);
           setBrand(brands);
-        } catch (brandErr) {
-          console.warn("Could not fetch branding, using defaults:", brandErr);
+          if (legendsData) {
+             setGlobalLegends(legendsData);
+          }
+        } catch (fetchErr) {
+          console.warn("Could not fetch initial data:", fetchErr);
         }
 
         console.log("Initialization complete. setting isLoaded=true");
@@ -263,14 +299,13 @@ export default function Home() {
       case "login":
         return <SimpleLogin onLoginSuccess={handleLoginSuccess} />;
       case "home":
-        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} currentUser={currentUser} />;
-
+        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} currentUser={currentUser} globalLegends={globalLegends} />;
       case "legends":
-        return <LegendsScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} currentUser={currentUser} />;
+        return <LegendsScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} currentUser={currentUser} globalLegends={globalLegends} />;
       case "legend-detail":
         return <LegendDetailScreen legend={navigationData} onNavigate={handleNavigate} brand={brand} userLocation={location} currentUser={currentUser} onUserUpdate={handleUserUpdate} />;
       case "map":
-        return <MapScreen onNavigate={handleNavigate} focusLegend={navigationData} brand={brand} userLocation={location} onOpenHelp={reopenOnboarding} currentUser={currentUser} />;
+        return <MapScreen onNavigate={handleNavigate} focusLegend={navigationData} brand={brand} userLocation={location} onOpenHelp={reopenOnboarding} currentUser={currentUser} globalLegends={globalLegends} />;
 
       case "profile":
         return <ProfileScreen onNavigate={handleNavigate} currentUser={currentUser} onUserUpdate={handleUserUpdate} />;
@@ -284,10 +319,9 @@ export default function Home() {
           />
         );
       default:
-        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} currentUser={currentUser} />;
+        return <HomeScreen onNavigate={handleNavigate} onOpenHelp={reopenOnboarding} brand={brand} userLocation={location} error={geoError} currentUser={currentUser} globalLegends={globalLegends} />;
     }
   };
-
   // Determinar si cal mostrar la navegació inferior
   // Show on all screens EXCEPT splash and error
   const showBottomNav = !["splash", "error", "login"].includes(currentScreen);

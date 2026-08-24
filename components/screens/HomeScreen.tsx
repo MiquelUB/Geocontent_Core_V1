@@ -114,9 +114,10 @@ interface HomeScreenProps {
   userLocation?: { latitude: number; longitude: number } | null;
   error?: string | null;
   currentUser?: any;
+  globalLegends: any[];
 }
 
-export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocation, error: geoError, currentUser }: HomeScreenProps) {
+export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocation, error: geoError, currentUser, globalLegends }: HomeScreenProps) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
   const locale = useLocale();
@@ -125,35 +126,31 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
   const [mapPois, setMapPois] = useState<any[]>([]);
   const [brand, setBrand] = useState<any>(propBrand);
 
-  const [allLegends, setAllLegends] = useState<any[]>([]);
-
-  // 1. Fetch data from server ONCE
+  // 1. Fetch brand data from server ONCE (if not provided via prop)
   useEffect(() => {
     async function fetchInitialData() {
-      const [legendsData, brandData] = await Promise.all([
-        getLegends(currentUser?.id),
-        !propBrand ? getAppBranding() : Promise.resolve(propBrand)
-      ]);
-      if (!propBrand) setBrand(brandData);
-      if (legendsData) setAllLegends(legendsData);
+      if (!propBrand) {
+        const brandData = await getAppBranding();
+        setBrand(brandData);
+      }
     }
     fetchInitialData();
-  }, [propBrand, currentUser?.id]);
+  }, [propBrand]);
 
-  // 2. Recalculate distances only when userLocation or allLegends changes
+  // 2. Recalculate distances only when userLocation or globalLegends changes
   useEffect(() => {
-    if (allLegends.length === 0) return;
+    if (!globalLegends || globalLegends.length === 0) return;
 
     const defaultLoc = { latitude: 42.4140, longitude: 0.9870 };
     const currentLoc = userLocation || defaultLoc;
 
     const allPois: any[] = [];
-    allLegends.forEach((l: any) => {
-      if (l.pois && Array.isArray(l.pois)) {
-        l.pois.forEach((poi: any) => {
+    globalLegends.forEach(legend => {
+      if (legend.pois && Array.isArray(legend.pois)) {
+        legend.pois.forEach((poi: any) => {
           allPois.push({
             ...poi,
-            parentRoute: l,
+            parentRoute: legend,
             distance: calculateDistance(
               currentLoc.latitude,
               currentLoc.longitude,
@@ -166,9 +163,9 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
               poi.latitude,
               poi.longitude
             ),
-            image: poi.image_url || l.image_url,
-            rating: l.rating || 4.5,
-            location: getLocalizedContent(l, 'location_name', locale) || t('defaultLocationName'),
+            image: poi.image_url || legend.image_url,
+            rating: legend.rating || 4.5,
+            location: getLocalizedContent(legend, 'location_name', locale) || t('defaultLocationName'),
           });
         });
       }
@@ -195,7 +192,7 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
     // Limit nearby to 3, and map POIs to 30 to prevent WebGL Marker DOM crashes
     setNearbyPois(allSortedPois.slice(0, 3));
     setMapPois(allSortedPois.slice(0, 30));
-  }, [userLocation, allLegends, locale, t]);
+  }, [userLocation, globalLegends, locale, t]);
 
   const defaultLoc = { latitude: 42.4140, longitude: 0.9870 };
   const currentLoc = userLocation || defaultLoc;
@@ -207,7 +204,7 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="relative h-64 mx-4 mt-4 rounded-lg overflow-hidden bg-gradient-to-br from-green-100 to-blue-100 shadow-md pointer-events-none"
+        className="relative h-64 mx-4 mt-4 rounded-lg overflow-hidden bg-gradient-to-br from-primary/20 to-accent/20 shadow-md pointer-events-none"
       >
         <div className="absolute inset-0 z-0">
           <MapLibreMap id="home-map" center={[currentLoc.longitude, currentLoc.latitude]} zoom={12}>
@@ -278,7 +275,7 @@ export function HomeScreen({ onNavigate, onOpenHelp, brand: propBrand, userLocat
             </>
           ) : (
             <>
-              <div className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]" />
+              <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
               <p className="text-[10px] font-bold uppercase tracking-wider text-primary-foreground/90">
                 {t('gpsActive')}
               </p>
