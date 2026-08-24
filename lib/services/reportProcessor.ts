@@ -110,6 +110,20 @@ export async function processReport(reportId: string, municipalityId: string) {
             </ul>
         </div>
 
+        <div class="section">
+            <h2>Opinions i Valoracions Destacades</h2>
+            ${metrics.ratingStats?.details?.length ? `
+            <ul>
+                ${metrics.ratingStats.details.slice(0, 5).map((r: any) => `
+                    <li style="margin-bottom: 15px;">
+                        <strong>${r.routeName}</strong> (${r.rating}/5 ⭐️)<br/>
+                        <span style="font-style: italic; color: #555;">"${r.comment || 'Sense comentari text'}"</span>
+                    </li>
+                `).join('')}
+            </ul>
+            ` : '<p style="color: #666; font-style: italic;">No hi ha valoracions recents en aquest període.</p>'}
+        </div>
+
         <div class="footer">
           Aquest informe ha estat generat automàticament per la plataforma Geocontent per al període del ${startDate.toLocaleDateString()} al ${endDate.toLocaleDateString()}.
         </div>

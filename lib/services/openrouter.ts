@@ -28,19 +28,24 @@ L'objectiu és redactar un "Resum Executiu de l'Impacte Turístic" per a l'Alcal
 
 REQUISITS DE CONTINGUT:
 1. Analitza les mètriques: Usuaris actius, rutes completades i èxit als reptes (quizzes).
-2. Si hi ha poques dades (per exemple, només 1-5 usuaris), has de ser transparent: indica que l'informe és preliminar i que s'espera un creixement de dades a mesura que la plataforma es difongui.
-3. El text ha de mencionar explícitament el nom del municipi (${municipalityName}) per donar-li un to oficial i personalitzat. No usis placeholders com "[Nom del municipi]".
-4. To: Institucional, professional, optimista però realista.
-5. Idioma: Català.
-6. Extensió: 3-4 paràgrafs ben estructurats.
-7. Valor afegit: Proposa una acció concreta si els resultats són baixos (ex: millorar la senyalització física dels punts).
+2. Fes una anàlisi de sentiment basada exclusivament en els comentaris i les valoracions reals dels usuaris que es proporcionen. Dedica un paràgraf a destacar què agrada i què s'hauria de millorar segons el feedback.
+3. Si hi ha poques dades (per exemple, només 1-5 usuaris), has de ser transparent: indica que l'informe és preliminar i que s'espera un creixement de dades a mesura que la plataforma es difongui.
+4. El text ha de mencionar explícitament el nom del municipi (${municipalityName}) per donar-li un to oficial i personalitzat. No usis placeholders com "[Nom del municipi]".
+5. To: Institucional, professional, optimista però realista.
+6. Idioma: Català.
+7. Extensió: 3-4 paràgrafs ben estructurats.
+8. Valor afegit: Proposa una acció concreta si els resultats són baixos o si el feedback detecta mancances (ex: millorar la senyalització física dels punts).
 
 Dades actuals de ${municipalityName}:
 - Usuaris actius: ${data.metrics.users.active}
 - Total rutes completades: ${data.metrics.routesCompleted.value}
 - Taxa d'èxit en reptes: ${data.metrics.quizStats.value}%
 - Abandonament: ${data.metrics.abandonmentRate.value}%
+- Mitjana de valoracions: ${data.metrics.ratingStats?.average || 0}/5 estrelles
 - Punts d'interès amb més activitat: ${data.metrics.quizStats.details.slice(0, 3).map((d: any) => d.title).join(", ")}
+
+OPINIONS I COMENTARIS DELS USUARIS REALS:
+${data.metrics.ratingStats?.details?.length ? data.metrics.ratingStats.details.map((r: any) => `- Ruta: ${r.routeName} | Valoració: ${r.rating}/5 | Comentari: "${r.comment || 'Sense comentari'}"`).join("\n") : "Sense comentaris en aquest període."}
 `;
 
     const completion = await client.chat.completions.create({
