@@ -4,6 +4,8 @@ import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "../globals.css";
 import { PxxConfig } from "@/projects/active/config";
 
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
