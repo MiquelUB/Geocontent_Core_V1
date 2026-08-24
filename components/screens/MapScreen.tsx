@@ -34,7 +34,7 @@ const typeToIconName: Record<string, string> = {
 };
 
 function getPoiIconSrc(poi: any, globalBiome?: string) {
-  const category = (poi.category || globalBiome || 'mountain').toLowerCase();
+  const category = (globalBiome || 'mountain').toLowerCase();
   const biome = BIOME_MAP[category] || BIOME_MAP['mountain']; // Fallback a Montanya si no trobem el bioma
 
   if (poi.icon) {

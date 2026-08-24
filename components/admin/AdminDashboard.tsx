@@ -746,7 +746,7 @@ export default function AdminDashboard({
         {activeTab === 'config' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <MunicipalityManager municipalityId={municipalityId || ''} />
-            <S3Maintenance />
+            <S3Maintenance municipalityTheme={municipalityTheme} />
           </div>
         )}
       </main>

@@ -979,7 +979,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </>
             ) : (poi ? 'Actualitzar Punt Territorial' : 'Crear Nou Punt Territorial')}
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel} className="py-6 h-auto px-8" disabled={isUploading}>Cancel·lar</Button>
+          <Button type="button" variant="outline" onClick={onCancel} className={`py-6 h-auto px-8 ${activeTheme.text} border-stone-200 hover:${activeTheme.bg}`} disabled={isUploading}>Cancel·lar</Button>
         </div>
       </div>
     </form >

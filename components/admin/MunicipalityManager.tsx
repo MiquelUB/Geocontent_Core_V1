@@ -9,6 +9,7 @@ import { updateMunicipality } from "@/lib/actions/content";
 import { getMunicipalities } from "@/lib/actions/queries";
 import { uploadFileClient } from "@/lib/upload-client";
 import { useRouter } from "next/navigation";
+import { getAdminTheme } from "@/lib/adminTheme";
 
 export default function MunicipalityManager({ municipalityId }: { municipalityId?: string }) {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function MunicipalityManager({ municipalityId }: { municipalityId
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [muniId, setMuniId] = useState(municipalityId || '');
+  const activeTheme = getAdminTheme(themeId);
 
   useEffect(() => {
     async function load() {
@@ -176,7 +178,7 @@ export default function MunicipalityManager({ municipalityId }: { municipalityId
         <p className="text-[10px] text-stone-400 italic">Cada add-on allibera l'espai per una ruta nova completa.</p>
       </div>
 
-      <Button onClick={handleSave} disabled={isSaving || !name} className="bg-stone-800 text-white hover:bg-stone-900">
+      <Button onClick={handleSave} disabled={isSaving || !name} className={`${activeTheme.primary} ${activeTheme.hover} text-white`}>
         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
         Guardar Canvis
       </Button>

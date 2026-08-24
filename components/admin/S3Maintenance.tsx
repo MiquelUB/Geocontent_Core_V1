@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, HardDrive, Trash2, ShieldAlert } from "lucide-react";
 import { analyzeS3Orphans, cleanS3Orphans } from "@/lib/actions/maintenance";
+import { getAdminTheme } from "@/lib/adminTheme";
 
-export default function S3Maintenance() {
+export default function S3Maintenance({ municipalityTheme = 'mountain' }: { municipalityTheme?: string }) {
+  const activeTheme = getAdminTheme(municipalityTheme);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
@@ -66,7 +68,7 @@ export default function S3Maintenance() {
         <Button 
           onClick={handleAnalyze} 
           disabled={isAnalyzing || isCleaning}
-          className="bg-stone-800 text-white hover:bg-stone-700"
+          className={`${activeTheme.primary} ${activeTheme.hover} text-white`}
         >
           {isAnalyzing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldAlert className="w-4 h-4 mr-2" />}
           {isAnalyzing ? 'Analitzant Llista Blanca...' : 'Analitzar Emmagatzematge S3'}

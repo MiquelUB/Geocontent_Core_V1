@@ -33,7 +33,7 @@ const typeToIconName: Record<string, string> = {
 };
 
 function getPoiIconSrc(poi: any, globalBiome?: string) {
-  const category = (poi.parentRoute?.category || poi.category || globalBiome || 'mountain').toLowerCase();
+  const category = (globalBiome || 'mountain').toLowerCase();
   const biome = BIOME_MAP[category] || BIOME_MAP['mountain'];
 
   if (poi.icon) {

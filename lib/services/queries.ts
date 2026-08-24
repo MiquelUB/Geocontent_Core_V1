@@ -348,7 +348,7 @@ export async function getPassportData(userId: string) {
       const hashCode = route.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const imgIndex = availableStampImages.length > 0 ? hashCode % availableStampImages.length : 0;
       const stampImage = availableStampImages[imgIndex] || 'bolet.webp';
-      const stampUrl = `/stamps/${routeBiomePath}/${stampImage}`;
+      const stampUrl = `/stamps/${globalBiomePath}/${stampImage}`;
 
       const progress = await rls.userRouteProgress.findUnique({
         where: { userId_routeId: { userId, routeId: route.id } }
