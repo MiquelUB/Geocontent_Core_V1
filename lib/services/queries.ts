@@ -136,6 +136,7 @@ export async function getLegends(userId?: string) {
         routePois: {
           include: {
             poi: {
+              omit: { voiceScript: true, videoTranslations: true },
               include: { 
                 userUnlocks: userId ? { where: { userId } } : false 
               }
