@@ -1,15 +1,17 @@
 'use server';
 
-
 import { prisma } from "../database/prisma";
 import { packagerQueue } from "../queue/client";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from '@/lib/auth-guard';
 
 /**
  * Outbox Pattern: Generació de Paquets Territorials (V2 Sovereign)
  * Escriu un event a la taula OutboxEvent. El worker Python (ARQ) el processarà.
  */
 export async function generateTerritorialPackageAction(municipalityId: string) {
+  // SEC: Requereix rol d'admin per desencadenar processos de backend
+  await requireAdmin();
   try {
     const muni = await prisma.municipality.findUnique({
       where: { id: municipalityId },
@@ -58,6 +60,7 @@ export async function queueTerritorialPackageAction(municipalityId: string) {
  * Comprova l'estat des de la DB (el worker l'actualitzarà quan acabi)
  */
 export async function getPackagingStatus(municipalityId: string) {
+  await requireAdmin();
   try {
     const muni = await prisma.municipality.findUnique({
       where: { id: municipalityId },
@@ -82,6 +85,7 @@ export async function getPackagingStatus(municipalityId: string) {
  * Comprova canvis pendents (es manté igual)
  */
 export async function checkPendingChanges(municipalityId: string) {
+  await requireAdmin();
   try {
     const muni = await prisma.municipality.findUnique({
       where: { id: municipalityId },

@@ -12,6 +12,7 @@ import { uploadFile } from './storage';
 import { autoTranslateAction } from './ai';
 import { getDefaultMunicipalityId, getRouteWithPois as _getRouteWithPois } from '../services/queries';
 import { auth } from "@/auth";
+import { requireAdmin } from '@/lib/auth-guard';
 import { rateLimit } from '@/lib/services/ratelimit';
 
 // Server Action Wrapper per a Client Components
@@ -19,7 +20,7 @@ export async function getRouteWithPois(routeId: string) {
   return _getRouteWithPois(routeId);
 }
 
-function mergeTranslations(existing: any, incoming: any): any {
+function mergeTranslations(existing: Record<string, string>, incoming: Record<string, string>): Record<string, string> {
   if (!existing || typeof existing !== 'object') existing = {};
   const result = { ...existing };
   if (incoming && typeof incoming === 'object') {
@@ -141,7 +142,7 @@ export async function createLegend(formData: FormData) {
 
     const { title, description, category, latitude, longitude, route_id, text_content, carousel_images, title_translations, description_translations } = validated;
 
-    const validThemes: any = ['mountain', 'coast', 'city', 'interior', 'bloom'];
+    const validThemes: string[] = ['mountain', 'coast', 'city', 'interior', 'bloom'];
     let themeId = category?.toLowerCase() as any;
     if (!validThemes.includes(themeId)) themeId = "mountain";
 
@@ -279,6 +280,8 @@ export async function createRoute(formData: FormData) {
 
 export async function updateRoute(id: string, formData: FormData) {
   try {
+    // SEC: Requereix rol d'admin per modificar rutes
+    await requireAdmin();
     const existingRoute = await prisma.route.findUnique({ where: { id } });
     if (!existingRoute) return { success: false, error: "Ruta no trobada." };
 
@@ -355,6 +358,8 @@ export async function updateRoute(id: string, formData: FormData) {
 
 export async function deleteLegend(id: string, municipalityId?: string) {
   try {
+    // SEC: Requereix rol d'admin per eliminar rutes
+    await requireAdmin();
     await prisma.route.delete({
       where: { 
         id,
@@ -674,6 +679,8 @@ export async function updatePoi(id: string, formData: FormData) {
 }
 
 export async function updateLegend(id: string, formData: FormData) {
+  // SEC: Requereix rol d'admin per actualitzar rutes i POIs
+  await requireAdmin();
   const name = formData.get('title') as string;
   const description = formData.get('description') as string;
   const category = formData.get('category') as string;
@@ -688,7 +695,7 @@ export async function updateLegend(id: string, formData: FormData) {
   const header16x9 = formData.get('header_16x9') as string;
   const carouselImages = formData.get('carousel_images') ? JSON.parse(formData.get('carousel_images') as string) : undefined;
 
-  const validThemes: any = ['mountain', 'coast', 'city', 'interior', 'bloom'];
+  const validThemes: string[] = ['mountain', 'coast', 'city', 'interior', 'bloom'];
   let themeId = category?.toLowerCase() as any;
   if (!validThemes.includes(themeId)) themeId = undefined;
 
@@ -714,7 +721,7 @@ export async function updateLegend(id: string, formData: FormData) {
       });
 
       for (const rp of routePois) {
-        const poiUpdates: any = {
+        const poiUpdates: Record<string, any> = {
           title: name,
           description,
           latitude: !isNaN(latitude) ? latitude : undefined,
@@ -753,7 +760,9 @@ export async function updateLegend(id: string, formData: FormData) {
 
 export async function addPoiToRoute(routeId: string, poiId: string, orderIndex: number, municipalityId?: string) {
   try {
-    const where: any = { id: routeId };
+    // SEC: Requereix rol d'admin per gestionar relacions de POIs
+    await requireAdmin();
+    const where: Record<string, any> = { id: routeId };
     if (municipalityId) where.municipalityId = municipalityId;
 
     const route = await prisma.route.findUnique({ where });
@@ -771,7 +780,9 @@ export async function addPoiToRoute(routeId: string, poiId: string, orderIndex: 
 
 export async function removePoiFromRoute(routeId: string, poiId: string, municipalityId?: string) {
   try {
-    const where: any = { id: routeId };
+    // SEC: Requereix rol d'admin
+    await requireAdmin();
+    const where: Record<string, any> = { id: routeId };
     if (municipalityId) where.municipalityId = municipalityId;
 
     const route = await prisma.route.findFirst({ where });
@@ -789,7 +800,9 @@ export async function removePoiFromRoute(routeId: string, poiId: string, municip
 
 export async function reorderRoutePois(routeId: string, poiIds: string[], municipalityId?: string) {
   try {
-    const where: any = { id: routeId };
+    // SEC: Requereix rol d'admin
+    await requireAdmin();
+    const where: Record<string, any> = { id: routeId };
     if (municipalityId) where.municipalityId = municipalityId;
 
     const route = await prisma.route.findFirst({ where });
@@ -813,6 +826,8 @@ export async function reorderRoutePois(routeId: string, poiIds: string[], munici
 
 export async function closeRouteAndGenerateFinalQuiz(routeId: string) {
   try {
+    // SEC: Requereix rol d'admin per tancar rutes i generar qüestionaris
+    await requireAdmin();
     const route = await prisma.route.findUnique({
       where: { id: routeId },
       include: {

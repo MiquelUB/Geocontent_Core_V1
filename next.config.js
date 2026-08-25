@@ -16,7 +16,7 @@ const nextConfig = {
   experimental: {
     externalDir: true,
     serverActions: {
-      bodySizeLimit: '200mb',
+      bodySizeLimit: '10mb',
       allowedOrigins: [
         process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
         'localhost:3000'
@@ -29,10 +29,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors. (Used to prevent OOM in Docker)
-    ignoreBuildErrors: true,
+    // Audit 2026: TypeScript strict mode. Els errors de tipus han de blocar la build.
+    ignoreBuildErrors: false,
   },
   webpack: (config) => {
     return config;

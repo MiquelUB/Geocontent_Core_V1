@@ -32,6 +32,7 @@ model User {
   unlocks        UserUnlock[]
   municipality   Municipality?       @relation(fields: [municipalityId], references: [id])
 
+  @@index([municipalityId])
   @@map("users")
 }
 
@@ -51,6 +52,7 @@ model Account {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -61,6 +63,7 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -116,6 +119,7 @@ model Route {
   municipality            Municipality?       @relation(fields: [municipalityId], references: [id])
   userProgress            UserRouteProgress[]
 
+  @@index([municipalityId])
   @@map("routes")
 }
 
@@ -162,6 +166,7 @@ model RoutePoi {
   route      Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
   @@unique([routeId, poiId])
+  @@index([poiId])
   @@map("route_pois")
 }
 
@@ -175,6 +180,7 @@ model UserUnlock {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, poiId])
+  @@index([poiId])
   @@map("user_unlocks")
 }
 
@@ -190,6 +196,7 @@ model UserRouteProgress {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, routeId])
+  @@index([routeId])
   @@map("user_route_progress")
 }
 
@@ -203,6 +210,8 @@ model PoiVisits {
   rating          Int?      @default(0)
   poi             Poi       @relation(fields: [poiId], references: [id], onDelete: Cascade)
 
+  @@index([poiId])
+  @@index([userId])
   @@map("poi_visits")
 }
 
@@ -214,6 +223,7 @@ model UserTelemetry {
   user      User?                   @relation(fields: [userId], references: [id])
 
   @@index([location], type: Gist)
+  @@index([userId])
   @@map("user_telemetry")
 }
 
@@ -227,6 +237,7 @@ model Report {
   createdAt      DateTime     @default(now()) @map("created_at")
   municipality   Municipality @relation(fields: [municipalityId], references: [id], onDelete: Cascade)
 
+  @@index([municipalityId])
   @@map("reports")
 }
 
@@ -238,6 +249,7 @@ model AiUsageLog {
   status    String
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([userId])
   @@map("ai_usage_logs")
 }
 

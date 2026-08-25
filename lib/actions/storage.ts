@@ -1,6 +1,5 @@
 'use server';
 
-
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import { prisma } from "../database/prisma";
 import { videoQueue } from "../queue/client";
@@ -11,12 +10,14 @@ import path from 'path';
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { SECURITY_CONFIG } from '@/lib/config/constants';
 import { getDefaultMunicipalityId } from './queries';
+import { requireAuth, requireAdmin } from '@/lib/auth-guard';
 
 /**
  * Puja un fitxer a S3 via l'API Core (FastAPI)
  */
 export async function uploadFile(file: File, folder: string = 'geocontent') {
-  // SEC-08: Límit de mida
+  // SEC: Requereix sessió activa per pujar fitxers
+  await requireAuth();
   if (file.size > SECURITY_CONFIG.MAX_FILE_SIZE) {
     throw new Error(`Fitxer massa gran. Màxim ${SECURITY_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.`);
   }
@@ -61,10 +62,12 @@ export async function uploadFile(file: File, folder: string = 'geocontent') {
 }
 
 /**
- * Actualitza l'avatar de l'usuari a la taula 'users'
+ * Actualitza l'avatar de l'usuari a la taula 'users'.
+ * SEC FIX: userId ara s'obté de la sessió, NO del paràmetre del client (prevent IDOR).
  */
-export async function updateProfileAvatar(userId: string, avatarUrl: string) {
+export async function updateProfileAvatar(avatarUrl: string) {
   try {
+    const userId = await requireAuth();  // Deriva userId de la sessió autenticada
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { avatarUrl: avatarUrl }
@@ -78,13 +81,16 @@ export async function updateProfileAvatar(userId: string, avatarUrl: string) {
   }
 }
 
-export async function handleAvatarUploadAction(formData: FormData, userId: string) {
+/**
+ * SEC FIX: userId ara s'obté de la sessió autenticada (no del client).
+ */
+export async function handleAvatarUploadAction(formData: FormData) {
   try {
     const file = formData.get('file') as File;
     if (!file) throw new Error("No file found");
 
     const avatarUrl = await uploadFile(file, 'avatars');
-    const result = await updateProfileAvatar(userId, avatarUrl);
+    const result = await updateProfileAvatar(avatarUrl);
     return result;
   } catch (err) {
     console.error('handleAvatarUploadAction error:', err);
@@ -97,7 +103,8 @@ export async function handleAvatarUploadAction(formData: FormData, userId: strin
  * Puja el raw a S3 i escriu un OutboxEvent per al worker Python (ARQ/FFmpeg).
  */
 export async function addVideoToPoi(poiId: string, formData: FormData) {
-  const videoFile = formData.get('video') as File;
+  // SEC: Requereix rol d'admin per processament de vídeo
+  await requireAdmin();
   if (!videoFile) return { success: false, error: "No s'ha pujat cap vídeo." };
 
   // SEC-08: Límit de mida

@@ -1,11 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/database/prisma';
+import { withCors, handleOptions } from '@/lib/api/cors';
+import { rateLimit } from '@/lib/services/ratelimit';
+
+export async function OPTIONS(request: NextRequest) {
+  return handleOptions(request);
+}
 
 /**
  * GET /api/municipality — Fetch branding info by ID using Prisma
  * Used as a fallback for client-side components if not provided as props
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    const rl = await rateLimit(`api:municipality:${ip}`, 60, 60);
+    if (!rl.success) {
+      return withCors(request, new NextResponse('Too Many Requests', { status: 429 }));
+    }
+
     try {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
@@ -42,24 +54,24 @@ export async function GET(request: Request) {
             });
 
             if (firstOne) {
-                return NextResponse.json({
+                return withCors(request, NextResponse.json({
                     name: firstOne.name,
                     logoUrl: firstOne.logoUrl,
                     themeId: firstOne.themeId
-                });
+                }));
             }
 
-            return NextResponse.json({ success: false, error: "Municipality not found" }, { status: 404 });
+            return withCors(request, NextResponse.json({ success: false, error: "Municipality not found" }, { status: 404 }));
         }
 
-        return NextResponse.json({
+        return withCors(request, NextResponse.json({
             name: brand.name,
             logoUrl: brand.logoUrl,
             themeId: brand.themeId
-        });
+        }));
 
     } catch (err: any) {
         console.error("[api/municipality error]:", err);
-        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+        return withCors(request, NextResponse.json({ success: false, error: err.message }, { status: 500 }));
     }
 }

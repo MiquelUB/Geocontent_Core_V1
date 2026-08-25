@@ -6,7 +6,7 @@
 import { reportQueue } from '@/lib/queue/client';
 import { prisma } from '@/lib/database/prisma';
 import { revalidatePath } from 'next/cache';
-import { requireAuth } from '@/lib/auth-guard';
+import { requireAuth, requireAdmin } from '@/lib/auth-guard';
 // Note: processReport is imported dynamically in the fallback to avoid bundling issues
 
 export async function generateReport(municipalityId: string) {
@@ -71,6 +71,8 @@ export async function generateReport(municipalityId: string) {
 
 export async function getReports(municipalityId?: string) {
   try {
+    // SEC: Informes executius — només accessible per admins
+    await requireAdmin();
     const whereClause = (municipalityId && municipalityId !== 'null' && municipalityId !== 'undefined') ? { municipalityId } : {};
     const reports = await prisma.report.findMany({
       where: whereClause,

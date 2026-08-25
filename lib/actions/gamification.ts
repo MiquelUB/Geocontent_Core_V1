@@ -12,10 +12,12 @@ import { rateLimit } from '@/lib/services/ratelimit';
 
 // --- SERVER ACTION WRAPPERS (Cervell -> Múscul) ---
 export async function getPassportData(userId: string) {
+    await requireAuth();
     return _getPassportData(userId);
 }
 
 export async function getUserScore(userId: string) {
+    await requireAuth();
     return _getUserScore(userId);
 }
 
@@ -273,16 +275,11 @@ export async function completeFinalRouteQuizAction(routeId: string, _clientUserI
 
 /**
  * Permet a l'usuari valorar una ruta completada (afegir estrelles i comentari).
+ * SEC FIX: userId sempre ve de la sessió (eliminat paràmetre client i fallback IDOR).
  */
-export async function rateRouteAction(clientUserId: string, routeId: string, rating: number, comment: string) {
+export async function rateRouteAction(routeId: string, rating: number, comment: string) {
   try {
-    let userId = clientUserId;
-    try {
-      const sessionUserId = await requireAuth();
-      if (sessionUserId) userId = sessionUserId;
-    } catch {
-      // Fallback a clientUserId si no s'utilitza sessió de galetes
-    }
+    const userId = await requireAuth();  // Sempre de la sessió, mai del client
 
     if (!userId || !routeId) {
       return { success: false, error: "Dades incompletes." };
@@ -327,17 +324,12 @@ export async function rateRouteAction(clientUserId: string, routeId: string, rat
 }
 
 /**
- * Obté el progrés (incloent valoració i comentari) d'una ruta per a un usuari.
+ * Obté el progrés (incloent valoració i comentari) d'una ruta per a l'usuari autenticat.
+ * SEC FIX: userId sempre ve de la sessió (eliminat paràmetre client i fallback IDOR).
  */
-export async function getUserRouteProgressAction(clientUserId: string, routeId: string) {
+export async function getUserRouteProgressAction(routeId: string) {
   try {
-    let userId = clientUserId;
-    try {
-      const sessionUserId = await requireAuth();
-      if (sessionUserId) userId = sessionUserId;
-    } catch {
-      // Fallback
-    }
+    const userId = await requireAuth();  // Sempre de la sessió, mai del client
 
     if (!userId || !routeId) {
       return { success: false, error: "Dades incompletes." };

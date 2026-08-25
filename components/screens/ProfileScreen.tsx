@@ -52,7 +52,7 @@ export function ProfileScreen({ onNavigate, currentUser, onUserUpdate }: Profile
             const formData = new FormData();
             formData.append('file', file);
 
-            const result = await handleAvatarUploadAction(formData, currentUser.id);
+            const result = await handleAvatarUploadAction(formData);
             if (result.success && result.user) {
                 if (onUserUpdate) {
                     onUserUpdate(result.user);

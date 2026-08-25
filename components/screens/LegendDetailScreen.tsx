@@ -230,7 +230,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   useEffect(() => {
     const isRoute = !!(safeLegend.pois && safeLegend.pois.length > 0);
     if (isRoute && currentUser?.id && safeLegend.id) {
-      getUserRouteProgressAction(currentUser.id, safeLegend.id).then(res => {
+      getUserRouteProgressAction(safeLegend.id).then(res => {
         if (res.success && res.progress) {
           setRouteProgress(res.progress);
           setHasCompletedRoute(res.progress.completedAt != null);
@@ -624,7 +624,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                       onComplete={(res?: any) => {
                         setHasCompletedRoute(true);
                         if (currentUser?.id) {
-                          getUserRouteProgressAction(currentUser.id, safeLegend.id).then(progressRes => {
+                          getUserRouteProgressAction(safeLegend.id).then(progressRes => {
                             if (progressRes.success && progressRes.progress) {
                               setRouteProgress(progressRes.progress);
                               setFeedbackRating(progressRes.progress.rating ?? 0);
@@ -683,7 +683,6 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                         try {
                           setIsSubmittingFeedback(true);
                           const res = await rateRouteAction(
-                            currentUser.id,
                             safeLegend.id,
                             feedbackRating,
                             feedbackComment

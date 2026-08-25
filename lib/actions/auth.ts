@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { signIn as authSignIn, signOut as authSignOut, auth } from "@/auth";
+import { requireAuth } from '@/lib/auth-guard';
 import { rateLimit } from '@/lib/services/ratelimit';
 import { SECURITY_CONFIG } from '@/lib/config/constants';
 
@@ -75,6 +76,8 @@ export async function registerUser(name: string, email: string) {
 
 export async function getUserProfile(userId: string) {
   noStore();
+  // SEC: Cal sessió activa per consultar perfils d'usuari
+  await requireAuth();
   return prisma.user.findUnique({
     where: { id: userId },
     include: { municipality: true }

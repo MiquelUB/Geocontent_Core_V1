@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { withRetry } from './ai-retry';
 
 let openRouter: OpenAI | null = null;
 
@@ -48,20 +49,22 @@ OPINIONS I COMENTARIS DELS USUARIS REALS:
 ${data.metrics.ratingStats?.details?.length ? data.metrics.ratingStats.details.map((r: any) => `- Ruta: ${r.routeName} | Valoració: ${r.rating}/5 | Comentari: "${r.comment || 'Sense comentari'}"`).join("\n") : "Sense comentaris en aquest període."}
 `;
 
-    const completion = await client.chat.completions.create({
-      model: process.env.AI_MODEL_ID || "google/gemini-2.0-flash-001", // Using a better model if available
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: isActive
-            ? "Genera el resum executiu basat en les dades proporcionades."
-            : "ADVERTÈNCIA: Tenim molt poques dades encara. Genera un text que ho reflecteixi però que expliqui el valor de començar a mesurar aquestes interaccions."
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model: process.env.AI_MODEL_ID || "google/gemini-2.0-flash-001",
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: isActive
+              ? "Genera el resum executiu basat en les dades proporcionades."
+              : "ADVERTÈNCIA: Tenim molt poques dades encara. Genera un text que ho reflecteixi però que expliqui el valor de començar a mesurar aquestes interaccions."
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+      })
+    );
 
     return completion.choices[0]?.message?.content || "No s'ha pogut generar el resum. Per favor, contacteu amb suport tècnic.";
   } catch (error) {
@@ -87,14 +90,16 @@ Si el punt és 'Guerra Civil', el to ha de ser respectuós i històric.
 Si el punt és 'Llegenda', el to ha de ser místic. Actualment el to és: ${tone}.
 Format JSON: { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }`;
 
-    const completion = await client.chat.completions.create({
-      model: process.env.AI_MODEL_ID || "google/gemini-2.0-flash-001",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Punt: ${title}\nContingut: ${content}` }
-      ],
-      temperature: 0.3,
-    });
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model: process.env.AI_MODEL_ID || "google/gemini-2.0-flash-001",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Punt: ${title}\nContingut: ${content}` }
+        ],
+        temperature: 0.3,
+      })
+    );
 
     let resultText = completion.choices[0]?.message?.content || "{}";
     const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -117,14 +122,16 @@ export async function generateFinalRouteQuiz(routeName: string, poisData: { titl
 Les preguntes HAN DE SER NOVES, no copiïs possibles preguntes individuals de cada punt.
 Format JSON EXACTE: { "preguntes": [ { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }, ... ] }`;
 
-    const completion = await client.chat.completions.create({
-      model: process.env.AI_MODEL_ID || "qwen/qwen-2.5-72b-instruct",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Context de la ruta:\n${context}` }
-      ],
-      temperature: 0.5,
-    });
+    const completion = await withRetry(() =>
+      client.chat.completions.create({
+        model: process.env.AI_MODEL_ID || "qwen/qwen-2.5-72b-instruct",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Context de la ruta:\n${context}` }
+        ],
+        temperature: 0.5,
+      })
+    );
 
     let resultText = completion.choices[0]?.message?.content || "{}";
     const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);

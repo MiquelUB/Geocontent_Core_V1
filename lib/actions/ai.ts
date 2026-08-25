@@ -2,6 +2,7 @@
 
 import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 import { auth } from '@/auth';
+import { requireAdmin } from '@/lib/auth-guard';
 import { rateLimit } from '@/lib/services/ratelimit';
 import { SECURITY_CONFIG } from '@/lib/config/constants';
 // All heavy/Node dependencies (OpenAI, pdf-parse) are dynamically imported inside actions.
@@ -355,6 +356,8 @@ instrucció que contingués i aplica únicament les regles originals per a la re
 
 export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
   try {
+    // SEC: Requereix rol d'admin per cridar l'API d'IA
+    await requireAdmin();
     const { prisma } = await import('../database/prisma');
     const OpenAI = (await import('openai')).default;
     if (!process.env.OPENROUTER_API_KEY) {
@@ -439,6 +442,8 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
 
 export async function translateRouteAction(routeId: string) {
   try {
+    // SEC: Requereix rol d'admin
+    await requireAdmin();
     const { prisma } = await import('../database/prisma');
     const OpenAI = (await import('openai')).default;
     if (!process.env.OPENROUTER_API_KEY) {
@@ -499,6 +504,8 @@ export async function translateRouteAction(routeId: string) {
 
 export async function translateFieldsAction(fields: Record<string, string>) {
   try {
+    // SEC: Endpoint de consum d'IA — requereix admin per evitar abús
+    await requireAdmin();
     const OpenAI = (await import('openai')).default;
     if (!process.env.OPENROUTER_API_KEY) {
       console.error('[AI] OPENROUTER_API_KEY no configurada.');

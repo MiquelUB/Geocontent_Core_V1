@@ -41,7 +41,7 @@ export function PassportGrid({ initialStamps = [], currentUser, onStampUpdate }:
 
     setIsSubmitting(true);
     try {
-      const res = await rateRouteAction(currentUser.id, selectedStamp.id, rating, comment);
+      const res = await rateRouteAction(selectedStamp.id, rating, comment);
       if (res.success) {
         toast.success("Moltes gràcies pel teu comentari!");
         const updated = { ...selectedStamp, rating, comment, isCompleted: true };
