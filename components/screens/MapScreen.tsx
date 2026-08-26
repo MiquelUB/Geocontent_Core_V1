@@ -291,7 +291,7 @@ export function MapScreen({ onNavigate, onOpenHelp, focusLegend, brand, userLoca
               <div className="flex gap-3">
                 <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                   <ImageWithFallback
-                    src={selectedLegend.image || selectedLegend.hero}
+                    src={selectedLegend.appThumbnail || selectedLegend.image_url || selectedLegend.image || selectedLegend.hero}
                     alt={getLocalizedContent(selectedLegend, 'title', locale)}
                     className="w-full h-full object-cover"
                   />
