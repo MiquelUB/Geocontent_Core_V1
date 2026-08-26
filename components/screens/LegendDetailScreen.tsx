@@ -486,30 +486,37 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
           )}
 
           {/* Galeria d'Imatges (Sota el text per aprofitar espai visual) */}
-          {((safeLegend.carouselImages?.length > 0) || (safeLegend.images?.length > 1)) && (
-            <div className="rounded-3xl overflow-hidden shadow-sm border border-stone-200 bg-stone-950">
-              {isUnlocked ? (
-                <div className="aspect-[4/5] sm:aspect-[4/3] md:aspect-video w-full relative">
-                  <ImageSlider
-                      images={(safeLegend.carouselImages?.length > 0 ? safeLegend.carouselImages : safeLegend.images).map(proxifyUrl)}
-                      isRecapture={safeLegend.is_recapture}
-                      captions={safeLegend.carouselCaptions || []}
-                      locale={locale}
-                  />
-                </div>
-              ) : (
-                <div className="w-full aspect-[4/3] bg-stone-900/5 backdrop-blur-md flex flex-col items-center justify-center gap-4 text-stone-400 relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-stone-900/10 to-transparent"></div>
-                  <div className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-500 shadow-inner z-10">
-                    <Lock className="w-5 h-5" />
+          {(() => {
+            const galleryImages = (safeLegend.carouselImages?.length > 0)
+              ? safeLegend.carouselImages
+              : (safeLegend.images || [safeLegend.appThumbnail, safeLegend.header16x9, safeLegend.image_url].filter(Boolean));
+            const uniqueGalleryImages = Array.from(new Set(galleryImages)) as string[];
+            if (uniqueGalleryImages.length === 0) return null;
+            return (
+              <div className="rounded-3xl overflow-hidden shadow-sm border border-stone-200 bg-stone-950">
+                {isUnlocked ? (
+                  <div className="aspect-[4/5] sm:aspect-[4/3] md:aspect-video w-full relative">
+                    <ImageSlider
+                        images={uniqueGalleryImages.map(proxifyUrl)}
+                        isRecapture={safeLegend.is_recapture}
+                        captions={safeLegend.carouselCaptions || []}
+                        locale={locale}
+                    />
                   </div>
-                  <span className="font-serif font-bold tracking-widest text-sm uppercase text-stone-600 drop-shadow-sm z-10 w-3/4 text-center">
-                    {t('galleryLocked')}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
+                ) : (
+                  <div className="w-full aspect-[4/3] bg-stone-900/5 backdrop-blur-md flex flex-col items-center justify-center gap-4 text-stone-400 relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-stone-900/10 to-transparent"></div>
+                    <div className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center text-stone-500 shadow-inner z-10">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <span className="font-serif font-bold tracking-widest text-sm uppercase text-stone-600 drop-shadow-sm z-10 w-3/4 text-center">
+                      {t('galleryLocked')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Punts de la Ruta & Itinerari - Es mostra sempre que hi hagis siblings */}
           {isRoute && (
@@ -551,7 +558,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
                             ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
                             : poiUnlocked
                               ? 'bg-primary/80 text-primary-foreground'
-                              : 'bg-stone-200 text-stone-400'
+                              : 'bg-primary/20 text-primary/70'
                             }`}>
                             {idx + 1}
                           </div>
