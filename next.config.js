@@ -15,6 +15,10 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     externalDir: true,
+    // Prevenció de saturació de RAM (OOM) en servidors de CI/CD (ex: Vercel, Render)
+    webpackBuildWorker: true,
+    workerThreads: false,
+    cpus: 1,
     serverActions: {
       bodySizeLimit: '10mb',
       allowedOrigins: [
