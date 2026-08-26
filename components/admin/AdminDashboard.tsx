@@ -1,4 +1,5 @@
 'use client';
+import { AdminUserManager } from "./AdminUserManager";
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,14 +50,16 @@ export default function AdminDashboard({
   legends: initialLegends = [],
   profiles: initialProfiles = [],
   reports: initialReports = [],
-  brand: initialBrand = null
+  brand: initialBrand = null,
+  isSuperAdmin = false
 }: {
   municipalityId?: string,
   municipalityTheme?: string,
   legends?: Legend[],
   profiles?: any[],
   reports?: any[],
-  brand?: any
+  brand?: any,
+  isSuperAdmin?: boolean
 }) {
   const router = useRouter();
   const [brand, setBrand] = useState<any>(initialBrand);
@@ -365,13 +368,15 @@ export default function AdminDashboard({
           >
             Informe Executiu
           </button>
-          <button
-            onClick={() => setActiveTab('config')}
-            className={`px-5 py-2.5 rounded-lg transition-all duration-300 text-sm font-bold ${activeTab === 'config' ? 'bg-white shadow-lg scale-105' : 'text-white hover:bg-white/20'}`}
-            style={activeTab === 'config' ? { color: adminTheme.hex } : {}}
-          >
-            Configuració
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveTab('config')}
+              className={`px-5 py-2.5 rounded-lg transition-all duration-300 text-sm font-bold ${activeTab === 'config' ? 'bg-white shadow-lg scale-105' : 'text-white hover:bg-white/20'}`}
+              style={activeTab === 'config' ? { color: adminTheme.hex } : {}}
+            >
+              Configuració
+            </button>
+          )}
         </nav>
       </header>
 
@@ -743,9 +748,13 @@ export default function AdminDashboard({
           </div>
         )}
 
-        {activeTab === 'config' && (
+        {activeTab === 'config' && isSuperAdmin && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <MunicipalityManager municipalityId={municipalityId || ''} />
+            <div className="pt-8 border-t border-stone-200">
+              <h2 className="text-2xl font-serif text-stone-800 mb-6">Gestors Autoritzats (Capa 1)</h2>
+              <AdminUserManager />
+            </div>
             <S3Maintenance municipalityTheme={brand?.themeId || municipalityTheme} />
           </div>
         )}

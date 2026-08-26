@@ -203,3 +203,81 @@ export async function loginOrRegister(
     return { success: false, error: 'No s\'ha pogut completar el registre. Torna-ho a provar.' };
   }
 }
+
+// --- Gestió d'Usuaris Administradors (Capa 1) ---
+
+export async function getAdminUsers() {
+  const session = await auth();
+  if (!session || (session.user as any).email !== 'mistic_master') {
+    return { success: false, error: "Accés denegat: Només el Super Admin pot llistar gestors." };
+  }
+
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: { id: true, username: true, email: true, createdAt: true }
+    });
+    return { success: true, users };
+  } catch (err: any) {
+    console.error("Error getAdminUsers:", err);
+    return { success: false, error: "Error de base de dades" };
+  }
+}
+
+export async function createAdminUser(name: string, email: string, pass: string) {
+  const session = await auth();
+  if (!session || (session.user as any).email !== 'mistic_master') {
+    return { success: false, error: "Accés denegat: Només el Super Admin pot crear gestors." };
+  }
+
+  const rl = await rateLimit(`createAdmin:${(session.user as any).email}`, 10, 3600);
+  if (!rl.success) return { success: false, error: "Massa peticions de creació." };
+
+  try {
+    const emailParse = z.string().email().safeParse(email.trim().toLowerCase());
+    if (!emailParse.success) return { success: false, error: "Email no vàlid." };
+
+    const existing = await prisma.user.findUnique({ where: { email: emailParse.data } });
+    if (existing) return { success: false, error: "Aquest email ja està registrat." };
+
+    const hash = await bcrypt.hash(pass, 10);
+    
+    await prisma.user.create({
+      data: {
+        username: name.trim(),
+        email: emailParse.data,
+        passwordHash: hash,
+        role: 'admin',
+        xp: 0,
+        level: 1
+      }
+    });
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error createAdminUser:", err);
+    return { success: false, error: "Error de base de dades" };
+  }
+}
+
+export async function deleteAdminUser(userId: string) {
+  const session = await auth();
+  if (!session || (session.user as any).email !== 'mistic_master') {
+    return { success: false, error: "Accés denegat: Només el Super Admin pot esborrar gestors." };
+  }
+
+  try {
+    const target = await prisma.user.findUnique({ where: { id: userId } });
+    if (!target) return { success: false, error: "Usuari no trobat." };
+
+    if (target.email === 'mistic_master' || target.username === 'mistic_master') {
+      return { success: false, error: "Acció crítica bloquejada: No es pot eliminar l'usuari mistic_master." };
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleteAdminUser:", err);
+    return { success: false, error: "Error de base de dades" };
+  }
+}
