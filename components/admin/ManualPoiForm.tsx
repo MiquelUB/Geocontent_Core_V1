@@ -837,7 +837,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                           {slot.url.split('/').pop() || slot.url}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 border-t border-stone-100 pt-2 justify-end">
+                      <div className="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-2 justify-end">
                         {slot.url.startsWith('http') && (
                           <a
                             href={slot.url}
@@ -852,7 +852,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-7 px-2 text-[10px] text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100 shadow-sm"
+                          className="h-7 px-2 text-[10px] text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100 shadow-sm flex-shrink-0"
                           onClick={async () => {
                             if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
                             if (!slot.url.startsWith('http')) {
@@ -865,7 +865,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                             else alert("Error: " + res.error);
                           }}
                         >
-                          <Sparkles className="w-3 h-3 mr-1" /> Traduir Vídeo (IA)
+                          <Sparkles className="w-3 h-3 mr-1 flex-shrink-0" /> Traduir
                         </Button>
                       </div>
                     </div>
@@ -875,7 +875,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                   type="file"
                   accept="video/*"
                   onChange={(e) => handleVideoFileChange(idx, e.target.files?.[0] || null)}
-                  className="h-9 text-xs cursor-pointer"
+                  className="h-9 text-xs cursor-pointer w-full max-w-full overflow-hidden text-ellipsis"
                 />
               </div>
             ))}
