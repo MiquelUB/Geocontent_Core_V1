@@ -13,19 +13,19 @@ const nextConfig = {
     ],
   },
   reactStrictMode: true,
+  serverActions: {
+    bodySizeLimit: '50mb',
+    allowedOrigins: [
+      process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
+      'localhost:3000'
+    ].filter(Boolean)
+  },
   experimental: {
     externalDir: true,
     // Prevenció de saturació de RAM (OOM) en servidors de CI/CD (ex: Vercel, Render)
     webpackBuildWorker: true,
     workerThreads: false,
     cpus: 1,
-    serverActions: {
-      bodySizeLimit: '50mb',
-      allowedOrigins: [
-        process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
-        'localhost:3000'
-      ].filter(Boolean)
-    }
   },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
