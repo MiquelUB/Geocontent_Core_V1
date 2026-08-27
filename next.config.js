@@ -20,7 +20,7 @@ const nextConfig = {
     workerThreads: false,
     cpus: 1,
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '50mb',
       allowedOrigins: [
         process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
         'localhost:3000'
