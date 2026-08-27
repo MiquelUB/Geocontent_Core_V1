@@ -799,8 +799,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                           {slot.url.split('/').pop() || slot.url}
                         </span>
                       </div>
-                      {slot.url.startsWith('http') && (
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mt-2 border-t pt-2 w-full justify-end">
+                        {slot.url.startsWith('http') && (
                           <a
                             href={slot.url}
                             target="_blank"
@@ -809,23 +809,27 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                           >
                             <ExternalLink className="w-3 h-3" /> Veure
                           </a>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-6 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50"
-                            onClick={async () => {
-                              if (!poi?.id) { alert("Guarda el POI primer."); return; }
-                              const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
-                              const res = await requestVideoTranslation(poi.id, slot.url);
-                              if (res.success) alert("Traducció de vídeo encuada! Trigarà una estona.");
-                              else alert("Error: " + res.error);
-                            }}
-                          >
-                            <Sparkles className="w-3 h-3 mr-1" /> Traduir Vídeo (IA)
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-[10px] text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100 shadow-sm"
+                          onClick={async () => {
+                            if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
+                            if (!slot.url.startsWith('http')) {
+                              alert("Sembla que aquest és un vídeo nou que encara no s'ha pujat. Si us plau, clica a 'Guardar POI' primer i torna a intentar-ho.");
+                              return;
+                            }
+                            const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
+                            const res = await requestVideoTranslation(poi.id, slot.url);
+                            if (res.success) alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
+                            else alert("Error: " + res.error);
+                          }}
+                        >
+                          <Sparkles className="w-3 h-3 mr-1" /> Traduir Vídeo (IA)
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

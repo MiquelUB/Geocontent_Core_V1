@@ -153,12 +153,12 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
             className="relative aspect-video bg-stone-100 rounded-md border border-stone-200 flex items-center justify-center overflow-hidden group"
           >
             <video src={v} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <div className="absolute top-2 right-2 flex flex-col gap-2">
               <Button
                 size="icon"
-                variant="ghost"
+                variant="default"
                 title="Traduir Vídeo (IA)"
-                className="text-white hover:text-purple-400 bg-black/20 hover:bg-black/50"
+                className="w-8 h-8 rounded-full bg-purple-600 hover:bg-purple-700 shadow-md"
                 onClick={async () => {
                   if (!poiId) { alert("Guarda el POI primer."); return; }
                   try {
@@ -171,16 +171,16 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
                   }
                 }}
               >
-                <Sparkles className="w-5 h-5" />
+                <Sparkles className="w-4 h-4 text-white" />
               </Button>
               <Button
                 size="icon"
-                variant="ghost"
+                variant="default"
                 title="Eliminar Vídeo"
-                className="text-white hover:text-red-400 bg-black/20 hover:bg-black/50"
+                className="w-8 h-8 rounded-full bg-red-600 hover:bg-red-700 shadow-md"
                 onClick={() => setVideos((prev) => prev.filter((_, idx) => idx !== i))}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 text-white" />
               </Button>
             </div>
           </div>
