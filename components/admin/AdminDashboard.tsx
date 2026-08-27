@@ -647,10 +647,14 @@ export default function AdminDashboard({
                       municipalityTheme={brand?.themeId || municipalityTheme}
                     />
 
-                    {editingLegend && (
+                    {editingPoi?.id && (
                       <div className="pt-6 border-t border-stone-100">
                         <Label className="mb-4 block text-stone-800 font-bold">Consola de Vídeo HLS (Extra)</Label>
-                        <VideoUploader poiId={editingLegend.id} theme={adminTheme} />
+                        <VideoUploader 
+                          poiId={editingPoi.id} 
+                          theme={adminTheme} 
+                          existingVideos={editingPoi.videoUrls || editingPoi.video_urls || (editingPoi.videoUrl ? [editingPoi.videoUrl] : (editingPoi.video_url ? [editingPoi.video_url] : []))} 
+                        />
                       </div>
                     )}
                   </div>
