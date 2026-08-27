@@ -210,12 +210,50 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     setVideoSlots(videoSlots.map((slot, i) => i === index ? { ...slot, ...updates } : slot));
   };
 
-  const handleVideoFileChange = (index: number, file: File | null) => {
-    if (file && file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+  const handleVideoFileChange = async (index: number, file: File | null) => {
+    if (!file) {
+      updateVideoSlot(index, { file: null, url: '' });
+      return;
+    }
+    if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
       alert(`El fitxer "${file.name}" supera el límit de ${MAX_VIDEO_SIZE_MB}MB.`);
       return;
     }
-    updateVideoSlot(index, { file, url: file ? file.name : '' });
+    
+    // Pugem el vídeo directament a S3 per evitar saturar i fer petar el timeout de 60s del Server Action.
+    try {
+      setIsUploading(true);
+      setUploadStatus(`Pujant vídeo ${file.name}... (Sisplau, espera)`);
+      
+      const sigRes = await fetch(
+        `/api/upload/signed-url?fileName=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type || 'video/mp4')}`
+      );
+      if (!sigRes.ok) throw new Error("No s'ha pogut obtenir la URL de pujada segura.");
+      const { signedUrl, publicUrl } = await sigRes.json();
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+        };
+        xhr.onerror = () => reject(new Error('Network error durant la pujada'));
+        xhr.open('PUT', signedUrl);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.send(file);
+      });
+
+      // Guardem només la URL final. Així al guardar el POI, el servidor només rep un string en milisegons.
+      updateVideoSlot(index, { file: null, url: publicUrl });
+      alert(`Vídeo pujat correctament! Ara pots guardar el POI.`);
+    } catch (err: any) {
+      console.error(err);
+      alert('Error pujant el vídeo: ' + err.message);
+      updateVideoSlot(index, { file: null, url: '' });
+    } finally {
+      setIsUploading(false);
+      setUploadStatus("");
+    }
   };
 
   const [isUploading, setIsUploading] = useState(false);
