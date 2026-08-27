@@ -792,14 +792,14 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                 </div>
                 {slot.url && (
                   <div className="flex flex-col gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                         <span className="font-mono text-[11px] text-stone-600 truncate" title={slot.url}>
                           {slot.url.split('/').pop() || slot.url}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-2 border-t pt-2 w-full justify-end">
+                      <div className="flex items-center gap-2 border-t border-stone-100 pt-2 justify-end">
                         {slot.url.startsWith('http') && (
                           <a
                             href={slot.url}
