@@ -28,6 +28,7 @@ interface RoutePoiManagerProps {
   onClose: () => void;
   onEditPoi?: (poi: Poi) => void;
   theme?: any;
+  refreshTrigger?: number;
 }
 
 export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi, theme }: RoutePoiManagerProps) {
@@ -63,8 +64,10 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
   }, [routeId]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (routeId) {
+      fetchData();
+    }
+  }, [routeId, fetchData, refreshTrigger]);
 
   async function handleRemovePoi(poiId: string) {
     if (!confirm('Treure aquest punt de la ruta?')) return;

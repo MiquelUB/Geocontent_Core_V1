@@ -147,8 +147,17 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [audioTranslations, setAudioTranslations] = useState<Record<string, string>>(poi?.audioTranslations || poi?.audio_translations || {});
   const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
 
+  const parseVideos = (raw: any): string[] => {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw]; } catch { return [raw]; }
+    }
+    return [];
+  };
+
   const initVideoSlots = (): VideoSlot[] => {
-    const existingUrls: string[] = poi?.videoUrls || poi?.video_urls || (poi?.videoUrl ? [poi.videoUrl] : (poi?.video_url ? [poi.video_url] : []));
+    const raw = poi?.videoUrls || poi?.video_urls || poi?.videoUrl || poi?.video_url;
+    const existingUrls: string[] = parseVideos(raw);
     const slots: VideoSlot[] = existingUrls.slice(0, MAX_VIDEO_SLOTS).map((url: string) => ({
       url,
       file: null,
