@@ -753,12 +753,21 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
               <Badge variant="outline" className="text-[9px]">1:1</Badge>
             </Label>
-            {appThumbnail && !appThumbnailFile && (
+            {appThumbnailFile ? (
+              <div className="mb-2 text-xs text-stone-600 bg-stone-100 p-2 rounded flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                <span className="truncate">Arxiu a pujar: {appThumbnailFile.name}</span>
+              </div>
+            ) : appThumbnail ? (
               <div className="mb-2 w-16 h-16 rounded-md overflow-hidden border border-stone-200">
                 <img src={appThumbnail} alt="App Thumbnail" className="w-full h-full object-cover" />
               </div>
-            )}
+            ) : null}
             <Input type="file" accept="image/*" onChange={(e) => setAppThumbnailFile(e.target.files?.[0] || null)} />
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] text-stone-400 font-bold uppercase">O URL:</span>
+              <Input value={appThumbnail} onChange={(e) => setAppThumbnail(e.target.value)} placeholder="Enganxa una URL d'imatge..." className="h-8 text-xs" />
+            </div>
           </div>
 
           <div className="grid gap-2">
@@ -769,12 +778,21 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
               <Badge variant="outline" className="text-[9px]">16:9</Badge>
             </Label>
-            {header16x9 && !headerFile && (
+            {headerFile ? (
+              <div className="mb-2 text-xs text-stone-600 bg-stone-100 p-2 rounded flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                <span className="truncate">Arxiu a pujar: {headerFile.name}</span>
+              </div>
+            ) : header16x9 ? (
               <div className="mb-2 w-32 h-18 aspect-video rounded-md overflow-hidden border border-stone-200">
                 <img src={header16x9} alt="Header 16:9" className="w-full h-full object-cover" />
               </div>
-            )}
+            ) : null}
             <Input type="file" accept="image/*" onChange={(e) => setHeaderFile(e.target.files?.[0] || null)} />
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] text-stone-400 font-bold uppercase">O URL:</span>
+              <Input value={header16x9} onChange={(e) => setHeader16x9(e.target.value)} placeholder="Enganxa una URL d'imatge panoràmica..." className="h-8 text-xs" />
+            </div>
           </div>
 
           <div className="grid gap-2">
