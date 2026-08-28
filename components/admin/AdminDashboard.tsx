@@ -94,100 +94,6 @@ export default function AdminDashboard({
   const [isTranslatingRouteForm, setIsTranslatingRouteForm] = useState(false);
 
   // State per llistat
-
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AiRouteGenerator from '@/components/admin/AiRouteGenerator';
-import { UsersTable } from '@/components/admin/UsersTable';
-import ExecutiveReport from '@/components/admin/ExecutiveReport';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Loader2, FileText, UploadCloud, AlertCircle, Plus, X, ImageIcon, MonitorPlay, Globe, Languages, Sparkles, CheckCircle2 } from "lucide-react";
-import { verifyAdminPassword } from "@/lib/actions/auth";
-import { createRoute, updateRoute, deleteLegend, createPoi, updatePoi, addPoiToRoute } from "@/lib/actions/content";
-import { translateRouteAction, translateFieldsAction } from "@/lib/actions/ai";
-import { getAdminLegends, getRouteWithPois, getAllProfiles } from "@/lib/actions/queries";
-import { getReports } from "@/lib/actions/reports";
-import { compressImage } from "@/lib/imageOptimization";
-import { uploadFileClient } from "@/lib/upload-client";
-import { useRouter } from "next/navigation";
-import { getAdminTheme } from "@/lib/adminTheme";
-import VideoUploader from "./VideoUploader";
-import ManualPoiForm from "./ManualPoiForm";
-import RoutePoiManager from "./RoutePoiManager";
-import MunicipalityManager from "./MunicipalityManager";
-import AdminSecurityGate from "./AdminSecurityGate";
-import { PublishChangesButton } from "./PublishChangesButton";
-import S3Maintenance from "./S3Maintenance";
-
-interface Legend {
-  id: string;
-  title?: string;
-  name?: string;
-  description?: string;
-  category?: string;
-  location_name?: string;
-  municipality_name?: string;
-  pois_count?: number;
-  total_visits?: number;
-  created_at?: string;
-  pois?: any[];
-  downloadRequired?: boolean;
-}
-
-export default function AdminDashboard({
-  municipalityId,
-  municipalityTheme,
-  legends: initialLegends = [],
-  profiles: initialProfiles = [],
-  reports: initialReports = [],
-  brand: initialBrand = null,
-  isSuperAdmin = false
-}: {
-  municipalityId?: string,
-  municipalityTheme?: string,
-  legends?: Legend[],
-  profiles?: any[],
-  reports?: any[],
-  brand?: any,
-  isSuperAdmin?: boolean
-}) {
-  const router = useRouter();
-  const [brand, setBrand] = useState<any>(initialBrand);
-  const adminTheme = getAdminTheme(brand?.themeId || municipalityTheme);
-  const [activeTab, setActiveTab] = useState<'rutes' | 'usuaris' | 'executiu' | 'config'>('rutes');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // 🔄 Sync state with initialBrand when server re-renders (router.refresh())
-  useEffect(() => {
-    if (initialBrand) {
-      setBrand(initialBrand);
-    }
-  }, [initialBrand]);
-
-  // States per a la creació de Ruta (Carpeta/Legend)
-  const [routeTitle, setRouteTitle] = useState('');
-  const [routeDescription, setRouteDescription] = useState('');
-  const [routeLocation, setRouteLocation] = useState('');
-  const [routeThumbnail, setRouteThumbnail] = useState('');
-  const [routeThumbFile, setRouteThumbFile] = useState<File | null>(null);
-  const [routeHeader, setRouteHeader] = useState('');
-  const [routeHeaderFile, setRouteHeaderFile] = useState<File | null>(null);
-  const [routeCategory, setRouteCategory] = useState(municipalityTheme || 'mountain');
-  const [routeDownloadRequired, setRouteDownloadRequired] = useState(false);
-  const [routeFinalQuiz, setRouteFinalQuiz] = useState<any>(null);
-  const [isGeneratingRouteQuiz, setIsGeneratingRouteQuiz] = useState(false);
-  const [translatingRouteId, setTranslatingRouteId] = useState<string | null>(null);
-
-  // States per a traduccions de Ruta (Formulari)
-  const [routeNameTranslations, setRouteNameTranslations] = useState<Record<string, string>>({});
-  const [routeDescriptionTranslations, setRouteDescriptionTranslations] = useState<Record<string, string>>({});
-  const [isTranslatingRouteForm, setIsTranslatingRouteForm] = useState(false);
-
-  // State per llistat
   const [legends, setLegends] = useState<Legend[]>(initialLegends);
   const [editingRoute, setEditingRoute] = useState<Legend | null>(null);
 
@@ -749,18 +655,37 @@ export default function AdminDashboard({
                         <VideoUploader 
                           poiId={editingPoi?.id || editingLegend?.id} 
                           theme={adminTheme} 
-                          existingVideos={(() => {
-                            const raw = editingPoi?.id 
-                              ? (editingPoi.videoUrls || editingPoi.video_urls || editingPoi.videoUrl || editingPoi.video_url)
-                              : (editingLegend?.videoUrls || editingLegend?.video_urls || editingLegend?.videoUrl || editingLegend?.video_url);
-                            if (Array.isArray(raw)) return raw;
-                            if (typeof raw === 'string') {
-                              try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw]; } catch { return [raw]; }
-                            }
-                            return [];
-                          })()} 
+                          existingVideos={
+                            editingPoi?.id 
+                              ? (editingPoi.videoUrls || editingPoi.video_urls || (editingPoi.videoUrl ? [editingPoi.videoUrl] : (editingPoi.video_url ? [editingPoi.video_url] : []))) 
+                              : (editingLegend?.videoUrls || editingLegend?.video_urls || (editingLegend?.videoUrl ? [editingLegend.videoUrl] : (editingLegend?.video_url ? [editingLegend.video_url] : [])))
+                          } 
                         />
                       </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {managingRoute && (
+              <RoutePoiManager
+                routeId={managingRoute.id}
+                routeName={managingRoute.name}
+                onClose={() => setManagingRoute(null)}
+                refreshTrigger={refreshRouteCounter}
+                theme={adminTheme}
+                onEditPoi={(poi) => {
+                  setEditingPoi(poi);
+                  setEditingLegend(null);
+                }}
+              />
+            )}
+
+            <Card className="border-stone-200 shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="font-serif text-xl text-stone-800">Llistat de Rutes Existents</CardTitle>
+              </CardHeader>
               <CardContent>
                 <div className="rounded-md border border-stone-200">
                   <table className="w-full text-sm">
