@@ -31,7 +31,7 @@ interface RoutePoiManagerProps {
   refreshTrigger?: number;
 }
 
-export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi, theme }: RoutePoiManagerProps) {
+export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi, theme, refreshTrigger }: RoutePoiManagerProps) {
   const activeTheme = theme || {
     text: "text-[#2D4636]",
     mainText: "text-[#2D4636]/80",
