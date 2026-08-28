@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles, ExternalLink } from "lucide-react";
+import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
 import iconsMapping from '@/lib/icons-mapping.json';
 import { getAdminTheme } from "@/lib/adminTheme";
 import { compressImage } from "@/lib/imageOptimization";
