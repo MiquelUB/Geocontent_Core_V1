@@ -829,55 +829,50 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                   </button>
                 </div>
                 {slot.url && (
-                  <div className="flex flex-col gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs mb-2">
+                  <div className="flex flex-col gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                         <span className="font-mono text-[11px] text-stone-600 truncate" title={slot.url}>
                           {slot.url.split('/').pop() || slot.url}
                         </span>
                       </div>
                       {slot.url.startsWith('http') && (
-                        <a
-                          href={slot.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
-                        >
-                          <ExternalLink className="w-3 h-3" /> Veure
-                        </a>
+                        <div className="flex flex-wrap items-center gap-2 justify-end">
+                          <a
+                            href={slot.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Veure
+                          </a>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50 flex-shrink-0"
+                            onClick={async () => {
+                              if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
+                              const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
+                              const res = await requestVideoTranslation(poi.id, slot.url);
+                              if (res.success) alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
+                              else alert("Error: " + res.error);
+                            }}
+                          >
+                            <Sparkles className="w-3 h-3 mr-1" /> Traduir Vídeo (IA)
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
                 )}
-                
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => handleVideoFileChange(idx, e.target.files?.[0] || null)}
-                    className="h-9 text-xs cursor-pointer w-full max-w-full overflow-hidden text-ellipsis flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-2 text-[10px] text-purple-700 bg-purple-50 border-purple-200 hover:bg-purple-100 shadow-sm flex-shrink-0"
-                    onClick={async () => {
-                      if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
-                      if (!slot.url || !slot.url.startsWith('http')) {
-                        alert("Has de pujar un vídeo a aquest slot i guardar el POI abans de traduir-lo.");
-                        return;
-                      }
-                      const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
-                      const res = await requestVideoTranslation(poi.id, slot.url);
-                      if (res.success) alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
-                      else alert("Error: " + res.error);
-                    }}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1 flex-shrink-0" /> Traduir
-                  </Button>
-                </div>
+                <Input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => handleVideoFileChange(idx, e.target.files?.[0] || null)}
+                  className="h-9 text-xs cursor-pointer w-full max-w-full overflow-hidden text-ellipsis"
+                />
               </div>
             ))}
           </div>
