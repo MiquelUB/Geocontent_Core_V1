@@ -651,15 +651,14 @@ export default function AdminDashboard({
 
                     {(editingPoi?.id || editingLegend?.id) && (
                       <div className="pt-6 border-t border-stone-100">
-                        <Label className="mb-4 block text-stone-800 font-bold">Consola de Vídeo HLS (Extra)</Label>
+                        <div className="mb-2">
+                          <Label className="block text-stone-800 font-bold">Consola de Vídeo HLS (Vídeos pesats / Streaming)</Label>
+                          <p className="text-xs text-stone-500">Per a vídeos de més de 10MB o de llarga durada. Es pujaran directament a S3 i es transcodificaran en segon pla.</p>
+                        </div>
                         <VideoUploader 
                           poiId={editingPoi?.id || editingLegend?.id} 
                           theme={adminTheme} 
-                          existingVideos={
-                            editingPoi?.id 
-                              ? (editingPoi.videoUrls || editingPoi.video_urls || (editingPoi.videoUrl ? [editingPoi.videoUrl] : (editingPoi.video_url ? [editingPoi.video_url] : []))) 
-                              : (editingLegend?.videoUrls || editingLegend?.video_urls || (editingLegend?.videoUrl ? [editingLegend.videoUrl] : (editingLegend?.video_url ? [editingLegend.video_url] : [])))
-                          } 
+                          existingVideos={[]} 
                         />
                       </div>
                     )}

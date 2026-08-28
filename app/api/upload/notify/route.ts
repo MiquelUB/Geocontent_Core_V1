@@ -24,7 +24,13 @@ export async function POST(req: NextRequest) {
 
     // 3. SEC-07: Verificar que la URL prové del nostre S3
     const s3Endpoint = process.env.S3_ENDPOINT || '';
-    if (!publicUrl.startsWith(s3Endpoint)) {
+    const storageBase = process.env.NEXT_PUBLIC_STORAGE_URL || '';
+    const bucket = process.env.S3_BUCKET || '';
+    const isValidSource = (s3Endpoint && publicUrl.startsWith(s3Endpoint)) ||
+                          (storageBase && publicUrl.startsWith(storageBase)) ||
+                          publicUrl.includes('.amazonaws.com/') ||
+                          (bucket && publicUrl.includes(bucket));
+    if (!isValidSource) {
         console.warn(`[notify] Suspicious URL blocked: ${publicUrl}`);
         return NextResponse.json({ error: 'Forbidden: Invalid source URL' }, { status: 403 });
     }

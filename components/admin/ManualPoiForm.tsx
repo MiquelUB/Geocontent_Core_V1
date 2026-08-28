@@ -848,7 +848,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             </Label>
             <p className="text-[10px] text-orange-600 font-medium px-1">Per a vídeos pesats, guarda el punt i usa la 'Consola HLS' de sota.</p>
             {videoSlots.map((slot, idx) => (
-              <div key={idx} className="p-3 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2">
+              <div key={idx} className="p-3 rounded-xl border border-stone-200 bg-stone-50/50 space-y-2 w-full min-w-0 overflow-hidden">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-stone-500 uppercase">Vídeo {idx + 1}</span>
                   <button type="button" onClick={() => handleRemoveVideoSlot(idx)} className="text-red-400 hover:text-red-600">
@@ -856,21 +856,21 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                   </button>
                 </div>
                 {slot.url && (
-                  <div className="flex flex-col gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <div className="flex flex-col gap-2 bg-white p-2 rounded-lg border border-stone-200 text-xs min-w-0 w-full overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                         <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
-                        <span className="font-mono text-[11px] text-stone-600 truncate" title={slot.url}>
+                        <span className="font-mono text-[11px] text-stone-600 truncate min-w-0" title={slot.url}>
                           {slot.url.split('/').pop() || slot.url}
                         </span>
                       </div>
                       {slot.url.startsWith('http') && (
-                        <div className="flex flex-wrap items-center gap-2 justify-end">
+                        <div className="flex flex-wrap items-center gap-1.5 justify-start sm:justify-end flex-shrink-0">
                           <a
                             href={slot.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
+                            className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-bold flex-shrink-0 bg-blue-50 px-2 py-1 rounded border border-blue-100"
                           >
                             <ExternalLink className="w-3 h-3" /> Veure
                           </a>
@@ -878,7 +878,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-6 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50 flex-shrink-0"
+                            className="h-7 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50 flex-shrink-0 font-bold"
                             onClick={async () => {
                               if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
                               const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
