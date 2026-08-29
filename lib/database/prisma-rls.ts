@@ -42,7 +42,7 @@ export function withRLS(userId: string) {
             
             // Fallback en cas d'operacions no suportades pel model
             return query(args);
-          });
+          }, { maxWait: 10000, timeout: 30000 });
         },
       },
     },
@@ -51,13 +51,13 @@ export function withRLS(userId: string) {
         return prisma.$transaction(async (tx) => {
           await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${safeUserId}';`);
           return tx.$queryRaw<T>(query, ...values);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
       },
       async $executeRaw(query: TemplateStringsArray | Prisma.Sql, ...values: any[]) {
         return prisma.$transaction(async (tx) => {
           await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${safeUserId}';`);
           return tx.$executeRaw(query, ...values);
-        });
+        }, { maxWait: 10000, timeout: 30000 });
       }
     }
   });

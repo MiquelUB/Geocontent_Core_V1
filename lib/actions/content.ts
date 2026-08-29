@@ -498,7 +498,7 @@ export async function createPoi(formData: FormData) {
         });
       }
       return poi;
-    });
+    }, { maxWait: 10000, timeout: 30000 });
 
     console.log('[createPoi] 7/8 - Revalidating & Translation...');
     revalidatePath('/admin');
