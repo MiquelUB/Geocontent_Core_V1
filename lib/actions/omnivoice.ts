@@ -46,7 +46,7 @@ export async function requestTtsGeneration(poiId: string, voiceId?: string) {
     }
 
     // Crida directa al FastAPI Worker per encuar la tasca a ARQ
-    const fastApiUrl = process.env.FASTAPI_PUBLIC_URL_OR_TAILSCALE_IP || 'http://127.0.0.1:8000';
+    const fastApiUrl = process.env.FASTAPI_PUBLIC_URL_OR_TAILSCALE_IP || 'http://api_core:8000';
     const res = await fetch(`${fastApiUrl}/omnivoice/tts`, {
       method: 'POST',
       headers: {
@@ -108,7 +108,7 @@ export async function requestVideoTranslation(poiId: string, videoUrl: string, v
     }
 
     // Crida directa al FastAPI Worker per encuar la tasca a ARQ
-    const fastApiUrl = process.env.FASTAPI_PUBLIC_URL_OR_TAILSCALE_IP || 'http://127.0.0.1:8000';
+    const fastApiUrl = process.env.FASTAPI_PUBLIC_URL_OR_TAILSCALE_IP || 'http://api_core:8000';
     const res = await fetch(`${fastApiUrl}/omnivoice/video-translate`, {
       method: 'POST',
       headers: {
