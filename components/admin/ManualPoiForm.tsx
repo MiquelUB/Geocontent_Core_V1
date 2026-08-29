@@ -16,7 +16,8 @@ import { uploadFileClient } from "@/lib/upload-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { autoTranslateAction, translateFieldsAction } from '@/lib/actions/ai';
 import { generatePoiAudiosAction } from '@/lib/actions/audio'; // Obsolet, mantingut per backward compat
-import { requestTtsGeneration } from '@/lib/actions/omnivoice';
+import { requestTtsGeneration, requestVideoTranslation } from '@/lib/actions/omnivoice';
+import { parseS3Filename } from '@/lib/utils';
 
 const SUPPORTED_LOCALES = [
   { id: 'ca', name: 'Català' },
@@ -956,18 +957,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                       <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                         <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                         <span className="font-mono text-[11px] text-stone-600 truncate min-w-0" title={slot.file ? slot.file.name : slot.url}>
-                          {(() => {
-                            if (slot.file) return slot.file.name;
-                            try {
-                              let fname = decodeURIComponent(slot.url.split('/').pop() || slot.url);
-                              if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i.test(fname)) {
-                                fname = fname.substring(37);
-                              }
-                              return fname;
-                            } catch (e) {
-                              return slot.url.split('/').pop() || slot.url;
-                            }
-                          })()}
+                          {slot.file ? slot.file.name : parseS3Filename(slot.url)}
                         </span>
                       </div>
                       {slot.url.startsWith('http') && (
