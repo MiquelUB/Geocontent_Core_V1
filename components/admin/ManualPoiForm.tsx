@@ -154,14 +154,43 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   // Polling per quan hi ha traduccions pendents
   useEffect(() => {
     const hasPending = Object.values(pendingTranslations).some(v => v);
-    if (!hasPending) return;
+    if (!hasPending || !poi?.id) return;
 
-    const interval = setInterval(() => {
-      router.refresh();
+    const interval = setInterval(async () => {
+      try {
+        const { getPoiById } = await import('@/lib/actions/content');
+        const freshPoi = await getPoiById(poi.id);
+        if (freshPoi) {
+          const freshVTrans: any = freshPoi.videoTranslations || freshPoi.video_translations || {};
+          const freshATrans: any = freshPoi.audioTranslations || freshPoi.audio_translations || {};
+          
+          setVideoTranslations(freshVTrans);
+          setAudioTranslations(freshATrans);
+          
+          setPendingTranslations(prev => {
+            const newPending = { ...prev };
+            let changed = false;
+            for (const url in newPending) {
+              if (newPending[url] && freshVTrans[url] && Object.keys(freshVTrans[url]).length > 0) {
+                delete newPending[url];
+                changed = true;
+              }
+              // També verifiquem si és d'àudio
+              if (newPending[url] && Object.keys(freshATrans).length > 0 && freshATrans[url]) {
+                 delete newPending[url];
+                 changed = true;
+              }
+            }
+            return changed ? newPending : prev;
+          });
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [pendingTranslations, router]);
+  }, [pendingTranslations, poi?.id]);
 
   // Netejar pendents quan arriba la dada del servidor
   useEffect(() => {
@@ -362,6 +391,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
       const res = await requestTtsGeneration(poi.id, voiceId);
       if (res.success) {
         alert("Petició enviada! Es generarà l'audioguia en segon pla.");
+        setPendingTranslations(prev => ({ ...prev, '__audio__': true }));
       } else {
         alert("Error generant àudios: " + res.error);
       }

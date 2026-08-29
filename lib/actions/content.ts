@@ -869,3 +869,13 @@ export async function closeRouteAndGenerateFinalQuiz(routeId: string) {
   }
 }
 
+
+export async function getPoiById(poiId: string) {
+  try {
+    const poi = await prisma.poi.findUnique({ where: { id: poiId } });
+    return poi;
+  } catch (error) {
+    console.error("Error fetching POI:", error);
+    return null;
+  }
+}
