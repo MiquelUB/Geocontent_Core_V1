@@ -48,7 +48,7 @@ interface VideoSlot {
 }
 
 const MAX_VIDEO_SLOTS = 3;
-const MAX_VIDEO_SIZE_MB = 200;
+const MAX_VIDEO_SIZE_MB = 30; // 30MB max per Reel video to control S3 bandwidth and storage budget
 
 const getInitialTranslations = (translations: any, baseValue: string = '', secondaryBaseValue: string = '') => {
   const effectiveBase = (baseValue && baseValue.trim() !== '') 
@@ -840,7 +840,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             <Label className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Film className="w-4 h-4 text-stone-400" />
-                Vídeos Reel (Màx 10MB)
+                Vídeos Reel (Màx 30MB per fitxer)
               </div>
               <Button type="button" variant="outline" size="sm" className="h-7 text-[10px]" onClick={handleAddVideoSlot}>
                 Afegir Slot

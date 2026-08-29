@@ -87,6 +87,11 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
     // Reset input so the same file can be selected again
     if (inputRef.current) inputRef.current.value = '';
 
+    if (file.size > 200 * 1024 * 1024) {
+      alert(`El fitxer de vídeo "${file.name}" supera el límit màxim de 200MB.`);
+      return;
+    }
+
     try {
       // ── Step 1: Detect duration → classify Snack / Dinner ──────────────
       setState({ phase: 'detecting' });
