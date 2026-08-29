@@ -83,6 +83,33 @@ export default function VideoUploader({ poiId, existingVideos = [], theme, video
   const [videoVoices, setVideoVoices] = useState<Record<string, string>>({});
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
+  // Polling per quan hi ha traduccions pendents
+  useEffect(() => {
+    const hasPending = Object.values(pendingTranslations).some(v => v);
+    if (!hasPending) return;
+
+    const interval = setInterval(() => {
+      window.location.reload(); // Deixem reload perquè VideoUploader no sempre té accès directe al context proper del router de la pàgina on s'empelta sense prop drilling
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [pendingTranslations]);
+
+  // Netejar pendents
+  useEffect(() => {
+    setPendingTranslations(prev => {
+      const newPending = { ...prev };
+      let changed = false;
+      const vTrans: any = videoTranslations || {};
+      for (const url in newPending) {
+        if (newPending[url] && vTrans[url] && Object.keys(vTrans[url]).length > 0) {
+          delete newPending[url];
+          changed = true;
+        }
+      }
+      return changed ? newPending : prev;
+    });
+  }, [videoTranslations]);
   useEffect(() => {
     if (existingVideos) setVideos(existingVideos);
   }, [existingVideos]);

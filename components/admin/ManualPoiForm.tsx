@@ -149,6 +149,34 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
+  // Polling per quan hi ha traduccions pendents
+  useEffect(() => {
+    const hasPending = Object.values(pendingTranslations).some(v => v);
+    if (!hasPending) return;
+
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [pendingTranslations, router]);
+
+  // Netejar pendents quan arriba la dada del servidor
+  useEffect(() => {
+    setPendingTranslations(prev => {
+      const newPending = { ...prev };
+      let changed = false;
+      const vTrans: any = poi?.videoTranslations || poi?.video_translations || {};
+      for (const url in newPending) {
+        if (newPending[url] && vTrans[url] && Object.keys(vTrans[url]).length > 0) {
+          delete newPending[url];
+          changed = true;
+        }
+      }
+      return changed ? newPending : prev;
+    });
+  }, [poi]);
+
   const parseVideos = (raw: any): string[] => {
     if (Array.isArray(raw)) return raw;
     if (typeof raw === 'string') {
@@ -904,6 +932,10 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                             className="h-7 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50 flex-shrink-0 font-bold"
                             onClick={async () => {
                               if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
+                              if (slot.url.startsWith('blob:')) {
+                                alert("Has de desar el punt (Guardar) per pujar el vídeo abans de poder-lo traduir.");
+                                return;
+                              }
                               const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
                               const selectedVoice = slot.voiceId || voiceId || 'nova';
                               const res = await requestVideoTranslation(poi.id, slot.url, selectedVoice);
