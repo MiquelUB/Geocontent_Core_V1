@@ -994,6 +994,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                             size="sm"
                             className="h-7 px-2 text-[9px] text-purple-600 border-purple-200 hover:bg-purple-50 flex-shrink-0 font-bold"
                             onClick={async () => {
+                              console.log("CLIC AL BOTÓ DE TRADUCCIÓ DE VÍDEO!", slot.url);
+                              alert("Clic detectat al vídeo!");
                               if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
                               if (slot.url.startsWith('blob:')) {
                                 alert("Has de desar el punt (Guardar) per pujar el vídeo abans de poder-lo traduir.");
@@ -1001,7 +1003,9 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                               }
                               try {
                                 const selectedVoice = slot.voiceId || voiceId || 'nova';
+                                console.log("Cridant requestVideoTranslation...", poi.id, slot.url, selectedVoice);
                                 const res = await requestVideoTranslation(poi.id, slot.url, selectedVoice);
+                                console.log("Resposta de requestVideoTranslation:", res);
                                 if (res?.success) {
                                   alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
                                   setPendingTranslations(prev => ({ ...prev, [slot.url]: true }));
