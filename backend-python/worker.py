@@ -298,6 +298,12 @@ async def startup(ctx):
     print("[Worker] Iniciant ARQ Worker...")
     db_url = os.getenv("DATABASE_URL")
     if db_url:
+        # asyncpg does not support prisma-specific parameters like pgbouncer=true
+        if "?pgbouncer=true" in db_url:
+            db_url = db_url.replace("?pgbouncer=true", "")
+        if "&pgbouncer=true" in db_url:
+            db_url = db_url.replace("&pgbouncer=true", "")
+            
         ctx['db_pool'] = await asyncpg.create_pool(db_url)
         ctx['poller_task'] = asyncio.create_task(outbox_poller(ctx))
     else:
