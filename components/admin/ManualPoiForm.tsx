@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,7 @@ const getInitialTranslations = (translations: any, baseValue: string = '', secon
 };
 
 export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes = [], defaultRouteId, municipalityTheme }: ManualPoiFormProps) {
+  const router = useRouter();
   const activeTheme = getAdminTheme(municipalityTheme);
   
   // States for multi-language fields
