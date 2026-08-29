@@ -264,8 +264,8 @@ export async function createRoute(formData: FormData) {
       }
     });
 
-    revalidatePath('/admin');
-    revalidatePath('/');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
     // void + catch() per desacoblar la promesa del Server Action i no bloquejar la resposta
@@ -346,8 +346,8 @@ export async function updateRoute(id: string, formData: FormData) {
       }
     });
 
-    revalidatePath('/admin');
-    revalidatePath('/');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
 
     return { success: true };
   } catch (err: any) {
@@ -366,8 +366,8 @@ export async function deleteLegend(id: string, municipalityId?: string) {
         municipalityId: municipalityId || undefined
       }
     });
-    revalidatePath('/admin');
-    revalidatePath('/');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
 
     return { success: true };
   } catch (err: any) {
@@ -501,7 +501,8 @@ export async function createPoi(formData: FormData) {
     }, { maxWait: 10000, timeout: 30000 });
 
     console.log('[createPoi] 7/8 - Revalidating & Translation...');
-    revalidatePath('/admin');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
     void import('@/lib/actions/ai').then(m => m.autoTranslateAction('poi', result.id)).catch(err => console.error('AutoTranslate Background Error:', err));
@@ -564,7 +565,13 @@ export async function updatePoi(id: string, formData: FormData) {
     const videoSlotCount = parseInt(formData.get('video_slot_count') as string || '0', 10);
     let urlsFromForm: string[] = [];
     try { urlsFromForm = JSON.parse(formData.get('video_urls') as string || '[]'); } catch (e) {}
+
+    let initialVideoUrls: string[] = [];
+    try { initialVideoUrls = JSON.parse(formData.get('initial_video_urls') as string || '[]'); } catch (e) {}
     
+    // Si s'han afegit vídeos per altres vies mentre editavem (ex: Consola HLS), els mantenim.
+    const concurrentlyAddedVideos = (existingPoi.videoUrls || []).filter(v => !initialVideoUrls.includes(v));
+
     const uploadedVideoUrls: string[] = [];
     for (let i = 0; i < videoSlotCount; i++) {
       const file = formData.get(`video_file_${i}`) as File | null;
@@ -572,13 +579,13 @@ export async function updatePoi(id: string, formData: FormData) {
         uploadedVideoUrls.push(await uploadFile(file));
       }
     }
+    
     let videoUrls = [
       ...uploadedVideoUrls,
-      ...urlsFromForm.filter(u => u && u.startsWith('http') && !uploadedVideoUrls.includes(u))
-    ];
-    if (videoUrls.length === 0 && existingPoi.videoUrls) {
-      videoUrls = existingPoi.videoUrls;
-    }
+      ...urlsFromForm.filter(u => u && u.startsWith('http') && !uploadedVideoUrls.includes(u)),
+      ...concurrentlyAddedVideos
+    ].slice(0, 4); // Max 4 vídeos en total (Reels + HLS)
+
 
     const iconParam = formData.get('icon') as string;
     const icon = iconParam || existingPoi.icon || null;
@@ -668,7 +675,8 @@ export async function updatePoi(id: string, formData: FormData) {
     });
 
     console.log(`[updatePoi ${id}] 4/5 - Revalidating path...`);
-    revalidatePath('/admin');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
 
     console.log(`[updatePoi ${id}] 5/5 - Done!`);
     return { success: true };
@@ -745,8 +753,8 @@ export async function updateLegend(id: string, formData: FormData) {
       }
     });
 
-    revalidatePath('/admin');
-    revalidatePath('/');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
 
     // Traducció automàtica silenciosa en segon pla (múscul IA)
     void import('@/lib/actions/ai').then(m => m.autoTranslateAction('route', id)).catch(err => console.error('AutoTranslate Background Error:', err));
@@ -852,7 +860,8 @@ export async function closeRouteAndGenerateFinalQuiz(routeId: string) {
       data: { finalQuiz }
     });
 
-    revalidatePath('/admin');
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
     return { success: true, finalQuiz };
   } catch (err: any) {
     console.error(err);

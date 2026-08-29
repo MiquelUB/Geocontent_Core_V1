@@ -129,7 +129,7 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
       if (!notifyRes.ok) throw new Error('Error en la notificació al servidor.');
 
       // ── Done ────────────────────────────────────────────────────────────
-      setVideos((prev) => [...prev, publicUrl].slice(0, 3));
+      setVideos((prev) => [...prev, publicUrl].slice(0, 4));
       setState({ phase: 'done', type, url: publicUrl });
     } catch (err: any) {
       console.error('[VideoUploader]', err);
@@ -145,9 +145,9 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
       <div className="flex items-center justify-between">
         <Label className="text-stone-600 font-medium flex items-center gap-2">
           <Video className={`w-4 h-4 ${activeTheme.mainText}`} />
-          Vídeos del Punt (Màxim 3)
+          Vídeos del Punt (Màxim 4)
         </Label>
-        <span className="text-xs text-stone-400">{videos.length}/3</span>
+        <span className="text-xs text-stone-400">{videos.length}/4</span>
       </div>
 
       {/* Video grid */}

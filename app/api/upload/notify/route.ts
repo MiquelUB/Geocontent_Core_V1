@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, message: 'URL already registered' });
     }
     
-    const updatedUrls = [...currentUrls, publicUrl].slice(0, 3); // Max 3 videos
+    const updatedUrls = [...currentUrls, publicUrl].slice(0, 4); // Max 4 videos (3 reels + 1 HLS)
 
     await prisma.poi.update({
       where: { id: poiId },

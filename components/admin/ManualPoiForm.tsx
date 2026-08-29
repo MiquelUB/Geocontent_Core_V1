@@ -459,6 +459,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
       }
       formData.append('video_urls', JSON.stringify(finalVideoUrls));
       formData.append('video_slot_count', videoSlots.length.toString());
+      const initialVideos = parseVideos(poi?.videoUrls || poi?.video_urls || poi?.videoUrl || poi?.video_url);
+      formData.append('initial_video_urls', JSON.stringify(initialVideos));
 
       if (manualQuiz) formData.append('manual_quiz', JSON.stringify(manualQuiz));
 
