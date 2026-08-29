@@ -14,6 +14,7 @@ const nextConfig = {
   },
   experimental: {
     externalDir: true,
+    middlewareClientMaxBodySize: '200mb',
     serverActions: {
       bodySizeLimit: '200mb',
       allowedOrigins: [
