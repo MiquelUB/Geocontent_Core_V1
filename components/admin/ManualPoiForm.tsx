@@ -884,7 +884,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                             onClick={async () => {
                               if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
                               const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
-                              const res = await requestVideoTranslation(poi.id, slot.url);
+                              const res = await requestVideoTranslation(poi.id, slot.url, voiceId);
                               if (res.success) alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
                               else alert("Error: " + res.error);
                             }}

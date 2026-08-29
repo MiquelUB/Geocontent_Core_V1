@@ -69,7 +69,7 @@ export async function requestTtsGeneration(poiId: string, voiceId?: string) {
 /**
  * Envia una petició de traducció i doblatge de vídeo a l'Outbox (ARQ).
  */
-export async function requestVideoTranslation(poiId: string, videoUrl: string) {
+export async function requestVideoTranslation(poiId: string, videoUrl: string, voiceId?: string) {
   try {
     const session = await auth();
     if (!session || !session.user || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
@@ -111,7 +111,8 @@ export async function requestVideoTranslation(poiId: string, videoUrl: string) {
         payload: {
           poiId: poi.id,
           userId: userId,
-          videoUrl: videoUrl
+          videoUrl: videoUrl,
+          voiceId: voiceId || poi.voiceId || null
         },
         status: 'PENDING'
       }
