@@ -35,7 +35,7 @@ export async function generatePdf(html: string): Promise<Buffer> {
     // Set viewport to A4 size roughly for better rendering simulation
     await page.setViewport({ width: 794, height: 1123 }); // A4 at 96 DPI
     
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { waitUntil: 'networkidle0' as any });
     
     // Generate PDF
     const pdf = await page.pdf({ 

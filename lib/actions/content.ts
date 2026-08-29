@@ -773,7 +773,7 @@ export async function addPoiToRoute(routeId: string, poiId: string, orderIndex: 
     const where: Record<string, any> = { id: routeId };
     if (municipalityId) where.municipalityId = municipalityId;
 
-    const route = await prisma.route.findUnique({ where });
+    const route = await prisma.route.findUnique({ where: where as any });
     if (!route) throw new Error("Ruta no trobada o accés denegat");
 
     await prisma.routePoi.create({

@@ -105,6 +105,7 @@ export async function handleAvatarUploadAction(formData: FormData) {
 export async function addVideoToPoi(poiId: string, formData: FormData) {
   // SEC: Requereix rol d'admin per processament de vídeo
   await requireAdmin();
+  const videoFile = formData.get('file') as File;
   if (!videoFile) return { success: false, error: "No s'ha pujat cap vídeo." };
 
   // SEC-08: Límit de mida

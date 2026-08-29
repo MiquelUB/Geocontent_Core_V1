@@ -214,7 +214,7 @@ export async function getAdminUsers() {
 
   try {
     const users = await prisma.user.findMany({
-      where: { role: 'admin' },
+      where: { role: 'ADMIN' },
       select: { id: true, username: true, email: true, createdAt: true }
     });
     return { success: true, users };
@@ -247,7 +247,7 @@ export async function createAdminUser(name: string, email: string, pass: string)
         username: name.trim(),
         email: emailParse.data,
         passwordHash: hash,
-        role: 'admin',
+        role: 'ADMIN',
         xp: 0,
         level: 1
       }
