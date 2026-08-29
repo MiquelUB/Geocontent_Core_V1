@@ -42,7 +42,8 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str) -> str:
     
     extra_args = {
         'ContentType': 'audio/mpeg',
-        'CacheControl': 'max-age=31536000, immutable'
+        'CacheControl': 'max-age=31536000, immutable',
+        'ACL': 'public-read'
     }
     s3_client.upload_file(file_path, bucket, key, ExtraArgs=extra_args)
     public_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
