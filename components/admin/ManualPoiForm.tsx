@@ -958,11 +958,15 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                         <span className="font-mono text-[11px] text-stone-600 truncate min-w-0" title={slot.file ? slot.file.name : slot.url}>
                           {(() => {
                             if (slot.file) return slot.file.name;
-                            let fname = slot.url.split('/').pop() || slot.url;
-                            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i.test(fname)) {
-                              fname = fname.substring(37);
+                            try {
+                              let fname = decodeURIComponent(slot.url.split('/').pop() || slot.url);
+                              if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i.test(fname)) {
+                                fname = fname.substring(37);
+                              }
+                              return fname;
+                            } catch (e) {
+                              return slot.url.split('/').pop() || slot.url;
                             }
-                            return fname;
                           })()}
                         </span>
                       </div>
@@ -1005,14 +1009,18 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                                 alert("Has de desar el punt (Guardar) per pujar el vídeo abans de poder-lo traduir.");
                                 return;
                               }
-                              const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
-                              const selectedVoice = slot.voiceId || voiceId || 'nova';
-                              const res = await requestVideoTranslation(poi.id, slot.url, selectedVoice);
-                              if (res.success) {
-                                alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
-                                setPendingTranslations(prev => ({ ...prev, [slot.url]: true }));
-                              } else {
-                                alert("Error: " + res.error);
+                              try {
+                                const selectedVoice = slot.voiceId || voiceId || 'nova';
+                                const res = await requestVideoTranslation(poi.id, slot.url, selectedVoice);
+                                if (res?.success) {
+                                  alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
+                                  setPendingTranslations(prev => ({ ...prev, [slot.url]: true }));
+                                } else {
+                                  alert("Error: " + res?.error);
+                                }
+                              } catch (e: any) {
+                                console.error("Error al traduir vídeo:", e);
+                                alert("Error inesperat: " + e.message);
                               }
                             }}
                           >
