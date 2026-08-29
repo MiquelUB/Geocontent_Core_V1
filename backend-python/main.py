@@ -20,14 +20,19 @@ from arq.connections import RedisSettings
 
 @app.on_event("startup")
 async def startup_event():
-    app.state.arq_pool = await create_pool(RedisSettings(
-        host=os.getenv("REDIS_HOST", "127.0.0.1"),
-        port=int(os.getenv("REDIS_PORT", 6379)),
-        password=os.getenv("REDIS_PASSWORD", None),
-        conn_timeout=5,
-        conn_retries=5,
-        conn_retry_delay=2,
-    ))
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        settings = RedisSettings.from_dsn(redis_url)
+    else:
+        settings = RedisSettings(
+            host=os.getenv("REDIS_HOST", "127.0.0.1"),
+            port=int(os.getenv("REDIS_PORT", 6379)),
+            password=os.getenv("REDIS_PASSWORD", None),
+            conn_timeout=5,
+            conn_retries=5,
+            conn_retry_delay=2,
+        )
+    app.state.arq_pool = await create_pool(settings)
 
 # Configuració estricta de CORS (Comunica amb Next.js i permet Bypass S3)
 origins = [

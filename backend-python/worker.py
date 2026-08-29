@@ -320,14 +320,18 @@ async def shutdown(ctx):
         await ctx['db_pool'].close()
 
 class WorkerSettings:
-    redis_settings = RedisSettings(
-        host=os.getenv("REDIS_HOST", "127.0.0.1"),
-        port=int(os.getenv("REDIS_PORT", 6379)),
-        password=os.getenv("REDIS_PASSWORD", None),
-        conn_timeout=5,
-        conn_retries=5,
-        conn_retry_delay=2,
-    )
+    redis_url = os.getenv("REDIS_URL")
+    if redis_url:
+        redis_settings = RedisSettings.from_dsn(redis_url)
+    else:
+        redis_settings = RedisSettings(
+            host=os.getenv("REDIS_HOST", "127.0.0.1"),
+            port=int(os.getenv("REDIS_PORT", 6379)),
+            password=os.getenv("REDIS_PASSWORD", None),
+            conn_timeout=5,
+            conn_retries=5,
+            conn_retry_delay=2,
+        )
     
     functions = [process_hls_video, process_tts_job, process_video_translation_job]
     on_startup = startup
