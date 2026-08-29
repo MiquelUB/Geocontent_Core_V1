@@ -895,8 +895,15 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                         <Film className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
-                        <span className="font-mono text-[11px] text-stone-600 truncate min-w-0" title={slot.url}>
-                          {slot.url.split('/').pop() || slot.url}
+                        <span className="font-mono text-[11px] text-stone-600 truncate min-w-0" title={slot.file ? slot.file.name : slot.url}>
+                          {(() => {
+                            if (slot.file) return slot.file.name;
+                            let fname = slot.url.split('/').pop() || slot.url;
+                            if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i.test(fname)) {
+                              fname = fname.substring(37);
+                            }
+                            return fname;
+                          })()}
                         </span>
                       </div>
                       {slot.url.startsWith('http') && (
