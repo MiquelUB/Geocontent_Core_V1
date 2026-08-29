@@ -305,7 +305,10 @@ async def startup(ctx):
             db_url = db_url.replace("&pgbouncer=true", "")
             
         ctx['db_pool'] = await asyncpg.create_pool(db_url)
-        ctx['poller_task'] = asyncio.create_task(outbox_poller(ctx))
+        # POLLEO DE POSTGRES ELIMINAT: 
+        # La creació asíncrona de tasques ara es farà via Webhooks/FastAPI o Redis directament 
+        # per evitar bloquejos (Efecte Forat Negre).
+        # ctx['poller_task'] = asyncio.create_task(outbox_poller(ctx))
     else:
         print("[Worker] DATABASE_URL no definida. El Outbox Poller no s'iniciarà.")
 

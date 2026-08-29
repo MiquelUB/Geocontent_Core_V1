@@ -9,10 +9,25 @@ app = FastAPI(
     version="2.0.0"
 )
 
-from routers import s3, webhooks, audio
+from routers import s3, webhooks, audio, omnivoice
 app.include_router(s3.router)
 app.include_router(webhooks.router)
 app.include_router(audio.router)
+app.include_router(omnivoice.router)
+
+from arq import create_pool
+from arq.connections import RedisSettings
+
+@app.on_event("startup")
+async def startup_event():
+    app.state.arq_pool = await create_pool(RedisSettings(
+        host=os.getenv("REDIS_HOST", "127.0.0.1"),
+        port=int(os.getenv("REDIS_PORT", 6379)),
+        password=os.getenv("REDIS_PASSWORD", None),
+        conn_timeout=5,
+        conn_retries=5,
+        conn_retry_delay=2,
+    ))
 
 # Configuració estricta de CORS (Comunica amb Next.js i permet Bypass S3)
 origins = [

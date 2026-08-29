@@ -45,19 +45,22 @@ export async function requestTtsGeneration(poiId: string, voiceId?: string) {
       }
     }
 
-    // Inserir a l'Outbox per ser processat asíncronament pel worker de Python
-    await prisma.outboxEvent.create({
-      data: {
-        topic: 'GENERATE_TTS',
-        payload: {
-          poiId: poi.id,
-          userId: userId,
-          voiceId: voiceId || poi.voiceId || null,
-          voiceScript: poi.voiceScript || poi.textContent || poi.description || ''
-        },
-        status: 'PENDING'
-      }
+    // Crida directa al FastAPI Worker per encuar la tasca a ARQ
+    const fastApiUrl = process.env.FASTAPI_PUBLIC_URL_OR_TAILSCALE_IP || 'http://127.0.0.1:8000';
+    const res = await fetch(`${fastApiUrl}/omnivoice/tts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        poi_id: poi.id,
+        voice_id: voiceId || poi.voiceId || 'nova'
+      })
     });
+    
+    if (!res.ok) {
+      throw new Error(`FastAPI va retornar error: ${res.status}`);
+    }
 
     return { success: true, message: "Generació d'àudio encuada correctament." };
   } catch (err: any) {
@@ -104,19 +107,23 @@ export async function requestVideoTranslation(poiId: string, videoUrl: string, v
       }
     }
 
-    // Inserir a l'Outbox per ser processat asíncronament pel worker de Python
-    await prisma.outboxEvent.create({
-      data: {
-        topic: 'TRANSLATE_VIDEO',
-        payload: {
-          poiId: poi.id,
-          userId: userId,
-          videoUrl: videoUrl,
-          voiceId: voiceId || poi.voiceId || null
-        },
-        status: 'PENDING'
-      }
+    // Crida directa al FastAPI Worker per encuar la tasca a ARQ
+    const fastApiUrl = process.env.FASTAPI_PUBLIC_URL_OR_TAILSCALE_IP || 'http://127.0.0.1:8000';
+    const res = await fetch(`${fastApiUrl}/omnivoice/video-translate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        poi_id: poi.id,
+        video_url: videoUrl,
+        voice_id: voiceId || poi.voiceId || 'nova'
+      })
     });
+    
+    if (!res.ok) {
+      throw new Error(`FastAPI va retornar error: ${res.status}`);
+    }
 
     return { success: true, message: "Traducció de vídeo encuada correctament." };
   } catch (err: any) {

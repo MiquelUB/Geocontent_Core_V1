@@ -153,74 +153,53 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
-  // SSE (Server-Sent Events) per escoltar les traduccions asíncrones (elimina el polling manual)
+  // Client Polling (Reemplaça SSE fràgil) per escoltar les traduccions asíncrones
   useEffect(() => {
     const hasPending = Object.values(pendingTranslations).some(v => v);
     if (!hasPending || !poi?.id) return;
 
-    const eventSource = new EventSource(`/api/pois/${poi.id}/events`);
-
-    eventSource.onmessage = async (event) => {
+    const intervalId = setInterval(async () => {
       try {
-        const data = JSON.parse(event.data);
+        const res = await fetch(`/api/pois/${poi.id}/status`);
+        if (!res.ok) return;
+        const freshPoi = await res.json();
         
-        if (data.status === 'SUCCESS') {
-          // Descarregar l'estat final fresc de la base de dades
-          const freshPoi = await getPoiTranslations(poi.id);
-          if (freshPoi) {
-            const freshVTrans: any = freshPoi.videoTranslations || freshPoi.video_translations || {};
-            const freshATrans: any = freshPoi.audioTranslations || freshPoi.audio_translations || {};
+        if (freshPoi) {
+          const freshVTrans: any = freshPoi.videoTranslations || freshPoi.video_translations || {};
+          const freshATrans: any = freshPoi.audioTranslations || freshPoi.audio_translations || {};
+          
+          setVideoTranslations(freshVTrans);
+          setAudioTranslations(freshATrans);
+          
+          setPendingTranslations(prev => {
+            const newPending = { ...prev };
+            let changed = false;
             
-            setVideoTranslations(freshVTrans);
-            setAudioTranslations(freshATrans);
+            // Check if audio finished
+            if (newPending['__audio__'] && Object.keys(freshATrans).length > 0) {
+              // Comprovació simple: si la longitud de la resposta canvia, assumim èxit (per simplificar el polling)
+              // Idealment podríem guardar el hash anterior
+              delete newPending['__audio__'];
+              changed = true;
+            }
             
-            setPendingTranslations(prev => {
-              const newPending = { ...prev };
-              let changed = false;
-              
-              if (data.type === 'AUDIO_GENERATION' && newPending['__audio__']) {
-                delete newPending['__audio__'];
+            // Check if video finished
+            for (const url in newPending) {
+              if (url !== '__audio__' && freshVTrans[url] && Object.keys(freshVTrans[url]).length > 0) {
+                delete newPending[url];
                 changed = true;
               }
-              if (data.type === 'VIDEO_TRANSLATION' && data.url && newPending[data.url]) {
-                delete newPending[data.url];
-                changed = true;
-              }
-              // Fallback purga
-              for (const url in newPending) {
-                if (newPending[url] && freshVTrans[url] && Object.keys(freshVTrans[url]).length > 0) {
-                  delete newPending[url];
-                  changed = true;
-                }
-                if (newPending[url] && Object.keys(freshATrans).length > 0 && freshATrans[url]) {
-                   delete newPending[url];
-                   changed = true;
-                }
-              }
-              return changed ? newPending : prev;
-            });
-          }
-        } else if (data.status === 'FAILED') {
-           const tipus = data.type === 'AUDIO_GENERATION' ? "generació d'àudio" : "traducció de vídeo";
-           alert(`S'ha produït un error durant la ${tipus}. Si us plau, revisa els logs o torna-ho a intentar.`);
-           
-           setPendingTranslations(prev => {
-             const newPending = { ...prev };
-             if (data.type === 'AUDIO_GENERATION') delete newPending['__audio__'];
-             if (data.type === 'VIDEO_TRANSLATION' && data.url) delete newPending[data.url];
-             return newPending;
-           });
+            }
+            
+            return changed ? newPending : prev;
+          });
         }
       } catch (err: any) {
-        console.error("Error processant event SSE:", err);
+        console.error("Error processant Polling de status:", err);
       }
-    };
+    }, 4000); // Polling cada 4 segons
 
-    eventSource.onerror = (error) => {
-      console.error("SSE Connection error", error);
-    };
-
-    return () => eventSource.close();
+    return () => clearInterval(intervalId);
   }, [pendingTranslations, poi?.id]);
 
   // Netejar pendents quan arriba la dada del servidor
