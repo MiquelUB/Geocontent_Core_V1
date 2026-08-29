@@ -12,16 +12,15 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.cartocdn.com' },
     ],
   },
-  reactStrictMode: true,
-  serverActions: {
-    bodySizeLimit: '50mb',
-    allowedOrigins: [
-      process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
-      'localhost:3000'
-    ].filter(Boolean)
-  },
   experimental: {
     externalDir: true,
+    serverActions: {
+      bodySizeLimit: '200mb',
+      allowedOrigins: [
+        process.env.NEXTAUTH_URL ? process.env.NEXTAUTH_URL.replace(/^https?:\/\//, '') : '',
+        'localhost:3000'
+      ].filter(Boolean)
+    },
     // Prevenció de saturació de RAM (OOM) en servidors de CI/CD (ex: Vercel, Render)
     webpackBuildWorker: true,
     workerThreads: false,
