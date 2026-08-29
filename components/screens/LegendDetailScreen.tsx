@@ -86,7 +86,14 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
     location: getLocalizedContent(legend, 'location', locale) || t('unknown'),
     categoryLabel: getLocalizedContent(legend, 'categoryLabel', locale) || t('unknown'),
     coordinates: { lat, lng },
-    videoUrls: legend?.videoUrls || (legend?.video_url ? [legend.video_url] : []),
+    videoUrls: (legend?.videoUrls || (legend?.video_url ? [legend.video_url] : [])).map((url: string) => {
+      // Check if there is a translation for this specific video in the current locale
+      const translations = legend?.videoTranslations?.[url];
+      if (translations && translations[locale]) {
+        return translations[locale];
+      }
+      return url;
+    }),
     audioUrl: getLocalizedContent(legend, 'audio', locale) || legend?.audioUrl || legend?.audio || legend?.audio_url, 
     manualQuiz: legend?.manualQuiz,
     userUnlocks: legend?.userUnlocks || [],

@@ -45,6 +45,7 @@ interface VideoSlot {
   url: string;
   file: File | null;
   mode: 'url' | 'file';
+  voiceId?: string;
 }
 
 const MAX_VIDEO_SLOTS = 3;
@@ -207,7 +208,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
   const handleAddVideoSlot = () => {
     if (videoSlots.length < MAX_VIDEO_SLOTS) {
-      setVideoSlots([...videoSlots, { url: '', file: null, mode: 'url' }]);
+      setVideoSlots([...videoSlots, { url: '', file: null, mode: 'url', voiceId: voiceId || 'nova' }]);
     }
   };
 
@@ -876,6 +877,24 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                           >
                             <ExternalLink className="w-3 h-3" /> Veure
                           </a>
+                          
+                          {/* Selector de veu per vídeo */}
+                          <div className="flex items-center gap-1.5 ml-2">
+                            <Label className="text-[10px] text-stone-500 font-medium">Veu:</Label>
+                            <select
+                              value={slot.voiceId || voiceId || 'nova'}
+                              onChange={(e) => updateVideoSlot(idx, { voiceId: e.target.value })}
+                              className="text-[10px] border border-stone-200 rounded px-1.5 py-1 bg-white h-7 outline-none focus:border-purple-300"
+                            >
+                              <option value="nova">Dona (Nova)</option>
+                              <option value="alloy">Home (Alloy)</option>
+                              <option value="echo">Home (Echo)</option>
+                              <option value="fable">Dona/Nen (Fable)</option>
+                              <option value="onyx">Home Greu (Onyx)</option>
+                              <option value="shimmer">Dona Clara (Shimmer)</option>
+                            </select>
+                          </div>
+
                           <Button
                             type="button"
                             variant="outline"
@@ -884,13 +903,22 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                             onClick={async () => {
                               if (!poi?.id) { alert("Has de guardar el POI primer."); return; }
                               const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
-                              const res = await requestVideoTranslation(poi.id, slot.url, voiceId);
+                              const selectedVoice = slot.voiceId || voiceId || 'nova';
+                              const res = await requestVideoTranslation(poi.id, slot.url, selectedVoice);
                               if (res.success) alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
                               else alert("Error: " + res.error);
                             }}
                           >
-                            <Sparkles className="w-3 h-3 mr-1" /> Traduir Vídeo (IA)
+                            <Sparkles className="w-3 h-3 mr-1" /> Traduir
                           </Button>
+                          
+                          {/* Check de traducció completada */}
+                          {videoTranslations?.[slot.url] && Object.keys(videoTranslations[slot.url]).length > 0 && (
+                            <div className="flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold" title="Traduccions completades">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {Object.keys(videoTranslations[slot.url]).join(', ').toUpperCase()}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

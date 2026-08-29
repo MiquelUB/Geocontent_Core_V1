@@ -135,7 +135,7 @@ export async function getLegends(userId?: string) {
         routePois: {
           include: {
             poi: {
-              omit: { voiceScript: true, videoTranslations: true },
+              omit: { voiceScript: true },
               include: { 
                 userUnlocks: userId ? { where: { userId } } : false 
               }
@@ -184,8 +184,9 @@ function mapRoute(route: any) {
       type: p.type,
       userUnlocks: p.userUnlocks || [],
       audioTranslations: p.audioTranslations || {},
+      videoTranslations: p.videoTranslations || {},
       routeId: route.id,
-      // No enviem `voiceScript` ni `videoTranslations` al client perquè pesen massa i fan petar el Next.js
+      // No enviem `voiceScript` al client perquè pesa massa i fa petar el Next.js
     };
   }) ?? [];
 

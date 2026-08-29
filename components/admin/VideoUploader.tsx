@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,8 @@ interface VideoUploaderProps {
   poiId: string;
   existingVideos?: string[];
   theme?: any;
+  videoTranslations?: Record<string, any>;
+  defaultVoiceId?: string;
 }
 
 type UploadState =
@@ -70,14 +72,19 @@ function directUpload(
   });
 }
 
-export default function VideoUploader({ poiId, existingVideos = [], theme }: VideoUploaderProps) {
+export default function VideoUploader({ poiId, existingVideos = [], theme, videoTranslations, defaultVoiceId }: VideoUploaderProps) {
   const activeTheme = theme || {
     mainText: "text-emerald-600",
     primary: "bg-emerald-600",
     bg: "bg-emerald-50",
     hover: "hover:bg-emerald-700",
   };
-  const [videos, setVideos] = useState<string[]>(existingVideos);
+  const [videos, setVideos] = useState<string[]>(existingVideos || []);
+  const [videoVoices, setVideoVoices] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (existingVideos) setVideos(existingVideos);
+  }, [existingVideos]);
   const [state, setState] = useState<UploadState>({ phase: 'idle' });
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -159,25 +166,41 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
           >
             <video src={v} className="w-full h-full object-cover" />
             <div className="absolute top-2 right-2 flex flex-col gap-2">
-              <Button
-                size="icon"
-                variant="default"
-                title="Traduir Vídeo (IA)"
-                className="w-8 h-8 rounded-full bg-purple-600 hover:bg-purple-700 shadow-md"
-                onClick={async () => {
-                  if (!poiId) { alert("Guarda el POI primer."); return; }
-                  try {
-                    const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
-                    const res = await requestVideoTranslation(poiId, v);
-                    if (res.success) alert("Traducció de vídeo encuada! L'IA processarà el vídeo en segon pla.");
-                    else alert("Error: " + res.error);
-                  } catch (err) {
-                    alert("Error de connexió.");
-                  }
-                }}
-              >
-                <Sparkles className="w-4 h-4 text-white" />
-              </Button>
+              <div className="flex flex-col gap-1 items-end">
+                <select
+                  value={videoVoices[v] || defaultVoiceId || 'nova'}
+                  onChange={(e) => setVideoVoices(prev => ({ ...prev, [v]: e.target.value }))}
+                  className="text-[10px] border border-stone-200 rounded px-1.5 py-1 bg-white h-7 outline-none opacity-80 hover:opacity-100"
+                >
+                  <option value="nova">Dona (Nova)</option>
+                  <option value="alloy">Home (Alloy)</option>
+                  <option value="echo">Home (Echo)</option>
+                  <option value="fable">Dona/Nen (Fable)</option>
+                  <option value="onyx">Home Greu (Onyx)</option>
+                  <option value="shimmer">Dona Clara (Shimmer)</option>
+                </select>
+
+                <Button
+                  size="icon"
+                  variant="default"
+                  title="Traduir Vídeo (IA)"
+                  className="w-8 h-8 rounded-full bg-purple-600 hover:bg-purple-700 shadow-md"
+                  onClick={async () => {
+                    if (!poiId) { alert("Guarda el POI primer."); return; }
+                    try {
+                      const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
+                      const selectedVoice = videoVoices[v] || defaultVoiceId || 'nova';
+                      const res = await requestVideoTranslation(poiId, v, selectedVoice);
+                      if (res.success) alert("Traducció de vídeo encuada! L'IA processarà el vídeo en segon pla.");
+                      else alert("Error: " + res.error);
+                    } catch (err) {
+                      alert("Error de connexió.");
+                    }
+                  }}
+                >
+                  <Sparkles className="w-4 h-4 text-white" />
+                </Button>
+              </div>
               <Button
                 size="icon"
                 variant="default"
@@ -188,6 +211,14 @@ export default function VideoUploader({ poiId, existingVideos = [], theme }: Vid
                 <X className="w-4 h-4 text-white" />
               </Button>
             </div>
+            
+            {/* Check de traducció completada */}
+            {videoTranslations?.[v] && Object.keys(videoTranslations[v]).length > 0 && (
+              <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold shadow-md" title="Traduccions completades">
+                <CheckCircle className="w-3 h-3" />
+                {Object.keys(videoTranslations[v]).join(', ').toUpperCase()}
+              </div>
+            )}
           </div>
         ))}
 
