@@ -152,46 +152,74 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
-  // Polling per quan hi ha traduccions pendents
+  // SSE (Server-Sent Events) per escoltar les traduccions asíncrones (elimina el polling manual)
   useEffect(() => {
     const hasPending = Object.values(pendingTranslations).some(v => v);
     if (!hasPending || !poi?.id) return;
 
-    const interval = setInterval(async () => {
+    const eventSource = new EventSource(`/api/pois/${poi.id}/events`);
+
+    eventSource.onmessage = async (event) => {
       try {
-        const freshPoi = await getPoiTranslations(poi.id);
-        if (freshPoi) {
-          const freshVTrans: any = freshPoi.videoTranslations || freshPoi.video_translations || {};
-          const freshATrans: any = freshPoi.audioTranslations || freshPoi.audio_translations || {};
-          
-          setVideoTranslations(freshVTrans);
-          setAudioTranslations(freshATrans);
-          
-          setPendingTranslations(prev => {
-            const newPending = { ...prev };
-            let changed = false;
-            for (const url in newPending) {
-              if (newPending[url] && freshVTrans[url] && Object.keys(freshVTrans[url]).length > 0) {
-                delete newPending[url];
+        const data = JSON.parse(event.data);
+        
+        if (data.status === 'SUCCESS') {
+          // Descarregar l'estat final fresc de la base de dades
+          const freshPoi = await getPoiTranslations(poi.id);
+          if (freshPoi) {
+            const freshVTrans: any = freshPoi.videoTranslations || freshPoi.video_translations || {};
+            const freshATrans: any = freshPoi.audioTranslations || freshPoi.audio_translations || {};
+            
+            setVideoTranslations(freshVTrans);
+            setAudioTranslations(freshATrans);
+            
+            setPendingTranslations(prev => {
+              const newPending = { ...prev };
+              let changed = false;
+              
+              if (data.type === 'AUDIO_GENERATION' && newPending['__audio__']) {
+                delete newPending['__audio__'];
                 changed = true;
               }
-              if (newPending[url] && Object.keys(freshATrans).length > 0 && freshATrans[url]) {
-                 delete newPending[url];
-                 changed = true;
+              if (data.type === 'VIDEO_TRANSLATION' && data.url && newPending[data.url]) {
+                delete newPending[data.url];
+                changed = true;
               }
-            }
-            return changed ? newPending : prev;
-          });
+              // Fallback purga
+              for (const url in newPending) {
+                if (newPending[url] && freshVTrans[url] && Object.keys(freshVTrans[url]).length > 0) {
+                  delete newPending[url];
+                  changed = true;
+                }
+                if (newPending[url] && Object.keys(freshATrans).length > 0 && freshATrans[url]) {
+                   delete newPending[url];
+                   changed = true;
+                }
+              }
+              return changed ? newPending : prev;
+            });
+          }
+        } else if (data.status === 'FAILED') {
+           const tipus = data.type === 'AUDIO_GENERATION' ? "generació d'àudio" : "traducció de vídeo";
+           alert(`S'ha produït un error durant la ${tipus}. Si us plau, revisa els logs o torna-ho a intentar.`);
+           
+           setPendingTranslations(prev => {
+             const newPending = { ...prev };
+             if (data.type === 'AUDIO_GENERATION') delete newPending['__audio__'];
+             if (data.type === 'VIDEO_TRANSLATION' && data.url) delete newPending[data.url];
+             return newPending;
+           });
         }
       } catch (err: any) {
-        console.error("Polling error:", err);
-        if (err?.message?.includes('older or newer deployment')) {
-          window.location.reload();
-        }
+        console.error("Error processant event SSE:", err);
       }
-    }, 5000);
+    };
 
-    return () => clearInterval(interval);
+    eventSource.onerror = (error) => {
+      console.error("SSE Connection error", error);
+    };
+
+    return () => eventSource.close();
   }, [pendingTranslations, poi?.id]);
 
   // Netejar pendents quan arriba la dada del servidor

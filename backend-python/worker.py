@@ -158,39 +158,70 @@ async def process_tts_job(ctx, poi_id: str, voice_id: str):
                 poi_id
             )
             print(f"[Worker] TTS guardat correctament per {poi_id}")
+            
+            # Pub/Sub SSE Notification
+            redis = ctx['redis']
+            await redis.publish(f"poi_updates:{poi_id}", json.dumps({
+                "status": "SUCCESS",
+                "type": "AUDIO_GENERATION"
+            }))
+    except Exception as e:
+        print(f"[Worker] Error processant TTS per {poi_id}: {e}")
+        redis = ctx['redis']
+        await redis.publish(f"poi_updates:{poi_id}", json.dumps({
+            "status": "FAILED",
+            "type": "AUDIO_GENERATION"
+        }))
 
 async def process_video_translation_job(ctx, poi_id: str, video_url: str):
     print(f"[Worker] Traduint vídeo per al POI {poi_id} ({video_url})...")
-    # Simulate processing video translation (ElevenLabs/OpenAI)
-    await asyncio.sleep(5)
-    
-    # Fake URL for now
-    bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
-    region = os.getenv("S3_REGION", "eu-north-1")
-    translated_url_en = f"https://{bucket}.s3.{region}.amazonaws.com/media/pois/{poi_id}/video/en.mp4"
-    
-    pool = ctx['db_pool']
-    async with pool.acquire() as conn:
-        poi = await conn.fetchrow('SELECT video_translations FROM pois WHERE id = $1', poi_id)
-        if poi:
-            current_video = poi['video_translations']
-            if isinstance(current_video, str):
-                try:
-                    current_video = json.loads(current_video)
-                except:
+    try:
+        # Simulate processing video translation (ElevenLabs/OpenAI)
+        await asyncio.sleep(5)
+        
+        # Fake URL for now
+        bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
+        region = os.getenv("S3_REGION", "eu-north-1")
+        translated_url_en = f"https://{bucket}.s3.{region}.amazonaws.com/media/pois/{poi_id}/video/en.mp4"
+        
+        pool = ctx['db_pool']
+        async with pool.acquire() as conn:
+            poi = await conn.fetchrow('SELECT video_translations FROM pois WHERE id = $1', poi_id)
+            if poi:
+                current_video = poi['video_translations']
+                if isinstance(current_video, str):
+                    try:
+                        current_video = json.loads(current_video)
+                    except:
+                        current_video = {}
+                if not current_video:
                     current_video = {}
-            if not current_video:
-                current_video = {}
-                
-            if video_url not in current_video or not isinstance(current_video[video_url], dict):
-                current_video[video_url] = {}
-            current_video[video_url]['en'] = translated_url_en
-            await conn.execute(
-                "UPDATE pois SET video_translations = $1::jsonb WHERE id = $2",
-                json.dumps(current_video),
-                poi_id
-            )
-    print(f"[Worker] Traducció de vídeo guardada per {poi_id}")
+                    
+                if video_url not in current_video or not isinstance(current_video[video_url], dict):
+                    current_video[video_url] = {}
+                current_video[video_url]['en'] = translated_url_en
+                await conn.execute(
+                    "UPDATE pois SET video_translations = $1::jsonb WHERE id = $2",
+                    json.dumps(current_video),
+                    poi_id
+                )
+        print(f"[Worker] Traducció de vídeo guardada per {poi_id}")
+        
+        # Pub/Sub SSE Notification
+        redis = ctx['redis']
+        await redis.publish(f"poi_updates:{poi_id}", json.dumps({
+            "status": "SUCCESS",
+            "type": "VIDEO_TRANSLATION",
+            "url": video_url
+        }))
+    except Exception as e:
+        print(f"[Worker] Error traduint vídeo per {poi_id}: {e}")
+        redis = ctx['redis']
+        await redis.publish(f"poi_updates:{poi_id}", json.dumps({
+            "status": "FAILED",
+            "type": "VIDEO_TRANSLATION",
+            "url": video_url
+        }))
 
 async def process_hls_video(ctx, poi_id: str, video_path: str):
     print(f"[Worker] Transcodificant vídeo per al POI {poi_id} des de {video_path}...")
