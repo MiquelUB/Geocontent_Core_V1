@@ -879,3 +879,16 @@ export async function getPoiById(poiId: string) {
     return null;
   }
 }
+
+export async function getPoiTranslations(poiId: string) {
+  try {
+    const poi = await prisma.poi.findUnique({ 
+      where: { id: poiId },
+      select: { videoTranslations: true, audioTranslations: true }
+    });
+    return poi;
+  } catch (error) {
+    console.error("Error fetching POI translations:", error);
+    return null;
+  }
+}

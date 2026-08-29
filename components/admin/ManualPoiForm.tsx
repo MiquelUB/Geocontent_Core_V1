@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
 import iconsMapping from '@/lib/icons-mapping.json';
 import { getAdminTheme } from "@/lib/adminTheme";
-import { getPoiById } from '@/lib/actions/content';
+import { getPoiTranslations } from '@/lib/actions/content';
 import { compressImage } from "@/lib/imageOptimization";
 import { uploadFileClient } from "@/lib/upload-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -159,7 +159,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
     const interval = setInterval(async () => {
       try {
-        const freshPoi = await getPoiById(poi.id);
+        const freshPoi = await getPoiTranslations(poi.id);
         if (freshPoi) {
           const freshVTrans: any = freshPoi.videoTranslations || freshPoi.video_translations || {};
           const freshATrans: any = freshPoi.audioTranslations || freshPoi.audio_translations || {};
