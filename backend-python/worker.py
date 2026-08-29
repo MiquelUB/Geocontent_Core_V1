@@ -183,7 +183,9 @@ async def process_video_translation_job(ctx, poi_id: str, video_url: str):
             if not current_video:
                 current_video = {}
                 
-            current_video['en'] = translated_url_en
+            if video_url not in current_video or not isinstance(current_video[video_url], dict):
+                current_video[video_url] = {}
+            current_video[video_url]['en'] = translated_url_en
             await conn.execute(
                 "UPDATE pois SET video_translations = $1::jsonb WHERE id = $2",
                 json.dumps(current_video),
