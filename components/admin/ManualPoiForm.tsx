@@ -309,7 +309,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   };
 
   const updateVideoSlot = (index: number, updates: Partial<VideoSlot>) => {
-    setVideoSlots(videoSlots.map((slot, i) => i === index ? { ...slot, ...updates } : slot));
+    setVideoSlots(prev => prev.map((slot, i) => i === index ? { ...slot, ...updates } : slot));
   };
 
   const handleVideoFileChange = async (index: number, file: File | null) => {
@@ -1037,7 +1037,10 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                 <Input
                   type="file"
                   accept="video/*"
-                  onChange={(e) => handleVideoFileChange(idx, e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    handleVideoFileChange(idx, e.target.files?.[0] || null);
+                    e.target.value = ''; // Reset to allow selecting the same file again
+                  }}
                   className="h-9 text-xs cursor-pointer w-full max-w-full overflow-hidden text-ellipsis"
                 />
               </div>
