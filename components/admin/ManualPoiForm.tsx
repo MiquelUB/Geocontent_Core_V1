@@ -199,7 +199,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     setCarouselImages(carImages);
     setCarouselFiles(new Array(carImages.length).fill(null));
 
-    const existingUrls: string[] = poi?.videoUrls || poi?.video_urls || (poi?.videoUrl ? [poi.videoUrl] : (poi?.video_url ? [poi.video_url] : []));
+    const rawVideos = poi?.videoUrls || poi?.video_urls || poi?.videoUrl || poi?.video_url;
+    const existingUrls: string[] = parseVideos(rawVideos);
     setVideoSlots(existingUrls.slice(0, MAX_VIDEO_SLOTS).map((url: string) => ({
       url,
       file: null,
