@@ -869,7 +869,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                         </span>
                       </div>
                       {slot.url.startsWith('http') && (
-                        <div className="flex flex-wrap items-center gap-1.5 justify-start sm:justify-end flex-shrink-0">
+                        <div className="flex flex-nowrap overflow-x-auto items-center gap-1.5 justify-start sm:justify-end flex-shrink-0 w-full pb-1 scrollbar-hide">
                           <a
                             href={slot.url}
                             target="_blank"
