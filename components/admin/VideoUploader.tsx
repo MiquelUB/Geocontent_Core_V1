@@ -81,6 +81,7 @@ export default function VideoUploader({ poiId, existingVideos = [], theme, video
   };
   const [videos, setVideos] = useState<string[]>(existingVideos || []);
   const [videoVoices, setVideoVoices] = useState<Record<string, string>>({});
+  const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (existingVideos) setVideos(existingVideos);
@@ -191,8 +192,12 @@ export default function VideoUploader({ poiId, existingVideos = [], theme, video
                       const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
                       const selectedVoice = videoVoices[v] || defaultVoiceId || 'nova';
                       const res = await requestVideoTranslation(poiId, v, selectedVoice);
-                      if (res.success) alert("Traducció de vídeo encuada! L'IA processarà el vídeo en segon pla.");
-                      else alert("Error: " + res.error);
+                      if (res.success) {
+                        alert("Traducció de vídeo encuada! L'IA processarà el vídeo en segon pla.");
+                        setPendingTranslations(prev => ({ ...prev, [v]: true }));
+                      } else {
+                        alert("Error: " + res.error);
+                      }
                     } catch (err) {
                       alert("Error de connexió.");
                     }
@@ -212,13 +217,18 @@ export default function VideoUploader({ poiId, existingVideos = [], theme, video
               </Button>
             </div>
             
-            {/* Check de traducció completada */}
-            {videoTranslations?.[v] && Object.keys(videoTranslations[v]).length > 0 && (
+            {/* Check de traducció completada / pendent */}
+            {pendingTranslations[v] ? (
+              <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-blue-700 text-[10px] font-bold shadow-md" title="Traducció en curs">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                PROCESSANT...
+              </div>
+            ) : videoTranslations?.[v] && Object.keys(videoTranslations[v]).length > 0 ? (
               <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold shadow-md" title="Traduccions completades">
                 <CheckCircle className="w-3 h-3" />
                 {Object.keys(videoTranslations[v]).join(', ').toUpperCase()}
               </div>
-            )}
+            ) : null}
           </div>
         ))}
 

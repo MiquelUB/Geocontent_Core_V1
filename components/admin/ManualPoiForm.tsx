@@ -147,6 +147,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioTranslations, setAudioTranslations] = useState<Record<string, string>>(poi?.audioTranslations || poi?.audio_translations || {});
   const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
+  const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
   const parseVideos = (raw: any): string[] => {
     if (Array.isArray(raw)) return raw;
@@ -905,20 +906,29 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                               const { requestVideoTranslation } = await import('@/lib/actions/omnivoice');
                               const selectedVoice = slot.voiceId || voiceId || 'nova';
                               const res = await requestVideoTranslation(poi.id, slot.url, selectedVoice);
-                              if (res.success) alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
-                              else alert("Error: " + res.error);
+                              if (res.success) {
+                                alert("Traducció de vídeo encuada! L'IA està treballant-hi.");
+                                setPendingTranslations(prev => ({ ...prev, [slot.url]: true }));
+                              } else {
+                                alert("Error: " + res.error);
+                              }
                             }}
                           >
                             <Sparkles className="w-3 h-3 mr-1" /> Traduir
                           </Button>
                           
-                          {/* Check de traducció completada */}
-                          {videoTranslations?.[slot.url] && Object.keys(videoTranslations[slot.url]).length > 0 && (
+                          {/* Check de traducció completada / pendent */}
+                          {pendingTranslations[slot.url] ? (
+                            <div className="flex items-center gap-1 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-blue-700 text-[10px] font-bold" title="Traducció en curs">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              PROCESSANT...
+                            </div>
+                          ) : videoTranslations?.[slot.url] && Object.keys(videoTranslations[slot.url]).length > 0 ? (
                             <div className="flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold" title="Traduccions completades">
                               <CheckCircle2 className="w-3 h-3" />
                               {Object.keys(videoTranslations[slot.url]).join(', ').toUpperCase()}
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       )}
                     </div>
