@@ -32,7 +32,12 @@ async def startup_event():
             conn_retries=5,
             conn_retry_delay=2,
         )
-    app.state.arq_pool = await create_pool(settings)
+    try:
+        app.state.arq_pool = await create_pool(settings)
+        print(f"[Core V2] Connectat a Redis a {settings.host}:{settings.port}")
+    except Exception as e:
+        print(f"[Core V2] ATENCIÓ: No s'ha pogut connectar a Redis: {e}")
+        app.state.arq_pool = None
 
 # Configuració estricta de CORS (Comunica amb Next.js i permet Bypass S3)
 origins = [

@@ -20,6 +20,8 @@ async def trigger_tts(req: Request, payload: TTSRequest):
     Això substitueix l'Outbox pattern (Efecte Forat Negre).
     """
     arq_pool = req.app.state.arq_pool
+    if not arq_pool:
+        return {"success": False, "message": "ARQ Pool is not initialized (Redis connection failed)"}
     await arq_pool.enqueue_job('process_tts_job', payload.poi_id, payload.voice_id)
     return {"success": True, "message": "TTS job enqueued"}
 
@@ -29,5 +31,7 @@ async def trigger_video_translate(req: Request, payload: VideoTranslationRequest
     Encua una tasca de traducció de vídeo directament a ARQ.
     """
     arq_pool = req.app.state.arq_pool
+    if not arq_pool:
+        return {"success": False, "message": "ARQ Pool is not initialized (Redis connection failed)"}
     await arq_pool.enqueue_job('process_video_translation_job', payload.poi_id, payload.video_url, payload.voice_id)
     return {"success": True, "message": "Video translation job enqueued"}

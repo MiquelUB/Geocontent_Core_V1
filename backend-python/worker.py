@@ -8,10 +8,13 @@ import asyncpg
 import edge_tts
 import boto3
 from arq.connections import RedisSettings
-from dotenv import load_dotenv
-from tenacity import retry, stop_after_attempt, wait_exponential
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-load_dotenv()
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def notify_fastapi(poi_id: str, status: str, url: str = None):
