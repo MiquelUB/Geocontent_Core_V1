@@ -29,11 +29,9 @@ async def transcribe_audio_openrouter(audio_path: str) -> str:
     with open(audio_path, 'rb') as audio_file:
         transcription = await client.audio.transcriptions.create(
             model="openai/whisper-1",
-            file=audio_file,
-            response_format="text"
+            file=audio_file
         )
-        # When response_format="text", transcription is a raw string.
-        # If it returns an object, we can extract it.
+        # By default it returns an object with a .text property
         if isinstance(transcription, str):
             return transcription
         elif hasattr(transcription, 'text'):
