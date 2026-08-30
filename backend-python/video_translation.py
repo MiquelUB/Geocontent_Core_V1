@@ -44,6 +44,11 @@ async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
     api_key = os.getenv("OPENROUTER_API_KEY")
     # google/gemini-2.0-flash-001 doesn't exist on OpenRouter, fallback to openai/gpt-4o-mini
     model = os.getenv("AI_MODEL_ID", "openai/gpt-4o-mini")
+    if model == "google/gemini-2.0-flash-001" or "gemini-2.0-flash-001" in model:
+        model = "google/gemini-2.0-flash-exp:free" # Use a valid openrouter model, or fallback
+        # Let's just use gpt-4o-mini to be absolutely safe
+        model = "openai/gpt-4o-mini"
+        
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
