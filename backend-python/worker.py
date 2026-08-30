@@ -304,7 +304,7 @@ async def startup(ctx):
         if "&pgbouncer=true" in db_url:
             db_url = db_url.replace("&pgbouncer=true", "")
             
-        ctx['db_pool'] = await asyncpg.create_pool(db_url)
+        ctx['db_pool'] = await asyncpg.create_pool(db_url, statement_cache_size=0)
         # POLLEO DE POSTGRES ELIMINAT: 
         # La creació asíncrona de tasques ara es farà via Webhooks/FastAPI o Redis directament 
         # per evitar bloquejos (Efecte Forat Negre).
