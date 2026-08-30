@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # Canviar propietat a l'usuari no-root
-RUN chown -R appuser:appuser /app
+RUN chmod +x run.sh && chown -R appuser:appuser /app
 USER appuser
 
 # El port 8000 NO s'ha d'exposar públicament a Easypanel (comunicació interna)
