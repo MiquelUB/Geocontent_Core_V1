@@ -87,12 +87,41 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
     categoryLabel: getLocalizedContent(legend, 'categoryLabel', locale) || t('unknown'),
     coordinates: { lat, lng },
     videoUrls: (legend?.videoUrls || (legend?.video_url ? [legend.video_url] : [])).map((url: string) => {
-      // Check if there is a valid translation URL for this specific video in the current locale
-      const translations = legend?.videoTranslations?.[url];
-      const translatedUrl = translations?.[locale];
-      if (translatedUrl && typeof translatedUrl === 'string' && translatedUrl.startsWith('http') && !translatedUrl.includes('/ERROR')) {
-        return translatedUrl;
+      // Parse videoTranslations safely (handling string JSON, snake_case, and URL matching)
+      let vTranslations = legend?.videoTranslations || legend?.video_translations;
+      if (typeof vTranslations === 'string') {
+        try { vTranslations = JSON.parse(vTranslations); } catch (e) {}
       }
+
+      if (vTranslations && typeof vTranslations === 'object') {
+        // 1. Direct match
+        let translations = vTranslations[url];
+
+        // 2. Match by filename (ignoring CDN prefixes / encoding)
+        if (!translations && url) {
+          const urlClean = decodeURIComponent(url.split('?')[0].split('/').pop() || '');
+          for (const key of Object.keys(vTranslations)) {
+            const keyClean = decodeURIComponent(key.split('?')[0].split('/').pop() || '');
+            if (key === url || (urlClean && keyClean && urlClean === keyClean)) {
+              translations = vTranslations[key];
+              break;
+            }
+          }
+        }
+
+        // 3. Single video fallback
+        if (!translations && Object.keys(vTranslations).length === 1 && typeof Object.values(vTranslations)[0] === 'object') {
+          translations = Object.values(vTranslations)[0] as any;
+        }
+
+        if (translations && typeof translations === 'object') {
+          const translatedUrl = translations[locale];
+          if (translatedUrl && typeof translatedUrl === 'string' && translatedUrl.startsWith('http') && !translatedUrl.includes('/ERROR')) {
+            return translatedUrl;
+          }
+        }
+      }
+
       return url;
     }),
     audioUrl: getLocalizedContent(legend, 'audio', locale) || legend?.audioUrl || legend?.audio || legend?.audio_url, 
