@@ -596,9 +596,9 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                   </div>
                 )}
               </div>
-              <TabsList className="bg-stone-100/50 h-8 p-1">
+              <TabsList className="bg-stone-100/50 h-8 p-1 flex overflow-x-auto w-full max-w-full hide-scrollbar">
                 {SUPPORTED_LOCALES.map(loc => (
-                  <TabsTrigger key={loc.id} value={loc.id} className="text-[10px] px-2 h-6 font-bold uppercase">
+                  <TabsTrigger key={loc.id} value={loc.id} className="text-[10px] px-2 h-6 font-bold uppercase whitespace-nowrap">
                     {loc.id}
                   </TabsTrigger>
                 ))}
