@@ -55,20 +55,19 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
         else:
             content_type = "application/octet-stream"
             
-    extra_args = {
-        'ContentType': content_type,
-        'CacheControl': 'max-age=31536000, immutable',
-        'Tagging': f'TenantID={tenant_id}&Type={content_type}'
-    }
+    import urllib.parse
+    encoded_type = urllib.parse.quote_plus(content_type)
+    tagging = f"TenantID={tenant_id}&Type={encoded_type}"
     
-    from boto3.s3.transfer import TransferConfig
-    transfer_config = TransferConfig(
-        multipart_threshold=100 * 1024 * 1024,  # 100MB: Força PutObject directe (sense multipart)
-        max_concurrency=1,
-        use_threads=False
-    )
-    
-    s3_client.upload_file(file_path, bucket, key, ExtraArgs=extra_args, Config=transfer_config)
+    with open(file_path, 'rb') as f:
+        s3_client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=f,
+            ContentType=content_type,
+            CacheControl='max-age=31536000, immutable',
+            Tagging=tagging
+        )
     public_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
     cdn_url = os.getenv("NEXT_PUBLIC_CDN_URL")
     if cdn_url:
