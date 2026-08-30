@@ -128,6 +128,6 @@ export async function requestVideoTranslation(poiId: string, videoUrl: string, v
     return { success: true, message: "Traducció de vídeo encuada correctament." };
   } catch (err: any) {
     console.error("[requestVideoTranslation Error]:", err);
-    return { success: false, error: GENERIC_ERROR_MESSAGE };
+    return { success: false, error: `Error intern (DEBUG): ${err.message || err}` };
   }
 }
