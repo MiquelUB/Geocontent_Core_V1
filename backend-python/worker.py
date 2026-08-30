@@ -181,7 +181,7 @@ async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_
     print(f"[Worker] Traduint vídeo per al POI {poi_id} ({video_url}) amb veu {voice_id}...")
     try:
         from video_translation import translate_video_pipeline
-        translated_url_en = await translate_video_pipeline(video_url, poi_id, voice_id)
+        translated_urls = await translate_video_pipeline(video_url, poi_id, voice_id)
         
         pool = ctx['db_pool']
         async with pool.acquire() as conn:
@@ -198,7 +198,11 @@ async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_
                     
                 if video_url not in current_video or not isinstance(current_video[video_url], dict):
                     current_video[video_url] = {}
-                current_video[video_url]['en'] = translated_url_en
+                    
+                # Ensure we don't wipe out existing translations if they exist and are valid
+                for loc, url in translated_urls.items():
+                    current_video[video_url][loc] = url
+                    
                 await conn.execute(
                     "UPDATE pois SET video_translations = $1::jsonb WHERE id = $2",
                     json.dumps(current_video),
@@ -230,7 +234,10 @@ async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_
                         current_video = {}
                     if video_url not in current_video or not isinstance(current_video[video_url], dict):
                         current_video[video_url] = {}
-                    current_video[video_url]['en'] = "ERROR"
+                    
+                    for loc in ['es', 'en', 'fr']:
+                        current_video[video_url][loc] = "ERROR"
+                        
                     await conn.execute(
                         "UPDATE pois SET video_translations = $1::jsonb WHERE id = $2",
                         json.dumps(current_video),

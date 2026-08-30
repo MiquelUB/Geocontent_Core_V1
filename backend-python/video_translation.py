@@ -123,7 +123,6 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
     try:
         orig_video_path = os.path.join(temp_dir, "orig.mp4")
         orig_audio_path = os.path.join(temp_dir, "orig.wav")
-        final_video_path = os.path.join(temp_dir, "final.mp4")
         
         # 1. Download Video
         print(f"[Video Translator] Downloading video {video_url}...")
@@ -148,33 +147,45 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
         transcribed_text = await transcribe_audio_openrouter(orig_audio_path)
         print(f"[Video Translator] Transcription: {transcribed_text[:50]}...")
 
-        # 4. Translate
-        if not transcribed_text.strip():
-            print("[Video Translator] No text transcribed. Skipping translation.")
-            translated_text = "No audio detected."
-        else:
-            # We hardcode target_lang="en" because video translation is currently English-only in MVP
-            translated_text = await translate_text_openrouter(transcribed_text, target_lang="en")
-            print(f"[Video Translator] Translation: {translated_text[:50]}...")
-
-        # 5. Generate TTS
-        tts_audio_path = await generate_local_tts(translated_text, locale="en")
-
-        try:
-            # 6. Merge
-            await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
+        # Process each locale
+        locales = ['es', 'en', 'fr']
+        results = {}
+        
+        for loc in locales:
+            final_video_path = os.path.join(temp_dir, f"final_{loc}.mp4")
+            tts_audio_path = None
             
-            # 7. Upload to S3
-            bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
-            region = os.getenv("S3_REGION", "eu-north-1")
-            key = f"media/pois/{poi_id}/video/en.mp4"
-            
-            print(f"[Video Translator] Uploading to S3...")
-            url = upload_to_s3(final_video_path, bucket, key, region)
-            return url
-        finally:
-            if os.path.exists(tts_audio_path):
-                os.remove(tts_audio_path)
+            try:
+                # 4. Translate
+                if not transcribed_text.strip():
+                    print(f"[Video Translator] No text transcribed. Skipping translation for {loc}.")
+                    translated_text = "No audio detected."
+                else:
+                    translated_text = await translate_text_openrouter(transcribed_text, target_lang=loc)
+                    print(f"[Video Translator] Translation to {loc}: {translated_text[:50]}...")
+
+                # 5. Generate TTS
+                tts_audio_path = await generate_local_tts(translated_text, locale=loc)
+
+                # 6. Merge
+                await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
+                
+                # 7. Upload to S3
+                bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
+                region = os.getenv("S3_REGION", "eu-north-1")
+                key = f"media/pois/{poi_id}/video/{loc}.mp4"
+                
+                print(f"[Video Translator] Uploading {loc} to S3...")
+                url = upload_to_s3(final_video_path, bucket, key, region)
+                results[loc] = url
+            except Exception as e:
+                print(f"[Video Translator] Failed processing {loc}: {e}")
+                results[loc] = "ERROR"
+            finally:
+                if tts_audio_path and os.path.exists(tts_audio_path):
+                    os.remove(tts_audio_path)
+                    
+        return results
 
     finally:
         for f in os.listdir(temp_dir):
