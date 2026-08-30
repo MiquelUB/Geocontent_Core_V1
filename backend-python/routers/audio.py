@@ -81,7 +81,7 @@ async def generate_and_upload(poi_id: str, locale: str, text: str) -> str:
         await communicate.save(temp_path)
         
         # Upload to S3
-        bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
+        bucket = os.getenv("S3_BUCKET", "pxx-core-v2-temporal")
         region = os.getenv("S3_REGION", "eu-north-1")
         key = f"media/pois/{poi_id}/audio/{locale}.mp3"
         
