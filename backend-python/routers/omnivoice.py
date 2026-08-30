@@ -29,5 +29,5 @@ async def trigger_video_translate(req: Request, payload: VideoTranslationRequest
     Encua una tasca de traducció de vídeo directament a ARQ.
     """
     arq_pool = req.app.state.arq_pool
-    await arq_pool.enqueue_job('process_video_translation_job', payload.poi_id, payload.video_url)
+    await arq_pool.enqueue_job('process_video_translation_job', payload.poi_id, payload.video_url, payload.voice_id)
     return {"success": True, "message": "Video translation job enqueued"}

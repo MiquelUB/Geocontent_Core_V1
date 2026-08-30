@@ -173,8 +173,8 @@ async def process_tts_job(ctx, poi_id: str, voice_id: str):
             "type": "AUDIO_GENERATION"
         }))
 
-async def process_video_translation_job(ctx, poi_id: str, video_url: str):
-    print(f"[Worker] Traduint vídeo per al POI {poi_id} ({video_url})...")
+async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_id: str = None):
+    print(f"[Worker] Traduint vídeo per al POI {poi_id} ({video_url}) amb veu {voice_id}...")
     try:
         # Simulate processing video translation (ElevenLabs/OpenAI)
         await asyncio.sleep(5)

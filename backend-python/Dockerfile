@@ -34,4 +34,4 @@ USER appuser
 # El port 8000 NO s'ha d'exposar públicament a Easypanel (comunicació interna)
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./run.sh"]
