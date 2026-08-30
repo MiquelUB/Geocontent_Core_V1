@@ -18,29 +18,28 @@ async def transcribe_audio_openrouter(audio_path: str) -> str:
         "Authorization": f"Bearer {api_key}"
     }
 
-    import base64
-    
-    print(f"[Video Translator] Transcribing audio with OpenRouter...")
-    async with httpx.AsyncClient(timeout=180.0) as client:
-        with open(audio_path, 'rb') as f:
-            audio_data = base64.b64encode(f.read()).decode('utf-8')
-            
-        payload = {
-            "model": "openai/whisper-1",
-            "input_audio": {
-                "data": audio_data,
-                "format": "wav"
-            }
-        }
-        
-        response = await client.post(url, headers=headers, json=payload)
+    from openai import AsyncOpenAI
 
-        response.raise_for_status()
-        try:
-            result = response.json()
-            return result.get("text", "")
-        except:
-            return response.text
+    print(f"[Video Translator] Transcribing audio with OpenRouter using OpenAI library...")
+    client = AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
+    
+    with open(audio_path, 'rb') as audio_file:
+        transcription = await client.audio.transcriptions.create(
+            model="openai/whisper-1",
+            file=audio_file,
+            response_format="text"
+        )
+        # When response_format="text", transcription is a raw string.
+        # If it returns an object, we can extract it.
+        if isinstance(transcription, str):
+            return transcription
+        elif hasattr(transcription, 'text'):
+            return transcription.text
+        else:
+            return str(transcription)
 
 async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
     """Translates text using OpenRouter Chat Completions."""
