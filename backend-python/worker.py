@@ -88,83 +88,84 @@ async def generate_and_upload(poi_id: str, locale: str, text: str, voice_id: str
 
 async def process_tts_job(ctx, poi_id: str, voice_id: str):
     print(f"[Worker] Generant TTS per al POI {poi_id} amb veu {voice_id}...")
-    pool = ctx['db_pool']
-    async with pool.acquire() as conn:
-        poi = await conn.fetchrow('SELECT * FROM pois WHERE id = $1', poi_id)
-        if not poi:
-            print(f"[Worker] POI {poi_id} no trobat a la BD.")
-            return
+    try:
+        pool = ctx['db_pool']
+        async with pool.acquire() as conn:
+            poi = await conn.fetchrow('SELECT * FROM pois WHERE id = $1', poi_id)
+            if not poi:
+                print(f"[Worker] POI {poi_id} no trobat a la BD.")
+                return
 
-        texts = {}
-        for loc in ['ca', 'es', 'en', 'fr']:
-            text = ""
-            if loc == 'ca' and poi['voice_script']:
-                text = poi['voice_script']
-            else:
-                # Helper per extreure del jsonb
-                def get_loc(field):
-                    val = poi[field]
-                    if isinstance(val, str):
-                        try:
-                            val = json.loads(val)
-                        except:
-                            pass
-                    if isinstance(val, dict):
-                        return val.get(loc, "")
-                    return ""
+            texts = {}
+            for loc in ['ca', 'es', 'en', 'fr']:
+                text = ""
+                if loc == 'ca' and poi['voice_script']:
+                    text = poi['voice_script']
+                else:
+                    # Helper per extreure del jsonb
+                    def get_loc(field):
+                        val = poi[field]
+                        if isinstance(val, str):
+                            try:
+                                val = json.loads(val)
+                            except:
+                                pass
+                        if isinstance(val, dict):
+                            return val.get(loc, "")
+                        return ""
 
-                text = get_loc('text_content_translations') or get_loc('description_translations') or get_loc('title_translations')
+                    text = get_loc('text_content_translations') or get_loc('description_translations') or get_loc('title_translations')
 
-            if text and text.strip():
-                texts[loc] = text.strip()
+                if text and text.strip():
+                    texts[loc] = text.strip()
 
-        if not texts:
-            print(f"[Worker] No hi ha textos per al POI {poi_id}.")
-            return
+            if not texts:
+                print(f"[Worker] No hi ha textos per al POI {poi_id}.")
+                return
 
-        results = {}
-        tasks = []
-        
-        async def process_locale(locale: str, text: str):
-            try:
-                url = await generate_and_upload(poi_id, locale, text, voice_id)
-                results[locale] = url
-            except Exception as e:
-                print(f"[TTS Worker] Error generant {locale}: {e}")
-
-        for locale, text in texts.items():
-            tasks.append(process_locale(locale, text))
+            results = {}
+            tasks = []
             
-        await asyncio.gather(*tasks)
-
-        if results:
-            # Update the pois table with the generated audio URLs
-            current_audio = poi['audio_translations']
-            if isinstance(current_audio, str):
+            async def process_locale(locale: str, text: str):
                 try:
-                    current_audio = json.loads(current_audio)
-                except:
-                    current_audio = {}
-            if not current_audio:
-                current_audio = {}
-                
-            current_audio.update(results)
-            default_url = results.get('ca') or list(results.values())[0]
+                    url = await generate_and_upload(poi_id, locale, text, voice_id)
+                    results[locale] = url
+                except Exception as e:
+                    print(f"[TTS Worker] Error generant {locale}: {e}")
 
-            await conn.execute(
-                "UPDATE pois SET audio_translations = $1::jsonb, audio_url = $2 WHERE id = $3",
-                json.dumps(current_audio),
-                default_url,
-                poi_id
-            )
-            print(f"[Worker] TTS guardat correctament per {poi_id}")
-            
-            # Pub/Sub SSE Notification
-            redis = ctx['redis']
-            await redis.publish(f"poi_updates:{poi_id}", json.dumps({
-                "status": "SUCCESS",
-                "type": "AUDIO_GENERATION"
-            }))
+            for locale, text in texts.items():
+                tasks.append(process_locale(locale, text))
+                
+            await asyncio.gather(*tasks)
+
+            if results:
+                # Update the pois table with the generated audio URLs
+                current_audio = poi['audio_translations']
+                if isinstance(current_audio, str):
+                    try:
+                        current_audio = json.loads(current_audio)
+                    except:
+                        current_audio = {}
+                if not current_audio:
+                    current_audio = {}
+                    
+                current_audio.update(results)
+                default_url = results.get('ca') or list(results.values())[0]
+
+                await conn.execute(
+                    "UPDATE pois SET audio_translations = $1::jsonb, audio_url = $2 WHERE id = $3",
+                    json.dumps(current_audio),
+                    default_url,
+                    poi_id
+                )
+                print(f"[Worker] TTS guardat correctament per {poi_id}")
+                
+                # Pub/Sub SSE Notification
+                redis = ctx['redis']
+                await redis.publish(f"poi_updates:{poi_id}", json.dumps({
+                    "status": "SUCCESS",
+                    "type": "AUDIO_GENERATION"
+                }))
     except Exception as e:
         print(f"[Worker] Error processant TTS per {poi_id}: {e}")
         redis = ctx['redis']
