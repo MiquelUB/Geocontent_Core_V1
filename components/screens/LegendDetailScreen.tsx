@@ -87,10 +87,11 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
     categoryLabel: getLocalizedContent(legend, 'categoryLabel', locale) || t('unknown'),
     coordinates: { lat, lng },
     videoUrls: (legend?.videoUrls || (legend?.video_url ? [legend.video_url] : [])).map((url: string) => {
-      // Check if there is a translation for this specific video in the current locale
+      // Check if there is a valid translation URL for this specific video in the current locale
       const translations = legend?.videoTranslations?.[url];
-      if (translations && translations[locale]) {
-        return translations[locale];
+      const translatedUrl = translations?.[locale];
+      if (translatedUrl && typeof translatedUrl === 'string' && translatedUrl.startsWith('http') && !translatedUrl.includes('/ERROR')) {
+        return translatedUrl;
       }
       return url;
     }),
