@@ -78,6 +78,8 @@ export default function HlsVideoPlayer({
 
   // Resolve the best available source
   const resolveSource = useCallback(async (): Promise<{ type: VideoSource; url: string | null }> => {
+    const isHls = finalSrc.includes('.m3u8');
+
     // 1. Check local cache first (always preferred)
     const cachedUrl = await videoCache.getCachedVideoUrl(finalSrc);
     if (cachedUrl) {
@@ -92,9 +94,9 @@ export default function HlsVideoPlayer({
       }
     }
 
-    // 2. Online + fast → HLS
+    // 2. Online + fast
     if (network.isOnline && !network.isSlowNetwork) {
-      return { type: 'hls', url: finalSrc };
+      return { type: isHls ? 'hls' : 'lowres', url: finalSrc };
     }
 
     // 3. Online + slow → low bitrate fallback
@@ -102,9 +104,9 @@ export default function HlsVideoPlayer({
       return { type: 'lowres', url: finalLowBitrateSrc };
     }
 
-    // 4. Online + slow but no lowres → HLS anyway (best effort)
+    // 4. Online + slow but no lowres → stream anyway (best effort)
     if (network.isOnline) {
-      return { type: 'hls', url: finalSrc };
+      return { type: isHls ? 'hls' : 'lowres', url: finalSrc };
     }
 
     // 5. Offline + not cached

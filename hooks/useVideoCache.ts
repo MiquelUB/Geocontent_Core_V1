@@ -101,10 +101,17 @@ export function useVideoCache() {
       const already = await isCached(url);
       if (already) return true;
 
-      const response = await fetch(url);
-      if (!response.ok) return false;
+      let response: Response | null = null;
+      try {
+        response = await fetch(url);
+      } catch (e) {
+        // Cross-origin fetch blocked or offline, graceful fallback
+        return false;
+      }
+      if (!response || !response.ok) return false;
 
-      const blob = await response.blob();
+      const blob = await response.blob().catch(() => null);
+      if (!blob) return false;
       const sizeBytes = blob.size;
 
       // Enforce budget — evict oldest if necessary
@@ -138,8 +145,7 @@ export function useVideoCache() {
       });
 
       return true;
-    } catch (err) {
-      console.error('[VideoCache] Failed to cache video:', err);
+    } catch {
       return false;
     }
   }, [isCached, getManifest, saveManifest]);
