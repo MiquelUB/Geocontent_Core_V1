@@ -40,6 +40,15 @@ const nextConfig = {
   webpack: (config) => {
     return config;
   },
+  outputFileTracingExcludes: {
+    '*': [
+      'backend-python/**/*',
+      'docs/**/*',
+      '**/*.mp4',
+      '**/*.wav',
+      '**/*.mp3',
+    ],
+  },
   output: 'standalone',
 };
 

@@ -21,7 +21,7 @@ COPY . .
 # 4. Generem la resta i compilem
 RUN npx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 
 # STAGE 2: Runner

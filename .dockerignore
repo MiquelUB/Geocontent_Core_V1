@@ -18,3 +18,9 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+backend-python
+docs
+*.mp4
+*.mp3
+*.wav
+*.m3u8
