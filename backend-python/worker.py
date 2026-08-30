@@ -176,13 +176,8 @@ async def process_tts_job(ctx, poi_id: str, voice_id: str):
 async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_id: str = None):
     print(f"[Worker] Traduint vídeo per al POI {poi_id} ({video_url}) amb veu {voice_id}...")
     try:
-        # Simulate processing video translation (ElevenLabs/OpenAI)
-        await asyncio.sleep(5)
-        
-        # Fake URL for now
-        bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
-        region = os.getenv("S3_REGION", "eu-north-1")
-        translated_url_en = f"https://{bucket}.s3.{region}.amazonaws.com/media/pois/{poi_id}/video/en.mp4"
+        from video_translation import translate_video_pipeline
+        translated_url_en = await translate_video_pipeline(video_url, poi_id, voice_id)
         
         pool = ctx['db_pool']
         async with pool.acquire() as conn:
