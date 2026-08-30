@@ -50,7 +50,14 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
         'Tagging': f'TenantID={tenant_id}&Type={content_type}'
     }
     
-    s3_client.upload_file(file_path, bucket, key, ExtraArgs=extra_args)
+    from boto3.s3.transfer import TransferConfig
+    transfer_config = TransferConfig(
+        multipart_threshold=100 * 1024 * 1024,  # 100MB: Força PutObject directe (sense multipart)
+        max_concurrency=1,
+        use_threads=False
+    )
+    
+    s3_client.upload_file(file_path, bucket, key, ExtraArgs=extra_args, Config=transfer_config)
     
     # Construïm la URL pública
     public_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
