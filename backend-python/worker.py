@@ -211,6 +211,30 @@ async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_
         }))
     except Exception as e:
         print(f"[Worker] Error traduint vídeo per {poi_id}: {e}")
+        try:
+            pool = ctx['db_pool']
+            async with pool.acquire() as conn:
+                poi = await conn.fetchrow('SELECT video_translations FROM pois WHERE id = $1', poi_id)
+                if poi:
+                    current_video = poi['video_translations']
+                    if isinstance(current_video, str):
+                        try:
+                            current_video = json.loads(current_video)
+                        except:
+                            current_video = {}
+                    if not current_video:
+                        current_video = {}
+                    if video_url not in current_video or not isinstance(current_video[video_url], dict):
+                        current_video[video_url] = {}
+                    current_video[video_url]['en'] = "ERROR"
+                    await conn.execute(
+                        "UPDATE pois SET video_translations = $1::jsonb WHERE id = $2",
+                        json.dumps(current_video),
+                        poi_id
+                    )
+        except Exception as db_e:
+            print(f"[Worker] Failed to save ERROR status to DB: {db_e}")
+            
         redis = ctx['redis']
         await redis.publish(f"poi_updates:{poi_id}", json.dumps({
             "status": "FAILED",

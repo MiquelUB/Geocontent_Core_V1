@@ -25,10 +25,10 @@ async def transcribe_audio_openrouter(audio_path: str) -> str:
     }
 
     print(f"[Video Translator] Transcribing audio with OpenRouter...")
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=180.0) as client:
         with open(audio_path, 'rb') as f:
-            files = {'file': (os.path.basename(audio_path), f, 'audio/mpeg')}
-            response = await client.post(url, headers=headers, data=data, files=files, timeout=60.0)
+            files = {'file': (os.path.basename(audio_path), f, 'audio/wav')}
+            response = await client.post(url, headers=headers, data=data, files=files)
 
         response.raise_for_status()
         try:
@@ -117,7 +117,7 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
     
     try:
         orig_video_path = os.path.join(temp_dir, "orig.mp4")
-        orig_audio_path = os.path.join(temp_dir, "orig.mp3")
+        orig_audio_path = os.path.join(temp_dir, "orig.wav")
         final_video_path = os.path.join(temp_dir, "final.mp4")
         
         # 1. Download Video
@@ -131,7 +131,7 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
 
         # 2. Extract Audio
         print(f"[Video Translator] Extracting audio...")
-        extract_cmd = ["ffmpeg", "-y", "-i", orig_video_path, "-q:a", "0", "-map", "a", "-threads", "1", orig_audio_path]
+        extract_cmd = ["ffmpeg", "-y", "-i", orig_video_path, "-vn", "-c:a", "pcm_s16le", "-ar", "16000", "-threads", "1", orig_audio_path]
         ext_proc = await asyncio.create_subprocess_exec(
             *extract_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
         )
