@@ -44,7 +44,8 @@ async def transcribe_audio_openrouter(audio_path: str) -> str:
 async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
     """Translates text using OpenRouter Chat Completions."""
     api_key = os.getenv("OPENROUTER_API_KEY")
-    model = os.getenv("AI_MODEL_ID", "google/gemini-2.0-flash-001")
+    # google/gemini-2.0-flash-001 doesn't exist on OpenRouter, fallback to openai/gpt-4o-mini
+    model = os.getenv("AI_MODEL_ID", "openai/gpt-4o-mini")
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -152,11 +153,12 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
             print("[Video Translator] No text transcribed. Skipping translation.")
             translated_text = "No audio detected."
         else:
-            translated_text = await translate_text_openrouter(transcribed_text, target_lang=voice_id)
+            # We hardcode target_lang="en" because video translation is currently English-only in MVP
+            translated_text = await translate_text_openrouter(transcribed_text, target_lang="en")
             print(f"[Video Translator] Translation: {translated_text[:50]}...")
 
         # 5. Generate TTS
-        tts_audio_path = await generate_local_tts(translated_text, voice_id)
+        tts_audio_path = await generate_local_tts(translated_text, locale="en")
 
         try:
             # 6. Merge
@@ -165,7 +167,7 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
             # 7. Upload to S3
             bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
             region = os.getenv("S3_REGION", "eu-north-1")
-            key = f"media/pois/{poi_id}/video/{voice_id}.mp4"
+            key = f"media/pois/{poi_id}/video/en.mp4"
             
             print(f"[Video Translator] Uploading to S3...")
             url = upload_to_s3(final_video_path, bucket, key, region)
