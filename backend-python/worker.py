@@ -30,7 +30,7 @@ async def notify_fastapi(poi_id: str, status: str, url: str = None):
         )
         response.raise_for_status()
 
-def upload_to_s3(file_path: str, bucket: str, key: str, region: str) -> str:
+def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_type: str = None, tenant_id: str = "default") -> str:
     s3_endpoint = os.getenv("S3_ENDPOINT")
     if s3_endpoint and not s3_endpoint.startswith("http"):
         s3_endpoint = f"https://{s3_endpoint}"
@@ -38,14 +38,27 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str) -> str:
     s3_client = boto3.client(
         's3',
         region_name=region,
-        aws_access_key_id=os.getenv("S3_ACCESS_KEY"),
-        aws_secret_access_key=os.getenv("S3_SECRET_KEY"),
+        aws_access_key_id=os.getenv("S3_ACCESS_KEY") or os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("S3_SECRET_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY"),
         endpoint_url=s3_endpoint if s3_endpoint else None
     )
     
+    if not content_type:
+        if key.endswith(".mp4"):
+            content_type = "video/mp4"
+        elif key.endswith(".mp3"):
+            content_type = "audio/mpeg"
+        elif key.endswith(".wav"):
+            content_type = "audio/wav"
+        elif key.endswith(".m3u8"):
+            content_type = "application/vnd.apple.mpegurl"
+        else:
+            content_type = "application/octet-stream"
+            
     extra_args = {
-        'ContentType': 'audio/mpeg',
-        'CacheControl': 'max-age=31536000, immutable'
+        'ContentType': content_type,
+        'CacheControl': 'max-age=31536000, immutable',
+        'Tagging': f'TenantID={tenant_id}&Type={content_type}'
     }
     s3_client.upload_file(file_path, bucket, key, ExtraArgs=extra_args)
     public_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
