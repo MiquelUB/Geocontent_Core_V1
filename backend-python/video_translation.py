@@ -4,6 +4,7 @@ import subprocess
 import httpx
 import json
 import edge_tts
+import asyncio
 from routers.audio import upload_to_s3
 
 async def transcribe_audio_openrouter(audio_path: str) -> str:
@@ -80,7 +81,7 @@ async def generate_local_tts(text: str, locale: str) -> str:
     await communicate.save(temp_path)
     return temp_path
 
-def merge_audio_video(video_path: str, audio_path: str, output_path: str):
+async def merge_audio_video(video_path: str, audio_path: str, output_path: str):
     """Replaces the audio track of the video with the new audio track using FFmpeg."""
     print(f"[Video Translator] Merging new audio with original video...")
     cmd = [
@@ -92,9 +93,15 @@ def merge_audio_video(video_path: str, audio_path: str, output_path: str):
         "-c:v", "copy",
         "-c:a", "aac",
         "-shortest",
+        "-threads", "1",
         output_path
     ]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    process = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+    )
+    await process.wait()
+    if process.returncode != 0:
+        raise Exception(f"FFmpeg failed with return code {process.returncode}")
 
 async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = "en") -> str:
     """
@@ -116,15 +123,21 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
         # 1. Download Video
         print(f"[Video Translator] Downloading video {video_url}...")
         async with httpx.AsyncClient() as client:
-            response = await client.get(video_url, follow_redirects=True)
-            response.raise_for_status()
-            with open(orig_video_path, 'wb') as f:
-                f.write(response.content)
+            async with client.stream("GET", video_url, follow_redirects=True) as response:
+                response.raise_for_status()
+                with open(orig_video_path, 'wb') as f:
+                    async for chunk in response.aiter_bytes():
+                        f.write(chunk)
 
         # 2. Extract Audio
         print(f"[Video Translator] Extracting audio...")
-        subprocess.run(["ffmpeg", "-y", "-i", orig_video_path, "-q:a", "0", "-map", "a", orig_audio_path], 
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        extract_cmd = ["ffmpeg", "-y", "-i", orig_video_path, "-q:a", "0", "-map", "a", "-threads", "1", orig_audio_path]
+        ext_proc = await asyncio.create_subprocess_exec(
+            *extract_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+        )
+        await ext_proc.wait()
+        if ext_proc.returncode != 0:
+            raise Exception(f"FFmpeg audio extraction failed with code {ext_proc.returncode}")
 
         # 3. Transcribe
         transcribed_text = await transcribe_audio_openrouter(orig_audio_path)
@@ -143,7 +156,7 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
 
         try:
             # 6. Merge
-            merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
+            await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
             
             # 7. Upload to S3
             bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
