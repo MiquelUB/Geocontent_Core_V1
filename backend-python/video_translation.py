@@ -18,17 +18,22 @@ async def transcribe_audio_openrouter(audio_path: str) -> str:
         "Authorization": f"Bearer {api_key}"
     }
 
-    # OpenRouter handles openai/whisper-1
-    data = {
-        "model": "openai/whisper-1",
-        "response_format": "text"
-    }
-
+    import base64
+    
     print(f"[Video Translator] Transcribing audio with OpenRouter...")
     async with httpx.AsyncClient(timeout=180.0) as client:
         with open(audio_path, 'rb') as f:
-            files = {'file': (os.path.basename(audio_path), f, 'audio/wav')}
-            response = await client.post(url, headers=headers, data=data, files=files)
+            audio_data = base64.b64encode(f.read()).decode('utf-8')
+            
+        payload = {
+            "model": "openai/whisper-1",
+            "input_audio": {
+                "data": audio_data,
+                "format": "wav"
+            }
+        }
+        
+        response = await client.post(url, headers=headers, json=payload)
 
         response.raise_for_status()
         try:
