@@ -245,17 +245,36 @@ export default function VideoUploader({ poiId, existingVideos = [], theme, video
             </div>
             
             {/* Check de traducció completada / pendent */}
-            {pendingTranslations[v] ? (
-              <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-blue-700 text-[10px] font-bold shadow-md" title="Traducció en curs">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                PROCESSANT...
-              </div>
-            ) : videoTranslations?.[v] && Object.keys(videoTranslations[v]).length > 0 ? (
-              <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold shadow-md" title="Traduccions completades">
-                <CheckCircle className="w-3 h-3" />
-                {Object.keys(videoTranslations[v]).join(', ').toUpperCase()}
-              </div>
-            ) : null}
+            {(() => {
+              const vTrans = videoTranslations?.[v] || {};
+              const validLocales = Object.keys(vTrans).filter(k => typeof vTrans[k] === 'string' && vTrans[k].startsWith('http') && !vTrans[k].includes('/ERROR'));
+              const hasError = Object.values(vTrans).some(val => val === 'ERROR' || (typeof val === 'string' && val.includes('/ERROR')));
+
+              if (pendingTranslations[v]) {
+                return (
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-blue-700 text-[10px] font-bold shadow-md" title="Traducció en curs">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    PROCESSANT...
+                  </div>
+                );
+              }
+              if (validLocales.length > 0) {
+                return (
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold shadow-md" title="Traduccions completades">
+                    <CheckCircle className="w-3 h-3" />
+                    {validLocales.join(', ').toUpperCase()}
+                  </div>
+                );
+              }
+              if (hasError) {
+                return (
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-1 bg-amber-50 border border-amber-200 rounded text-amber-700 text-[10px] font-bold shadow-md" title="Traducció pendent de reintentar">
+                    ⚠️ Cal Reintentar
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </div>
         ))}
 

@@ -1001,17 +1001,36 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                           </Button>
                           
                           {/* Check de traducció completada / pendent */}
-                          {pendingTranslations[slot.url] ? (
-                            <div className="flex items-center gap-1 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-blue-700 text-[10px] font-bold" title="Traducció en curs">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              PROCESSANT...
-                            </div>
-                          ) : videoTranslations?.[slot.url] && Object.keys(videoTranslations[slot.url]).length > 0 ? (
-                            <div className="flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold" title="Traduccions completades">
-                              <CheckCircle2 className="w-3 h-3" />
-                              {Object.keys(videoTranslations[slot.url]).join(', ').toUpperCase()}
-                            </div>
-                          ) : null}
+                          {(() => {
+                            const vTrans = videoTranslations?.[slot.url] || {};
+                            const validLocales = Object.keys(vTrans).filter(k => typeof vTrans[k] === 'string' && vTrans[k].startsWith('http') && !vTrans[k].includes('/ERROR'));
+                            const hasError = Object.values(vTrans).some(v => v === 'ERROR' || (typeof v === 'string' && v.includes('/ERROR')));
+
+                            if (pendingTranslations[slot.url]) {
+                              return (
+                                <div className="flex items-center gap-1 px-1.5 py-1 bg-blue-50 border border-blue-200 rounded text-blue-700 text-[10px] font-bold" title="Traducció en curs">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  PROCESSANT...
+                                </div>
+                              );
+                            }
+                            if (validLocales.length > 0) {
+                              return (
+                                <div className="flex items-center gap-1 px-1.5 py-1 bg-green-50 border border-green-200 rounded text-green-700 text-[10px] font-bold" title="Traduccions completades">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {validLocales.join(', ').toUpperCase()}
+                                </div>
+                              );
+                            }
+                            if (hasError) {
+                              return (
+                                <div className="flex items-center gap-1 px-1.5 py-1 bg-amber-50 border border-amber-200 rounded text-amber-700 text-[10px] font-bold" title="Traducció pendent de reintentar">
+                                  ⚠️ Cal Reintentar
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       )}
                     </div>
