@@ -1,7 +1,6 @@
 import NextAuth, { type DefaultSession } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/database/prisma"
-import Resend from "next-auth/providers/resend"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { authConfig } from "./auth.config"
@@ -33,28 +32,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token = (await authConfig.callbacks.jwt(params)) as any;
       }
       
-      // 2. Afegim lògica Node.js (Auditoria de Base de dades)
+      // 2. Afegim auditoria avançada que necessita Node.js/Prisma (impersonació)
       if (params.trigger === "update" && params.session?.impersonateMunicipalityId) {
         if (token.role === 'SUPER_ADMIN') {
-          // ✅ AFEGIR: Registre d'auditoria (Pas 7.2 - Seguretat DIS-03)
-          await prisma.adminAuditLog.create({
-            data: {
-              adminUserId: token.id as string,
-              action: 'impersonate',
-              targetMunicipalityId: params.session.impersonateMunicipalityId,
-              metadata: { timestamp: new Date().toISOString() }
-            }
-          }).catch(err => console.error('[AuditLog] Failed to log impersonation:', err));
+          // El token ja ha estat actualitzat pel callback base, només cal registrar l'auditoria
+          try {
+            await prisma.adminAuditLog.create({
+              data: {
+                adminUserId: token.id as string,
+                action: 'impersonate',
+                targetMunicipalityId: params.session.impersonateMunicipalityId,
+                metadata: { timestamp: new Date().toISOString() }
+              }
+            });
+          } catch (err) {
+            console.error('[AuditLog] Failed to log impersonation:', err);
+          }
         }
       }
       return token;
-    }
+    },
   },
   providers: [
     ...authConfig.providers,
-    Resend({
-      from: "noreply@projectexinoxano.com",
-    }),
     CredentialsProvider({
       id: "tourist",
       name: "Tourist",

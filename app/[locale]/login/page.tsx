@@ -31,17 +31,18 @@ export default function LoginPage() {
     setLoading(true)
     
     try {
-      const result = await signIn('resend', { 
+      const result = await signIn('tourist', { 
         email, 
-        callbackUrl: '/admin', 
+        name: email.split('@')[0], // Generate a default name from email
+        callbackUrl: '/profile', 
         redirect: false 
       })
 
       if (result?.error) {
         toast.error(`${t('errorLogin')}: ${result.error}`)
       } else {
-        setSent(true)
-        toast.success("Correu de verificació enviat!")
+        // Redirigim directament cap al perfil sense mostrar cap pantalla de "correu enviat"
+        window.location.href = '/profile'
       }
     } catch (error) {
       toast.error(t('errorConnection'))

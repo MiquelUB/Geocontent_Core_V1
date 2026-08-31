@@ -29,7 +29,7 @@ considerar el sistema segur en un entorn multi-tenant de producció.
   Doble verificació correcta.
 
 ### 2. Rate Limiting Implementat
-- **Magic Link login:** 5 intents / 5 minuts per email (`lib/services/ratelimit.ts`).
+- **Tourist login:** 5 intents / 5 minuts per email (`lib/services/ratelimit.ts`).
 - **IA Generate:** 10 peticions / minut per userId.
 - **Report Generate:** 3 informes / hora.
 - Implementació via Redis `INCR` + `EXPIRE`. Funcional i eficient.
