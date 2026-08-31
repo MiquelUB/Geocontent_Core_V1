@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 function getS3Client() {
   const accessKey = process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || '';
@@ -19,27 +20,6 @@ function getS3Client() {
     config.forcePathStyle = true;
   }
   return new S3Client(config);
-}
-
-function nodeStreamToWebStream(nodeStream: any): ReadableStream {
-  return new ReadableStream({
-    start(controller) {
-      nodeStream.on('data', (chunk: any) => {
-        controller.enqueue(chunk);
-      });
-      nodeStream.on('end', () => {
-        controller.close();
-      });
-      nodeStream.on('error', (err: any) => {
-        controller.error(err);
-      });
-    },
-    cancel() {
-      try {
-        nodeStream.destroy?.();
-      } catch {}
-    }
-  });
 }
 
 export async function GET(req: NextRequest) {
@@ -66,55 +46,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const s3Client = getS3Client();
-  const range = req.headers.get('range');
-
   try {
+    const s3Client = getS3Client();
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: key,
-      Range: range || undefined,
     });
 
-    const s3Response = await s3Client.send(command);
+    // Generem una URL presignada vàlida per 1 hora.
+    // Això permet al navegador anar directament a S3, evitant que el vídeo 
+    // passi pel contenidor Next.js (estalviant CPU, RAM i ample de banda).
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
-    const headers = new Headers();
-    if (s3Response.ContentType) {
-      headers.set('Content-Type', s3Response.ContentType);
-    } else if (key.endsWith('.mp4')) {
-      headers.set('Content-Type', 'video/mp4');
-    } else if (key.endsWith('.mp3')) {
-      headers.set('Content-Type', 'audio/mpeg');
-    }
-
-    if (s3Response.ContentLength) {
-      headers.set('Content-Length', s3Response.ContentLength.toString());
-    }
-    if (s3Response.ContentRange) {
-      headers.set('Content-Range', s3Response.ContentRange);
-    }
-    headers.set('Accept-Ranges', 'bytes');
-    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    headers.set('Access-Control-Allow-Origin', '*');
-
-    if (!s3Response.Body) {
-      return NextResponse.json({ error: 'Empty S3 response body' }, { status: 404 });
-    }
-
-    // Convert S3 Body directly to a Uint8Array buffer
-    // This avoids all Node.js vs Web Streams incompatibilities in Next.js Standalone
-    const byteArray = await s3Response.Body.transformToByteArray();
-
-    const status = range ? 206 : 200;
-    return new NextResponse(byteArray, {
-      status,
-      headers,
-    });
+    return NextResponse.redirect(signedUrl);
   } catch (err: any) {
-    console.error('[media-proxy stream error]:', err);
+    console.error('[media-proxy presign error]:', err);
     return NextResponse.json(
       { 
-        error: err.message || 'Error streaming media',
+        error: err.message || 'Error generating presigned URL',
         name: err.name,
         code: err.Code || err.code || err.$metadata?.httpStatusCode,
         bucket,
