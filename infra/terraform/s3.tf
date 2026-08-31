@@ -31,6 +31,7 @@ resource "aws_s3_bucket_cors_configuration" "pxx_media_cors" {
     allowed_methods = ["GET", "HEAD", "PUT", "POST", "DELETE"]
     allowed_origins = [
       "https://pxxv-pxx-frontend.80opze.easypanel.host",
+      "https://demo.projectexinoxano.cat",
       "https://app.teudomini.com"   # Afegir el domini definitiu quan estigui disponible
     ]
     expose_headers  = ["ETag", "x-amz-checksum-crc32", "x-amz-server-side-encryption"]
