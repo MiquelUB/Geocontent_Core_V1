@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { Readable } from 'stream';
 
 function getS3Client() {
   const accessKey = process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || '';
@@ -22,10 +21,31 @@ function getS3Client() {
   return new S3Client(config);
 }
 
+function nodeStreamToWebStream(nodeStream: any): ReadableStream {
+  return new ReadableStream({
+    start(controller) {
+      nodeStream.on('data', (chunk: any) => {
+        controller.enqueue(chunk);
+      });
+      nodeStream.on('end', () => {
+        controller.close();
+      });
+      nodeStream.on('error', (err: any) => {
+        controller.error(err);
+      });
+    },
+    cancel() {
+      try {
+        nodeStream.destroy?.();
+      } catch {}
+    }
+  });
+}
+
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get('url');
   if (!url) {
-    return new NextResponse('Missing url parameter', { status: 400 });
+    return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
   }
 
   let bucket = process.env.S3_BUCKET || 'pxx-core-v1';
@@ -77,13 +97,17 @@ export async function GET(req: NextRequest) {
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('Access-Control-Allow-Origin', '*');
 
-    let webStream: any = s3Response.Body;
-    if (s3Response.Body) {
-      if (typeof (s3Response.Body as any).transformToWebStream === 'function') {
+    let webStream: ReadableStream;
+    if (s3Response.Body && typeof (s3Response.Body as any).transformToWebStream === 'function') {
+      try {
         webStream = (s3Response.Body as any).transformToWebStream();
-      } else if (s3Response.Body instanceof Readable || (s3Response.Body as any).pipe) {
-        webStream = Readable.toWeb(s3Response.Body as any);
+      } catch {
+        webStream = nodeStreamToWebStream(s3Response.Body);
       }
+    } else if (s3Response.Body) {
+      webStream = nodeStreamToWebStream(s3Response.Body);
+    } else {
+      return NextResponse.json({ error: 'Empty S3 response body' }, { status: 404 });
     }
 
     const status = range ? 206 : 200;
@@ -93,6 +117,15 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('[media-proxy stream error]:', err);
-    return new NextResponse('Error streaming media', { status: 500 });
+    return NextResponse.json(
+      { 
+        error: err.message || 'Error streaming media',
+        name: err.name,
+        code: err.Code || err.code || err.$metadata?.httpStatusCode,
+        bucket,
+        key
+      }, 
+      { status: 500 }
+    );
   }
 }
