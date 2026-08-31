@@ -52,11 +52,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   providers: [
     ...authConfig.providers,
-    /* 
     Resend({
       from: "noreply@projectexinoxano.com",
-    }), 
-    */
+    }),
     CredentialsProvider({
       id: "tourist",
       name: "Tourist",
