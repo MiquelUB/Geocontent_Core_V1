@@ -72,15 +72,26 @@ async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
         result = response.json()
         return result['choices'][0]['message']['content'].strip()
 
-async def generate_local_tts(text: str, locale: str) -> str:
-    print(f"[Video Translator] Generating TTS for locale {locale}...")
-    voice_map = {
-        "ca": "ca-ES-JoanaNeural",
-        "es": "es-ES-ElviraNeural",
-        "en": "en-US-AriaNeural",
-        "fr": "fr-FR-DeniseNeural"
-    }
-    voice = voice_map.get(locale, "en-US-AriaNeural")
+async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> str:
+    print(f"[Video Translator] Generating TTS for locale {locale} with voice {voice_id}...")
+    
+    # Mapeig de veus segons la selecció de l'usuari (nova = dona, echo/alloy = home)
+    if voice_id in ["echo", "alloy"]:
+        voice_map = {
+            "ca": "ca-ES-EnricNeural",
+            "es": "es-ES-AlvaroNeural",
+            "en": "en-US-GuyNeural",
+            "fr": "fr-FR-HenriNeural"
+        }
+    else:
+        voice_map = {
+            "ca": "ca-ES-JoanaNeural",
+            "es": "es-ES-ElviraNeural",
+            "en": "en-US-AriaNeural",
+            "fr": "fr-FR-DeniseNeural"
+        }
+        
+    voice = voice_map.get(locale, "en-US-AriaNeural" if voice_id not in ["echo", "alloy"] else "en-US-GuyNeural")
     communicate = edge_tts.Communicate(text, voice)
     
     fd, temp_path = tempfile.mkstemp(suffix=".mp3")
@@ -100,6 +111,7 @@ async def merge_audio_video(video_path: str, audio_path: str, output_path: str):
         "-map", "1:a:0",
         "-c:v", "copy",
         "-c:a", "aac",
+        "-movflags", "+faststart",
         "-shortest",
         "-threads", "1",
         output_path
@@ -111,7 +123,7 @@ async def merge_audio_video(video_path: str, audio_path: str, output_path: str):
     if process.returncode != 0:
         raise Exception(f"FFmpeg failed with return code {process.returncode}")
 
-async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = "en") -> str:
+async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = "nova") -> str:
     """
     1. Downloads video
     2. Extracts audio
@@ -152,9 +164,9 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
 
         # 2. Extract Audio
         print(f"[Video Translator] Extracting audio...")
-        extract_cmd = ["ffmpeg", "-y", "-i", orig_video_path, "-vn", "-c:a", "pcm_s16le", "-ar", "16000", "-threads", "1", orig_audio_path]
+        ext_cmd = ["ffmpeg", "-y", "-i", orig_video_path, "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", orig_audio_path]
         ext_proc = await asyncio.create_subprocess_exec(
-            *extract_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+            *ext_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
         )
         await ext_proc.wait()
         if ext_proc.returncode != 0:
@@ -182,7 +194,7 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
                     print(f"[Video Translator] Translation to {loc}: {translated_text[:50]}...")
 
                 # 5. Generate TTS
-                tts_audio_path = await generate_local_tts(translated_text, locale=loc)
+                tts_audio_path = await generate_local_tts(translated_text, locale=loc, voice_id=voice_id)
 
                 # 6. Merge
                 await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)

@@ -362,8 +362,9 @@ async def outbox_poller(ctx):
                     elif topic == 'TRANSLATE_VIDEO':
                         poi_id = payload.get('poiId')
                         video_url = payload.get('videoUrl')
+                        voice_id = payload.get('voiceId', 'nova')
                         if poi_id and video_url:
-                            await redis.enqueue_job('process_video_translation_job', poi_id, video_url)
+                            await redis.enqueue_job('process_video_translation_job', poi_id, video_url, voice_id)
                     else:
                         print(f"[Worker] Topic desconegut: {topic}")
                         
