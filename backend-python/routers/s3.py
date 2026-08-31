@@ -99,3 +99,13 @@ async def upload_direct(
         return {"key": key}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/debug-list")
+def debug_list_s3(bucket: str = "pxx-core-v1", prefix: str = ""):
+    client = get_s3_client()
+    try:
+        res = client.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        files = [item["Key"] for item in res.get("Contents", [])]
+        return {"bucket": bucket, "count": len(files), "files": files}
+    except Exception as e:
+        return {"error": str(e)}
