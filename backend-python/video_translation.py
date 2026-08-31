@@ -173,18 +173,8 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
                 await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
                 
                 # 7. Upload to S3
-                bucket = os.getenv("S3_BUCKET", "pxx-core-v2-temporal")
+                bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
                 region = os.getenv("S3_REGION", "eu-north-1")
-                if "s3." in video_url or "s3-" in video_url or "amazonaws.com" in video_url:
-                    try:
-                        import urllib.parse
-                        parsed = urllib.parse.urlparse(video_url)
-                        host_parts = parsed.netloc.split('.')
-                        if host_parts and host_parts[0] not in ['s3', '']:
-                            bucket = host_parts[0]
-                    except Exception:
-                        pass
-
                 key = f"media/pois/{poi_id}/video/{loc}.mp4"
                 
                 print(f"[Video Translator] Uploading {loc} to S3 bucket '{bucket}'...")
