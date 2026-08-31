@@ -61,6 +61,8 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
     
     uploaded = False
     last_err = None
+
+    # Strategy 1: SSE-S3 encryption + Tagging
     try:
         with open(file_path, 'rb') as f:
             s3_client.put_object(
@@ -69,13 +71,32 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                 Body=f,
                 ContentType=content_type,
                 CacheControl='max-age=31536000, immutable',
-                Tagging=tagging
+                Tagging=tagging,
+                ServerSideEncryption='AES256'
             )
         uploaded = True
     except Exception as e:
         last_err = e
-        print(f"[S3 Upload] PutObject with Tagging failed for {key}: {e}. Retrying without Tagging...")
+        print(f"[S3 Upload] PutObject (SSE + Tagging) failed for {key}: {e}. Retrying SSE without Tagging...")
 
+    # Strategy 2: SSE-S3 encryption without Tagging
+    if not uploaded:
+        try:
+            with open(file_path, 'rb') as f:
+                s3_client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=f,
+                    ContentType=content_type,
+                    CacheControl='max-age=31536000, immutable',
+                    ServerSideEncryption='AES256'
+                )
+            uploaded = True
+        except Exception as e:
+            last_err = e
+            print(f"[S3 Upload] PutObject (SSE only) failed for {key}: {e}. Retrying plain...")
+
+    # Strategy 3: Plain PutObject
     if not uploaded:
         try:
             with open(file_path, 'rb') as f:
@@ -89,7 +110,7 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
             uploaded = True
         except Exception as e:
             last_err = e
-            print(f"[S3 Upload] PutObject without Tagging failed for {key}: {e}.")
+            print(f"[S3 Upload] Plain PutObject failed for {key}: {e}.")
 
     if not uploaded:
         raise last_err
