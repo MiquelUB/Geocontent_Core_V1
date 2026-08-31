@@ -6,6 +6,7 @@ import json
 import edge_tts
 import asyncio
 from routers.audio import upload_to_s3
+from routers.s3 import get_s3_client
 
 async def transcribe_audio_openrouter(audio_path: str) -> str:
     """Uses OpenRouter's /api/v1/audio/transcriptions endpoint (OpenAI Whisper compatible)."""
