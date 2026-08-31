@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "bucket_name" {
   description = "El nom del bucket per als arxius de PXX"
   type        = string
-  default     = "pxx-core-v1"
+  default     = "pxx-core-vox-v1"
 }
 
 
