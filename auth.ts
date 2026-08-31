@@ -8,11 +8,6 @@ import { authConfig } from "./auth.config"
 import { UserRole } from "@prisma/client"
 import { loginOrRegister } from "@/lib/actions/auth"
 
-// Fix for NextAuth v5 server components in proxied environments without AUTH_URL
-if (!process.env.AUTH_URL) {
-  process.env.AUTH_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://demo.projectexinoxano.cat";
-}
-
 // Extensió de tipus per a NextAuth v5
 declare module "next-auth" {
   interface Session {
@@ -104,36 +99,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           if (!credentials?.email || !credentials?.password) return null;
 
-          // DEV BYPASS: Allow ANY email to login as SUPER_ADMIN instantly
-          if (credentials.password === "bypass") {
-            return {
-              id: "bypass-admin-123",
-              email: credentials.email as string,
-              name: "Admin Bypass",
-              role: "SUPER_ADMIN",
-              municipalityId: null,
-            };
-          }
-
           const email = (credentials.email as string).toLowerCase().trim();
           const user = await prisma.user.findUnique({
             where: { email }
           });
 
-          if (!user || user.role === UserRole.TOURIST) {
-            console.error("[Admin Login] Invalid user or not an admin");
+          if (!user || !user.passwordHash || user.role === UserRole.TOURIST) {
+            console.error("[Admin Login] Invalid user or password hash missing");
             return null;
           }
 
-          if (!user.passwordHash) {
-              console.error("[Admin Login] No password hash");
-              return null;
-          }
-            const isPasswordValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
-            if (!isPasswordValid) {
-              console.error("[Admin Login] Password comparison failed");
-              return null;
-            }
+          const isPasswordValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+          if (!isPasswordValid) {
+            console.error("[Admin Login] Password comparison failed");
+            return null;
           }
 
           return {
