@@ -53,6 +53,10 @@ export default function HlsVideoPlayer({
         return url;
       }
     }
+    // Si no hi ha CDN configurada però és una URL de S3 directa (ex: pxx-core-v1), utilitzem el proxy intern amb streaming
+    if (!cdnUrl && (url.includes('s3.amazonaws.com') || url.includes('s3.eu-north-1.amazonaws.com') || url.includes('pxx-core-v1'))) {
+      return `/api/media-proxy?url=${encodeURIComponent(url)}`;
+    }
     // Si és una ruta relativa (però no blob ni data), força la CDN si existeix
     if (cdnUrl && url.startsWith('/') && !url.startsWith('//')) {
       return `${cdnUrl}${url}`;
