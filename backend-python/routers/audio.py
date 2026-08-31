@@ -47,15 +47,40 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
     encoded_type = urllib.parse.quote_plus(content_type)
     tagging = f"TenantID={tenant_id}&Type={encoded_type}"
 
-    with open(file_path, 'rb') as f:
-        s3_client.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=f,
-            ContentType=content_type,
-            CacheControl='max-age=31536000, immutable',
-            Tagging=tagging
-        )
+    uploaded = False
+    last_err = None
+    try:
+        with open(file_path, 'rb') as f:
+            s3_client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=f,
+                ContentType=content_type,
+                CacheControl='max-age=31536000, immutable',
+                Tagging=tagging
+            )
+        uploaded = True
+    except Exception as e:
+        last_err = e
+        print(f"[S3 Upload] PutObject with Tagging failed for {key}: {e}. Retrying without Tagging...")
+
+    if not uploaded:
+        try:
+            with open(file_path, 'rb') as f:
+                s3_client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=f,
+                    ContentType=content_type,
+                    CacheControl='max-age=31536000, immutable'
+                )
+            uploaded = True
+        except Exception as e:
+            last_err = e
+            print(f"[S3 Upload] PutObject without Tagging failed for {key}: {e}.")
+
+    if not uploaded:
+        raise last_err
     
     # Construïm la URL pública
     public_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
