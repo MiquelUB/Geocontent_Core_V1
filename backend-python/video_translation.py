@@ -172,8 +172,8 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
                 # 6. Merge
                 await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
                 
-                # 7. Upload to S3
-                bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
+                # 7. Upload to S3 (usa el bucket configurat a l'entorn d'Easypanel)
+                bucket = os.getenv("S3_BUCKET", "pxx-core-v2-temporal")
                 region = os.getenv("S3_REGION", "eu-north-1")
                 key = f"media/pois/{poi_id}/video/{loc}.mp4"
                 

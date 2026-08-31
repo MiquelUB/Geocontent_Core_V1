@@ -22,13 +22,20 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
     s3_endpoint = os.getenv("S3_ENDPOINT")
     if s3_endpoint and not s3_endpoint.startswith("http"):
         s3_endpoint = f"https://{s3_endpoint}"
+    
+    # CRÍTIC: No passar endpoint_url per a AWS S3 estàndard.
+    # Boto3 amb endpoint_url explícit força path-style addressing,
+    # trencant la signatura SigV4 i generant AccessDenied.
+    use_endpoint = None
+    if s3_endpoint and "amazonaws.com" not in s3_endpoint:
+        use_endpoint = s3_endpoint
         
     s3_client = boto3.client(
         's3',
         region_name=region,
         aws_access_key_id=os.getenv("S3_ACCESS_KEY") or os.getenv("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=os.getenv("S3_SECRET_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY"),
-        endpoint_url=s3_endpoint if s3_endpoint else None
+        endpoint_url=use_endpoint
     )
     
     if not content_type:
@@ -50,7 +57,7 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
     uploaded = False
     last_err = None
 
-    # Strategy 1: SSE-S3 encryption + Tagging
+    # Strategy 1: Plain PutObject
     try:
         with open(file_path, 'rb') as f:
             s3_client.put_object(
@@ -58,16 +65,13 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                 Key=key,
                 Body=f,
                 ContentType=content_type,
-                CacheControl='max-age=31536000, immutable',
-                Tagging=tagging,
-                ServerSideEncryption='AES256'
             )
         uploaded = True
     except Exception as e:
         last_err = e
-        print(f"[S3 Upload] PutObject (SSE + Tagging) failed for {key}: {e}. Retrying SSE without Tagging...")
+        print(f"[S3 Upload] Plain PutObject failed for {key}: {e}. Retrying with Tagging...")
 
-    # Strategy 2: SSE-S3 encryption without Tagging
+    # Strategy 2: PutObject with Tagging
     if not uploaded:
         try:
             with open(file_path, 'rb') as f:
@@ -76,29 +80,12 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                     Key=key,
                     Body=f,
                     ContentType=content_type,
-                    CacheControl='max-age=31536000, immutable',
-                    ServerSideEncryption='AES256'
+                    Tagging=tagging,
                 )
             uploaded = True
         except Exception as e:
             last_err = e
-            print(f"[S3 Upload] PutObject (SSE only) failed for {key}: {e}. Retrying plain...")
-
-    # Strategy 3: Plain PutObject
-    if not uploaded:
-        try:
-            with open(file_path, 'rb') as f:
-                s3_client.put_object(
-                    Bucket=bucket,
-                    Key=key,
-                    Body=f,
-                    ContentType=content_type,
-                    CacheControl='max-age=31536000, immutable'
-                )
-            uploaded = True
-        except Exception as e:
-            last_err = e
-            print(f"[S3 Upload] Plain PutObject failed for {key}: {e}.")
+            print(f"[S3 Upload] PutObject with Tagging failed for {key}: {e}.")
 
     if not uploaded:
         raise last_err
