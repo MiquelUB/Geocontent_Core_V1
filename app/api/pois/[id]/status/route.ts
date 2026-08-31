@@ -3,8 +3,8 @@ import { prisma } from '@/lib/database/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   try {
     const poi = await prisma.poi.findUnique({

@@ -149,8 +149,8 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [appThumbnailFile, setAppThumbnailFile] = useState<File | null>(null);
   const [headerFile, setHeaderFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [audioTranslations, setAudioTranslations] = useState<Record<string, string>>(poi?.audioTranslations || poi?.audio_translations || {});
-  const [videoTranslations, setVideoTranslations] = useState<Record<string, string>>(poi?.videoTranslations || poi?.video_translations || {});
+  const [audioTranslations, setAudioTranslations] = useState<any>(poi?.audioTranslations || poi?.audio_translations || {});
+  const [videoTranslations, setVideoTranslations] = useState<any>(poi?.videoTranslations || poi?.video_translations || {});
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, boolean>>({});
 
   // Client Polling (Reemplaça SSE fràgil) per escoltar les traduccions asíncrones
