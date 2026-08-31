@@ -97,21 +97,16 @@ export async function GET(req: NextRequest) {
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
     headers.set('Access-Control-Allow-Origin', '*');
 
-    let webStream: ReadableStream;
-    if (s3Response.Body && typeof (s3Response.Body as any).transformToWebStream === 'function') {
-      try {
-        webStream = (s3Response.Body as any).transformToWebStream();
-      } catch {
-        webStream = nodeStreamToWebStream(s3Response.Body);
-      }
-    } else if (s3Response.Body) {
-      webStream = nodeStreamToWebStream(s3Response.Body);
-    } else {
+    if (!s3Response.Body) {
       return NextResponse.json({ error: 'Empty S3 response body' }, { status: 404 });
     }
 
+    // Convert S3 Body directly to a Uint8Array buffer
+    // This avoids all Node.js vs Web Streams incompatibilities in Next.js Standalone
+    const byteArray = await s3Response.Body.transformToByteArray();
+
     const status = range ? 206 : 200;
-    return new NextResponse(webStream, {
+    return new NextResponse(byteArray, {
       status,
       headers,
     });
