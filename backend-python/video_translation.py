@@ -128,12 +128,26 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
         
         # 1. Download Video
         print(f"[Video Translator] Downloading video {video_url}...")
-        async with httpx.AsyncClient() as client:
-            async with client.stream("GET", video_url, follow_redirects=True) as response:
-                response.raise_for_status()
-                with open(orig_video_path, 'wb') as f:
-                    async for chunk in response.aiter_bytes():
-                        f.write(chunk)
+        if "amazonaws.com" in video_url:
+            import urllib.parse
+            s3 = get_s3_client()
+            parsed_url = urllib.parse.urlparse(video_url)
+            if ".s3." in parsed_url.hostname:
+                bucket = parsed_url.hostname.split(".s3.")[0]
+                key = urllib.parse.unquote(parsed_url.path.lstrip('/'))
+            else:
+                parts = parsed_url.path.lstrip('/').split('/')
+                bucket = parts[0]
+                key = urllib.parse.unquote('/'.join(parts[1:]))
+            # Descarreguem de forma segura usant les credencials
+            s3.download_file(bucket, key, orig_video_path)
+        else:
+            async with httpx.AsyncClient() as client:
+                async with client.stream("GET", video_url, follow_redirects=True) as response:
+                    response.raise_for_status()
+                    with open(orig_video_path, 'wb') as f:
+                        async for chunk in response.aiter_bytes():
+                            f.write(chunk)
 
         # 2. Extract Audio
         print(f"[Video Translator] Extracting audio...")
