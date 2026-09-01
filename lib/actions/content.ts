@@ -907,3 +907,17 @@ export async function updateRouteFinalQuizAction(routeId: string, finalQuiz: any
     return { success: false, error: error.message };
   }
 }
+
+export async function updatePoiQuizAction(id: string, manualQuiz: any) {
+  try {
+    const session = await auth();
+    if (!session) return { success: false, error: "Sessió requerida." };
+    await prisma.poi.update({
+      where: { id },
+      data: { manualQuiz }
+    });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}

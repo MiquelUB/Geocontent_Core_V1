@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
 import iconsMapping from '@/lib/icons-mapping.json';
 import { getAdminTheme } from "@/lib/adminTheme";
-import { getPoiTranslations } from '@/lib/actions/content';
+import { getPoiTranslations, updatePoiQuizAction } from '@/lib/actions/content';
 import { compressImage } from "@/lib/imageOptimization";
 import { uploadFileClient } from "@/lib/upload-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -377,10 +377,14 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
     try {
       const res = await translateQuizAction(manualQuiz);
       if (res.success && res.translations) {
-        setManualQuiz((prev: any) => ({
-          ...prev,
+        const updatedQuiz = {
+          ...manualQuiz,
           translations: res.translations
-        }));
+        };
+        setManualQuiz(updatedQuiz);
+        if (poi?.id) {
+          await updatePoiQuizAction(poi.id, updatedQuiz);
+        }
       } else {
         alert("Error en la traducció: " + res.error);
       }
@@ -874,7 +878,19 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             <Input type="file" accept="image/*" onChange={(e) => setAppThumbnailFile(e.target.files?.[0] || null)} />
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] text-stone-400 font-bold uppercase">O URL:</span>
-              <Input value={appThumbnail} onChange={(e) => setAppThumbnail(e.target.value)} placeholder="Enganxa una URL d'imatge..." className="h-8 text-xs" />
+              <Input 
+                value={appThumbnail} 
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val.toLowerCase().match(/\.(mp4|webm|ogg|mov)$/)) {
+                    alert("Aquest camp és només per a imatges, no pots posar l'enllaç d'un vídeo.");
+                    return;
+                  }
+                  setAppThumbnail(val);
+                }} 
+                placeholder="https://..." 
+                className="h-8 text-xs" 
+              />
             </div>
           </div>
 
@@ -903,7 +919,19 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             <Input type="file" accept="image/*" onChange={(e) => setHeaderFile(e.target.files?.[0] || null)} />
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] text-stone-400 font-bold uppercase">O URL:</span>
-              <Input value={header16x9} onChange={(e) => setHeader16x9(e.target.value)} placeholder="Enganxa una URL d'imatge panoràmica..." className="h-8 text-xs" />
+              <Input 
+                value={header16x9} 
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val.toLowerCase().match(/\.(mp4|webm|ogg|mov)$/)) {
+                    alert("Aquest camp és només per a imatges, no pots posar l'enllaç d'un vídeo.");
+                    return;
+                  }
+                  setHeader16x9(val);
+                }} 
+                placeholder="Enganxa una URL d'imatge panoràmica..." 
+                className="h-8 text-xs" 
+              />
             </div>
           </div>
 
