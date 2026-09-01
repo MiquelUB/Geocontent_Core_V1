@@ -127,10 +127,12 @@ async def merge_audio_video(video_path: str, audio_path: str, output_path: str, 
         "-filter_complex", f"[1:a]adelay={delay}|{delay}[a]",
         "-map", "0:v:0",
         "-map", "[a]",
-        "-c:v", "copy",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "28",
         "-c:a", "aac",
         "-movflags", "+faststart",
-        "-threads", "1",
+        "-threads", "2",
         output_path
     ]
     process = await asyncio.create_subprocess_exec(
