@@ -91,8 +91,8 @@ async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
 async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> str:
     print(f"[Video Translator] Generating TTS for locale {locale} with voice {voice_id}...")
     
-    # Mapeig de veus segons la selecció de l'usuari (nova = dona, echo/alloy = home)
-    if voice_id in ["echo", "alloy"]:
+    # Mapeig de veus segons la selecció de l'usuari
+    if voice_id in ["echo", "alloy", "onyx", "fable"]:
         voice_map = {
             "ca": "ca-ES-EnricNeural",
             "es": "es-ES-AlvaroNeural",
@@ -107,7 +107,7 @@ async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> 
             "fr": "fr-FR-DeniseNeural"
         }
         
-    voice = voice_map.get(locale, "en-US-AriaNeural" if voice_id not in ["echo", "alloy"] else "en-US-GuyNeural")
+    voice = voice_map.get(locale, "en-US-AriaNeural" if voice_id not in ["echo", "alloy", "onyx", "fable"] else "en-US-GuyNeural")
     communicate = edge_tts.Communicate(text, voice)
     
     fd, temp_path = tempfile.mkstemp(suffix=".mp3")

@@ -65,7 +65,6 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                 Key=key,
                 Body=f,
                 ContentType=content_type,
-                CacheControl="max-age=0, no-cache, no-store, must-revalidate",
             )
         uploaded = True
     except Exception as e:
@@ -81,7 +80,6 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                     Key=key,
                     Body=f,
                     ContentType=content_type,
-                    CacheControl="max-age=0, no-cache, no-store, must-revalidate",
                     Tagging=tagging,
                 )
             uploaded = True
