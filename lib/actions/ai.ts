@@ -400,7 +400,7 @@ export async function autoTranslateAction(type: 'route' | 'poi', id: string) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
+      model: (() => { const m = process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini"; return (m === "google/gemini-flash-1.5" || m === "google/gemini-1.5-flash") ? "google/gemini-2.5-flash" : m; })(),
       messages: [
         { role: "system", content: systemPrompt }, 
         { role: "user", content: `<untrusted_document>\n${JSON.stringify(payload)}\n</untrusted_document>` }
@@ -473,7 +473,7 @@ export async function translateRouteAction(routeId: string) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
+      model: (() => { const m = process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini"; return (m === "google/gemini-flash-1.5" || m === "google/gemini-1.5-flash") ? "google/gemini-2.5-flash" : m; })(),
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(payload) }],
       response_format: { type: "json_object" },
       temperature: 0.1,
@@ -531,7 +531,7 @@ export async function translateFieldsAction(fields: Record<string, string>) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
+      model: (() => { const m = process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini"; return (m === "google/gemini-flash-1.5" || m === "google/gemini-1.5-flash") ? "google/gemini-2.5-flash" : m; })(),
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(fields) }],
       response_format: { type: "json_object" },
       temperature: 0.1,
@@ -577,7 +577,7 @@ export async function translateQuizAction(quiz: any) {
     `;
 
     const completion = await openai.chat.completions.create({
-      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
+      model: (() => { const m = process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini"; return (m === "google/gemini-flash-1.5" || m === "google/gemini-1.5-flash") ? "google/gemini-2.5-flash" : m; })(),
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(quiz) }],
       response_format: { type: "json_object" },
       temperature: 0.1,

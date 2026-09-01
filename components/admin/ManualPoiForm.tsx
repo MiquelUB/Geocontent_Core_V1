@@ -803,7 +803,11 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
                       onClick={() => setIcon(iconName)}
                       className={`relative w-12 h-12 rounded-lg border-2 transition-all p-1 bg-white hover:scale-105 ${isSelected ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-stone-200 opacity-60 grayscale hover:opacity-100 hover:grayscale-0'}`}
                     >
-                      <img src={iconUrl} alt={iconName} className="w-full h-full object-contain" title={iconName} />
+                      {iconUrl.toLowerCase().endsWith('.mp4') ? (
+                        <video src={iconUrl} className="w-full h-full object-contain" muted playsInline title={iconName} />
+                      ) : (
+                        <img src={iconUrl} alt={iconName} className="w-full h-full object-contain" title={iconName} />
+                      )}
                       {isSelected && (
                         <div className="absolute -top-1 -right-1 bg-primary text-white rounded-full p-0.5 shadow-sm">
                           <div className="w-2 h-2 rounded-full bg-white" />
@@ -860,7 +864,11 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
             ) : appThumbnail ? (
               <div className="mb-2 w-16 h-16 rounded-md overflow-hidden border border-stone-200">
-                <img src={appThumbnail} alt="App Thumbnail" className="w-full h-full object-cover" />
+                {appThumbnail.toLowerCase().endsWith('.mp4') ? (
+                  <video src={appThumbnail} className="w-full h-full object-cover" muted playsInline />
+                ) : (
+                  <img src={appThumbnail} alt="App Thumbnail" className="w-full h-full object-cover" />
+                )}
               </div>
             ) : null}
             <Input type="file" accept="image/*" onChange={(e) => setAppThumbnailFile(e.target.files?.[0] || null)} />
@@ -885,7 +893,11 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
               </div>
             ) : header16x9 ? (
               <div className="mb-2 w-32 h-18 aspect-video rounded-md overflow-hidden border border-stone-200">
-                <img src={header16x9} alt="Header 16:9" className="w-full h-full object-cover" />
+                {header16x9.toLowerCase().endsWith('.mp4') ? (
+                  <video src={header16x9} className="w-full h-full object-cover" muted playsInline />
+                ) : (
+                  <img src={header16x9} alt="Header 16:9" className="w-full h-full object-cover" />
+                )}
               </div>
             ) : null}
             <Input type="file" accept="image/*" onChange={(e) => setHeaderFile(e.target.files?.[0] || null)} />
@@ -1215,7 +1227,11 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           {carouselImages.map((url, idx) => (
             <div key={idx} className="flex flex-col gap-2">
               <div className="relative aspect-square bg-stone-100 rounded-md overflow-hidden group">
-                <img src={url} alt={`Carousel ${idx}`} className="w-full h-full object-cover" />
+                {url.toLowerCase().endsWith('.mp4') || url.toLowerCase().endsWith('.webm') ? (
+                  <video src={url} className="w-full h-full object-cover" muted playsInline />
+                ) : (
+                  <img src={url} alt={`Carousel ${idx}`} className="w-full h-full object-cover" />
+                )}
                 <button type="button" onClick={() => handleRemoveCarouselImage(idx)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100">
                   <X className="w-3 h-3" />
                 </button>
