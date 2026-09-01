@@ -53,6 +53,10 @@ export default function HlsVideoPlayer({
         return url;
       }
     }
+    // Si no hi ha CDN configurada però és una URL de S3 (ex: pxx-core-v1, pxx-core-vox-v1, amazonaws.com), utilitzem el proxy intern amb URL presignada per evitar 403 AccessDenied
+    if (!cdnUrl && (url.includes('s3.amazonaws.com') || url.includes('s3.eu-north-1.amazonaws.com') || url.includes('pxx-core-v1') || url.includes('pxx-core-vox-v1') || url.includes('amazonaws.com'))) {
+      return `/api/media-proxy?url=${encodeURIComponent(url)}`;
+    }
     // Si és una ruta relativa (però no blob ni data), força la CDN si existeix
     if (cdnUrl && url.startsWith('/') && !url.startsWith('//')) {
       return `${cdnUrl}${url}`;
@@ -179,20 +183,32 @@ export default function HlsVideoPlayer({
     } else if (type === 'hls' && video.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS (Safari)
       video.src = url;
-      video.addEventListener('loadedmetadata', () => {
+      const onNativeLoaded = () => {
         setIsLoaded(true);
         setIsTransitioning(false);
         if (autoPlay) video.play();
+      };
+      video.addEventListener('loadedmetadata', onNativeLoaded, { once: true });
+      video.addEventListener('canplay', onNativeLoaded, { once: true });
+      video.addEventListener('error', () => {
+        setIsLoaded(true);
+        setIsTransitioning(false);
       }, { once: true });
       videoCache.cacheVideo(finalLowBitrateSrc || finalSrc);
 
     } else {
-      // Progressive MP4 (cache or lowres)
+      // Progressive MP4 (cache or lowres or S3 presigned)
       video.src = url;
-      video.addEventListener('loadedmetadata', () => {
+      const onProgLoaded = () => {
         setIsLoaded(true);
         setIsTransitioning(false);
         if (autoPlay) video.play();
+      };
+      video.addEventListener('loadedmetadata', onProgLoaded, { once: true });
+      video.addEventListener('canplay', onProgLoaded, { once: true });
+      video.addEventListener('error', () => {
+        setIsLoaded(true);
+        setIsTransitioning(false);
       }, { once: true });
     }
 
