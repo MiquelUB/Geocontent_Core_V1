@@ -544,3 +544,49 @@ export async function translateFieldsAction(fields: Record<string, string>) {
     return { success: false, error: error.message };
   }
 }
+
+export async function translateQuizAction(quiz: any) {
+  try {
+    await requireAdmin();
+    const OpenAI = (await import('openai')).default;
+    if (!process.env.OPENROUTER_API_KEY) {
+      return { success: false, error: 'El servei d\'IA no està configurat.' };
+    }
+    const openai = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey: process.env.OPENROUTER_API_KEY,
+      defaultHeaders: {
+        "HTTP-Referer": process.env.SITE_URL || "https://projectexinoxano.com",
+        "X-Title": "PXX Dashboard",
+      },
+    });
+
+    const systemPrompt = `
+      Ets un expert en traducció de continguts turístics per a rutes de patrimoni.
+      Tradueix aquest qüestionari al Castellà (es), Anglès (en) i Francès (fr).
+      ESTRICTES NORMES:
+      1. Mantén l'ordre original de les opcions i el camp 'correcta'.
+      2. Retorna EXACTAMENT l'estructura JSON següent on cada idioma (es, en, fr) conté l'estructura original del quiz traduïda:
+      
+      Sortida requerida:
+      {
+        "es": { ...estructura del quiz traduïda... },
+        "en": { ...estructura del quiz traduïda... },
+        "fr": { ...estructura del quiz traduïda... }
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: process.env.AI_MODEL_TRANSLATE_ID || "openai/gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: JSON.stringify(quiz) }],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+    });
+
+    const res = JSON.parse(completion.choices[0].message.content || '{}');
+    return { success: true, translations: res };
+  } catch (error: any) {
+    console.error("Quiz Translation Action Error:", error);
+    return { success: false, error: error.message };
+  }
+}

@@ -14,7 +14,7 @@ import { getPoiTranslations } from '@/lib/actions/content';
 import { compressImage } from "@/lib/imageOptimization";
 import { uploadFileClient } from "@/lib/upload-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { autoTranslateAction, translateFieldsAction } from '@/lib/actions/ai';
+import { autoTranslateAction, translateFieldsAction, translateQuizAction } from '@/lib/actions/ai';
 import { generatePoiAudiosAction } from '@/lib/actions/audio'; // Obsolet, mantingut per backward compat
 import { requestTtsGeneration, requestVideoTranslation } from '@/lib/actions/omnivoice';
 import { parseS3Filename } from '@/lib/utils';
@@ -117,6 +117,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isTranslatingQuiz, setIsTranslatingQuiz] = useState(false);
 
   const [appThumbnail, setAppThumbnail] = useState(
     poi?.appThumbnail || poi?.app_thumbnail || poi?.image_url || poi?.thumbnail_1x1 || ''
@@ -364,6 +365,30 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
       alert("Error de connexió en la traducció");
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleAutoTranslateQuiz = async () => {
+    if (!manualQuiz?.pregunta) {
+      alert("Cal un quiz creat en català per traduir.");
+      return;
+    }
+    setIsTranslatingQuiz(true);
+    try {
+      const res = await translateQuizAction(manualQuiz);
+      if (res.success && res.translations) {
+        setManualQuiz((prev: any) => ({
+          ...prev,
+          translations: res.translations
+        }));
+      } else {
+        alert("Error en la traducció: " + res.error);
+      }
+    } catch (err) {
+      console.error("Quiz Translation Error:", err);
+      alert("Error de connexió en la traducció del quiz");
+    } finally {
+      setIsTranslatingQuiz(false);
     }
   };
 
@@ -1120,41 +1145,61 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
           </div>
         )}
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={isGeneratingQuiz || !textContents[activeLocale] || !titles[activeLocale]}
-          onClick={async () => {
-            setIsGeneratingQuiz(true);
-            try {
-              const res = await fetch('/api/ai/generate-quiz', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                  title: titles[activeLocale] || titles.ca, 
-                  content: textContents[activeLocale] || textContents.ca, 
-                  type: poiType,
-                  locale: activeLocale 
-                })
-              });
-              const data = await res.json();
-              if (data.success && data.quiz) {
-                setManualQuiz(data.quiz);
-              } else {
-                alert(data.error || "No s'ha pogut generar el quiz");
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isGeneratingQuiz || !textContents['ca'] || !titles['ca']}
+            onClick={async () => {
+              setIsGeneratingQuiz(true);
+              try {
+                const res = await fetch('/api/ai/generate-quiz', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ 
+                    title: titles['ca'], 
+                    content: textContents['ca'], 
+                    type: poiType,
+                    locale: 'ca' 
+                  })
+                });
+                const data = await res.json();
+                if (data.success && data.quiz) {
+                  setManualQuiz(data.quiz);
+                } else {
+                  alert(data.error || "No s'ha pogut generar el quiz");
+                }
+              } catch (e) {
+                console.error("Error generant quiz:", e);
+                alert("Error de connexió");
+              } finally {
+                setIsGeneratingQuiz(false);
               }
-            } catch (e) {
-              console.error("Error generant quiz:", e);
-              alert("Error de connexió");
-            } finally {
-              setIsGeneratingQuiz(false);
-            }
-          }}
-          className="w-full text-xs"
-        >
-          {isGeneratingQuiz ? 'Generant...' : (manualQuiz ? 'Regenerar Quiz amb IA' : 'Generar Quiz amb IA')}
-        </Button>
+            }}
+            className="flex-1 text-xs"
+          >
+            {isGeneratingQuiz ? 'Generant...' : (manualQuiz ? 'Regenerar Quiz amb IA' : 'Generar Quiz amb IA')}
+          </Button>
+
+          {manualQuiz && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isTranslatingQuiz}
+              onClick={handleAutoTranslateQuiz}
+              className="flex-1 text-xs bg-stone-50 border-stone-200 text-stone-600 hover:bg-white hover:text-primary transition-all"
+            >
+              {isTranslatingQuiz ? (
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="w-3 h-3 mr-2 text-amber-500" />
+              )}
+              {isTranslatingQuiz ? 'Traduint...' : (manualQuiz.translations?.es ? '✓ Quiz Traduït' : 'Tradueix Quiz (IA)')}
+            </Button>
+          )}
+        </div>
         {!textContents.ca && <p className="text-[10px] text-amber-600">⚠️ Cal omplir el 'Text Històric' en català (base) per generar el quiz.</p>}
       </div>
 

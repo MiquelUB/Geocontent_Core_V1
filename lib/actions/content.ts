@@ -892,3 +892,18 @@ export async function getPoiTranslations(poiId: string) {
     return null;
   }
 }
+
+export async function updateRouteFinalQuizAction(routeId: string, finalQuiz: any) {
+  try {
+    await requireAdmin();
+    await prisma.route.update({
+      where: { id: routeId },
+      data: { finalQuiz }
+    });
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

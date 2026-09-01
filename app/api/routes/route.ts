@@ -82,11 +82,21 @@ export async function GET(request: NextRequest) {
     const formattedData = routes.map((route) => {
       const pois = route.routePois.map(rp => rp.poi);
       
+      let localizedFinalQuiz = route.finalQuiz;
+      if (lang !== 'ca' && route.finalQuiz && (route.finalQuiz as any).translations && (route.finalQuiz as any).translations[lang]) {
+          localizedFinalQuiz = {
+              ...(route.finalQuiz as any),
+              ...(route.finalQuiz as any).translations[lang]
+          };
+          delete localizedFinalQuiz.translations;
+      }
+      
       return {
         ...route,
         pois,
         title: getTranslation(route.name, route.nameTranslations as any, lang),
         description: getTranslation(route.description, route.descriptionTranslations as any, lang),
+        finalQuiz: localizedFinalQuiz,
       };
     });
 

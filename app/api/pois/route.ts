@@ -52,11 +52,22 @@ export async function GET(request: NextRequest) {
     // Apply i18n translations
     const localizedData = routePois.map((rp) => {
       const poi = rp.poi;
+      
+      let localizedQuiz = poi.manualQuiz;
+      if (lang !== 'ca' && poi.manualQuiz && (poi.manualQuiz as any).translations && (poi.manualQuiz as any).translations[lang]) {
+          localizedQuiz = {
+              ...(poi.manualQuiz as any),
+              ...(poi.manualQuiz as any).translations[lang]
+          };
+          delete localizedQuiz.translations;
+      }
+
       return {
         ...poi,
         title: getTranslation(poi.title, poi.titleTranslations as any, lang),
         description: getTranslation(poi.description, poi.descriptionTranslations as any, lang),
         quiz_question: getTranslation(poi.textContent, poi.textContent as any, lang), // El model legacy guardava la pregunta en textContent o similar
+        manualQuiz: localizedQuiz,
       };
     });
 

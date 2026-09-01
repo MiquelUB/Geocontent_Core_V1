@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getRouteWithPois, addPoiToRoute, removePoiFromRoute, closeRouteAndGenerateFinalQuiz } from '@/lib/actions/content';
+import { getRouteWithPois, addPoiToRoute, removePoiFromRoute, closeRouteAndGenerateFinalQuiz, updateRouteFinalQuizAction } from '@/lib/actions/content';
+import { translateQuizAction } from '@/lib/actions/ai';
 import { CheckCircle2, Trophy, Loader2, MapPin, Trash2, RefreshCw, Pencil } from 'lucide-react';
 
 interface Poi {
@@ -45,6 +46,7 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [routeStatus, setRouteStatus] = useState<string>('DRAFT');
   const [finalQuiz, setFinalQuiz] = useState<any>(null);
+  const [isTranslatingFinalQuiz, setIsTranslatingFinalQuiz] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -110,6 +112,28 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
     }
   }
 
+  async function handleTranslateFinalQuiz() {
+    if (!finalQuiz) return;
+    setIsTranslatingFinalQuiz(true);
+    try {
+      const res = await translateQuizAction(finalQuiz);
+      if (res.success && res.translations) {
+        const updatedQuiz = { ...finalQuiz, translations: res.translations };
+        const updateRes = await updateRouteFinalQuizAction(routeId, updatedQuiz);
+        if (updateRes.success) {
+          setFinalQuiz(updatedQuiz);
+        } else {
+          alert('Error desant la traducció: ' + updateRes.error);
+        }
+      } else {
+        alert('Error en la traducció: ' + res.error);
+      }
+    } catch (e: any) {
+      alert('Error de connexió en la traducció');
+    } finally {
+      setIsTranslatingFinalQuiz(false);
+    }
+  }
 
   return (
     <div className="bg-stone-50 border border-stone-200 rounded-xl shadow-inner p-6 space-y-6 animate-in slide-in-from-bottom-4 duration-300">
@@ -201,6 +225,24 @@ export default function RoutePoiManager({ routeId, routeName, onClose, onEditPoi
               </div>
             </>
           )}
+
+          <div className="pt-2 mt-2 border-t border-stone-200">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isTranslatingFinalQuiz}
+              onClick={handleTranslateFinalQuiz}
+              className="w-full text-xs bg-stone-50 border-stone-300 text-stone-600 hover:bg-white hover:text-primary transition-all"
+            >
+              {isTranslatingFinalQuiz ? (
+                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+              ) : (
+                <Trophy className="w-3 h-3 mr-2 text-amber-500" />
+              )}
+              {isTranslatingFinalQuiz ? 'Traduint...' : (finalQuiz.translations?.es ? '✓ Repte Final Traduït' : 'Tradueix Repte Final (IA)')}
+            </Button>
+          </div>
         </div>
       )}
 
