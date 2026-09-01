@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
         ...poi,
         title: getTranslation(poi.title, poi.titleTranslations as any, lang),
         description: getTranslation(poi.description, poi.descriptionTranslations as any, lang),
-        quiz_question: getTranslation(poi.textContent, poi.textContent as any, lang), // El model legacy guardava la pregunta en textContent o similar
+        quiz_question: getTranslation(poi.textContent, (poi as any).textContentTranslations, lang), // El model legacy guardava la pregunta en textContent o similar
         manualQuiz: localizedQuiz,
       };
     });

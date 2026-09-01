@@ -80,7 +80,25 @@ export async function GET(request: NextRequest) {
 
     // 3. Adaptem el format per al frontend i apliquem i18n
     const formattedData = routes.map((route) => {
-      const pois = route.routePois.map(rp => rp.poi);
+      const pois = route.routePois.map(rp => {
+        const poi = rp.poi;
+        let localizedQuiz = poi.manualQuiz;
+        if (lang !== 'ca' && poi.manualQuiz && (poi.manualQuiz as any).translations && (poi.manualQuiz as any).translations[lang]) {
+            localizedQuiz = {
+                ...(poi.manualQuiz as any),
+                ...(poi.manualQuiz as any).translations[lang]
+            };
+            delete (localizedQuiz as any).translations;
+        }
+
+        return {
+          ...poi,
+          title: getTranslation(poi.title, (poi as any).titleTranslations, lang),
+          description: getTranslation(poi.description, (poi as any).descriptionTranslations, lang),
+          quiz_question: getTranslation(poi.textContent, (poi as any).textContentTranslations, lang),
+          manualQuiz: localizedQuiz,
+        };
+      });
       
       let localizedFinalQuiz = route.finalQuiz;
       if (lang !== 'ca' && route.finalQuiz && (route.finalQuiz as any).translations && (route.finalQuiz as any).translations[lang]) {
