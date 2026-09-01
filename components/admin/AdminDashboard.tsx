@@ -658,7 +658,9 @@ export default function AdminDashboard({
                         <VideoUploader 
                           poiId={editingPoi?.id || editingLegend?.id} 
                           theme={adminTheme} 
-                          existingVideos={[]} 
+                          existingVideos={editingPoi?.videoUrls || editingPoi?.video_urls || []}
+                          videoTranslations={editingPoi?.videoTranslations || editingPoi?.video_translations || {}}
+                          defaultVoiceId={editingPoi?.voiceId || editingPoi?.voice_id || 'nova'}
                         />
                       </div>
                     )}
