@@ -294,7 +294,7 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
                             <p className="text-[11px] text-stone-400 italic mt-1">Sense comentari escrit</p>
                           )}
                           <p className="text-[10px] text-stone-400 text-right mt-1.5">
-                            {new Date(rev.completedAt).toLocaleString()}
+                            {formatEuropeanDate(rev.completedAt)}
                           </p>
                         </div>
                       ))}
@@ -319,7 +319,7 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
                           <div>
                             <h4 className="font-medium text-stone-800 text-sm">{visit.poi?.title || 'POI Desconegut'}</h4>
                             <p className="text-xs text-stone-500 mt-0.5">
-                              {new Date(visit.entryTime).toLocaleString()}
+                              {formatEuropeanDate(visit.entryTime)}
                             </p>
                           </div>
                           <div className="text-right flex flex-col items-end gap-1">
