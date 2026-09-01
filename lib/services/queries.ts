@@ -109,7 +109,7 @@ export async function getRouteWithPois(routeId: string) {
 export async function getAllProfiles() {
   noStore();
   try {
-    return await prisma.user.findMany({
+    const rawUsers = await prisma.user.findMany({
       select: {
         id: true,
         username: true,
@@ -122,6 +122,27 @@ export async function getAllProfiles() {
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    // Deduplicar en memòria per email normalitzat
+    const seenEmails = new Set<string>();
+    const uniqueUsers = [];
+
+    for (const u of rawUsers) {
+      const cleanEmail = (u.email || '').toLowerCase().trim();
+      if (!cleanEmail) {
+        uniqueUsers.push(u);
+        continue;
+      }
+      if (!seenEmails.has(cleanEmail)) {
+        seenEmails.add(cleanEmail);
+        uniqueUsers.push({
+          ...u,
+          email: cleanEmail
+        });
+      }
+    }
+
+    return uniqueUsers;
   } catch (err) {
     console.error(" [Error in getAllProfiles]:", err);
     return [];

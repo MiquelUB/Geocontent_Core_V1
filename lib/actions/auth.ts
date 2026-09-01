@@ -156,28 +156,40 @@ export async function loginOrRegister(
       select: { id: true }
     });
 
-    // 4. Upsert amb resposta uniforme (evitar enumeració d'usuaris)
-    const user = await prisma.user.upsert({
-      where: { email: emailParse.data },
-      update: { 
-        username: nameParse.data,
-        emailConsent: emailConsent,
-        termsAcceptedAt: new Date(),
-        lastLoginAt: new Date()
-      },
-      create: {
-        email: emailParse.data,
-        username: nameParse.data,
-        role: 'TOURIST',
-        xp: 0,
-        level: 1,
-        municipalityId: defaultMunicipality?.id || null,
-        emailConsent: emailConsent,
-        termsAcceptedAt: new Date(),
-        lastLoginAt: new Date()
-      },
-      select: { id: true, email: true, role: true, username: true, municipalityId: true, emailConsent: true, lastLoginAt: true } // NO retornar password_hash ni camps interns
+    // 4. Cerca insensible a majúscules per evitar qualsevol duplicat
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: emailParse.data, mode: 'insensitive' } }
     });
+
+    let user;
+    if (existing) {
+      user = await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          email: emailParse.data,
+          username: nameParse.data,
+          emailConsent: emailConsent,
+          termsAcceptedAt: new Date(),
+          lastLoginAt: new Date()
+        },
+        select: { id: true, email: true, role: true, username: true, municipalityId: true, emailConsent: true, lastLoginAt: true }
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email: emailParse.data,
+          username: nameParse.data,
+          role: 'TOURIST',
+          xp: 0,
+          level: 1,
+          municipalityId: defaultMunicipality?.id || null,
+          emailConsent: emailConsent,
+          termsAcceptedAt: new Date(),
+          lastLoginAt: new Date()
+        },
+        select: { id: true, email: true, role: true, username: true, municipalityId: true, emailConsent: true, lastLoginAt: true }
+      });
+    }
 
     return { success: true, user };
   } catch (err: any) {
