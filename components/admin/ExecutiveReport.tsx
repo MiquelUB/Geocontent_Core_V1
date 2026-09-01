@@ -162,7 +162,6 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
         ratingStats: { average: 0, totalCount: 0, details: [] }
     };
     const routeCompletions = data.routeCompletions || [];
-    const aiInsights = data.aiInsights || "No hi ha conclusions disponibles.";
     const heatmap = data.heatmap || [];
     const municipalityPois = data.pois || [];
 
@@ -446,7 +445,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* 2. CHART: Route Completions */}
-                <Card className="lg:col-span-2">
+                <Card className="lg:col-span-3">
                     <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                             <span>Èxit per Ruta</span>
@@ -459,7 +458,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                                 <BarChart data={routeCompletions} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                                     <XAxis type="number" hide />
-                                    <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 11 }} />
+                                    <YAxis dataKey="name" type="category" width={180} tick={{ fontSize: 12 }} />
                                     <Tooltip
                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         cursor={{ fill: 'transparent' }}
@@ -476,39 +475,6 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                                 Encara no hi ha rutes completades per mostrar al rànquing.
                             </div>
                         )}
-                    </CardContent>
-                </Card>
-
-                {/* 3. RETENTION / ABANDONMENT */}
-                <Card className={`${activeTheme.bgSoft} border-${activeTheme.border.split('-')[1]}-200`}>
-                    <CardHeader>
-                        <CardTitle className={`flex items-center gap-2 font-serif ${activeTheme.text}`}>
-                            <Sparkles className="w-5 h-5 animate-pulse" />
-                            Insights d'IA Territorial
-                            <Badge variant="outline" className={`border-${activeTheme.text.split('[')[1].split(']')[0]}/30 ${activeTheme.text} text-[10px]`}>ANÀLISI BIOMA</Badge>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-xs font-bold">
-                                <span className="text-stone-600">TAXA D'ABANDONAMENT</span>
-                                <span className={metrics.abandonmentRate.value > 40 ? "text-red-500" : "text-green-600"}>{metrics.abandonmentRate.value}%</span>
-                            </div>
-                            <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden">
-                                <div
-                                    className={`${metrics.abandonmentRate.value > 40 ? "bg-red-400" : "bg-green-500"} h-full`}
-                                    style={{ width: `${Math.min(100, metrics.abandonmentRate.value)}%` }}
-                                />
-                            </div>
-                            <p className="text-[10px] text-stone-400">Visitants que inicien però no segellen el passaport final.</p>
-                        </div>
-
-                        <div className="pt-4 border-t border-stone-200/50">
-                            <h4 className="text-xs font-bold text-stone-700 mb-2 uppercase tracking-wider">Conclusions de l'Assistent</h4>
-                            <p className={`text-sm ${activeTheme.text} leading-relaxed italic`}>
-                                "{aiInsights}"
-                            </p>
-                        </div>
                     </CardContent>
                 </Card>
 
