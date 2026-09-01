@@ -233,7 +233,7 @@ async def process_tts_job(ctx, poi_id: str, voice_id: str):
 async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_id: str = None):
     print(f"[Worker] Traduint vídeo per al POI {poi_id} ({video_url}) amb veu {voice_id}...")
     try:
-        from video_translation import translate_video_pipeline
+        from video_translation import translate_video_pipeline, optimize_video_job
         translated_urls = await translate_video_pipeline(video_url, poi_id, voice_id)
         
         pool = ctx['db_pool']
@@ -372,6 +372,11 @@ async def outbox_poller(ctx):
                         voice_id = payload.get('voiceId', 'nova')
                         if poi_id and video_url:
                             await redis.enqueue_job('process_video_translation_job', poi_id, video_url, voice_id)
+                    elif topic == 'video-processing':
+                        poi_id = payload.get('poiId')
+                        public_url = payload.get('publicUrl')
+                        if poi_id and public_url:
+                            await redis.enqueue_job('optimize_video_job', poi_id, public_url)
                     else:
                         print(f"[Worker] Topic desconegut: {topic}")
                         
@@ -424,7 +429,8 @@ class WorkerSettings:
             conn_retry_delay=2,
         )
     
-    functions = [process_hls_video, process_tts_job, process_video_translation_job]
+    from video_translation import optimize_video_job
+    functions = [process_hls_video, process_tts_job, process_video_translation_job, optimize_video_job]
     on_startup = startup
     on_shutdown = shutdown
     

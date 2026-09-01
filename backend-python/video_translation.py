@@ -127,7 +127,9 @@ async def merge_audio_video(video_path: str, audio_path: str, output_path: str, 
         "-filter_complex", f"[1:a]adelay={delay}|{delay}[a]",
         "-map", "0:v:0",
         "-map", "[a]",
-        "-c:v", "copy",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "28",
         "-c:a", "aac",
         "-movflags", "+faststart",
         "-threads", "2",
@@ -237,3 +239,91 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
         for f in os.listdir(temp_dir):
             os.remove(os.path.join(temp_dir, f))
         os.rmdir(temp_dir)
+import os
+import tempfile
+import subprocess
+import httpx
+import uuid
+from routers.audio import upload_to_s3
+from routers.s3 import get_s3_client
+from urllib.parse import urlparse
+
+async def optimize_video_job(ctx, poi_id: str, public_url: str):
+    print(f"[Worker] Iniciant optimització de vídeo per al POI {poi_id}: {public_url}")
+    temp_dir = tempfile.mkdtemp(prefix=f"opt_{poi_id}_")
+    
+    try:
+        # Download the original video
+        parsed_url = urlparse(public_url)
+        ext = os.path.splitext(parsed_url.path)[1]
+        if not ext:
+            ext = ".mp4"
+            
+        input_path = os.path.join(temp_dir, f"input{ext}")
+        
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(public_url, timeout=300)
+            resp.raise_for_status()
+            with open(input_path, 'wb') as f:
+                f.write(resp.content)
+                
+        output_path = os.path.join(temp_dir, "optimized.mp4")
+        
+        # Optimize using ffmpeg
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "28",
+            "-c:a", "aac",
+            "-movflags", "+faststart",
+            "-threads", "2",
+            output_path
+        ]
+        
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if proc.returncode != 0:
+            print(f"[Worker] Error optimitzant vídeo: {proc.stderr.decode()}")
+            raise Exception("FFmpeg optimization failed")
+            
+        # Upload the optimized video
+        s3_client = get_s3_client()
+        bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
+        region = os.getenv("S3_REGION", "eu-north-1")
+        
+        unique_id = str(uuid.uuid4())[:8]
+        key = f"media/pois/{poi_id}/video/optimized_{unique_id}.mp4"
+        
+        print(f"[Worker] Pujant vídeo optimitzat a {key}...")
+        with open(output_path, 'rb') as f:
+            s3_client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=f,
+                ContentType="video/mp4",
+                Tagging=f"TenantID=default&Type=video/mp4"
+            )
+            
+        optimized_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
+        
+        # Update PostgreSQL
+        pool = ctx['db_pool']
+        async with pool.acquire() as conn:
+            # Get current videoUrls
+            row = await conn.fetchrow("SELECT video_urls FROM pois WHERE id = $1", poi_id)
+            if row and row['video_urls']:
+                urls = row['video_urls']
+                new_urls = [optimized_url if u == public_url else u for u in urls]
+                await conn.execute("UPDATE pois SET video_urls = $1 WHERE id = $2", new_urls, poi_id)
+                print(f"[Worker] POI {poi_id} actualitzat amb URL optimitzada: {optimized_url}")
+                
+        return True
+        
+    except Exception as e:
+        print(f"[Worker] Error en optimize_video_job: {e}")
+        raise e
+    finally:
+        import shutil
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
