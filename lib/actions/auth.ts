@@ -162,7 +162,8 @@ export async function loginOrRegister(
       update: { 
         username: nameParse.data,
         emailConsent: emailConsent,
-        termsAcceptedAt: new Date()
+        termsAcceptedAt: new Date(),
+        lastLoginAt: new Date()
       },
       create: {
         email: emailParse.data,
@@ -172,9 +173,10 @@ export async function loginOrRegister(
         level: 1,
         municipalityId: defaultMunicipality?.id || null,
         emailConsent: emailConsent,
-        termsAcceptedAt: new Date()
+        termsAcceptedAt: new Date(),
+        lastLoginAt: new Date()
       },
-      select: { id: true, email: true, role: true, username: true, municipalityId: true, emailConsent: true } // NO retornar password_hash ni camps interns
+      select: { id: true, email: true, role: true, username: true, municipalityId: true, emailConsent: true, lastLoginAt: true } // NO retornar password_hash ni camps interns
     });
 
     return { success: true, user };

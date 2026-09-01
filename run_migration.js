@@ -50,6 +50,7 @@ async function run() {
         await client.$executeRawUnsafe('ALTER TABLE "pois" ADD COLUMN IF NOT EXISTS "voice_script" TEXT;');
         await client.$executeRawUnsafe('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_consent" BOOLEAN DEFAULT true;');
         await client.$executeRawUnsafe('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "terms_accepted_at" TIMESTAMP WITH TIME ZONE;');
+        await client.$executeRawUnsafe('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "last_login_at" TIMESTAMP WITH TIME ZONE;');
         await client.$executeRawUnsafe('ALTER TABLE "municipalities" ADD COLUMN IF NOT EXISTS "voice_persona" TEXT DEFAULT \'Persona gran, veu càlida, serena i amb experiència patrimonial\';');
         await client.$executeRawUnsafe('ALTER TABLE "pois" ADD COLUMN IF NOT EXISTS "video_translations" JSONB DEFAULT \'{}\';');
         await client.$executeRawUnsafe('ALTER TABLE "pois" ADD COLUMN IF NOT EXISTS "voice_id" TEXT;');

@@ -118,6 +118,7 @@ export async function getAllProfiles() {
         role: true,
         level: true,
         createdAt: true,
+        lastLoginAt: true,
       },
       orderBy: { createdAt: 'desc' }
     });

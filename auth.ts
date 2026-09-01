@@ -113,6 +113,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return null;
           }
 
+          // Record last login timestamp
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() }
+          }).catch(err => console.warn("[Admin Login] Could not update lastLoginAt:", err));
+
           return {
             id: user.id,
             email: user.email,

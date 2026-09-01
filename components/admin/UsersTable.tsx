@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getUserVisits, getUserRouteReviews } from "@/lib/actions/gamification";
-import { Download as DownloadIcon, Star, MapPin, MessageSquare } from "lucide-react";
+import { Download as DownloadIcon, Star, MapPin, MessageSquare, Calendar, X } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -14,7 +15,9 @@ interface UserProfile {
   email: string | null;
   role: string;
   level: number;
-  created_at: string;
+  created_at?: string;
+  createdAt?: string;
+  lastLoginAt?: string | null;
 }
 
 interface Visit {
@@ -33,6 +36,22 @@ interface RouteReview {
   completedAt: string;
 }
 
+function formatEuropeanDate(dateStr?: string | Date | null): string {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  } catch {
+    return '—';
+  }
+}
+
 export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }) {
   const activeTheme = theme || {
     hex: "#2D4636",
@@ -47,6 +66,35 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
   const [reviews, setReviews] = useState<RouteReview[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Filtre de període de dates
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+
+  const filteredProfiles = (profiles || []).filter((p) => {
+    if (!startDate && !endDate) return true;
+
+    const userDateStr = p.lastLoginAt || p.createdAt || p.created_at;
+    if (!userDateStr) return false;
+
+    const userDate = new Date(userDateStr);
+    if (isNaN(userDate.getTime())) return false;
+
+    const y = userDate.getFullYear();
+    const m = String(userDate.getMonth() + 1).padStart(2, '0');
+    const d = String(userDate.getDate()).padStart(2, '0');
+    const userDateKey = `${y}-${m}-${d}`;
+
+    if (startDate && userDateKey < startDate) return false;
+    if (endDate && userDateKey > endDate) return false;
+
+    return true;
+  });
+
+  const handleClearFilter = () => {
+    setStartDate('');
+    setEndDate('');
+  };
 
   const handleUserClick = async (user: any) => {
     setSelectedUser(user);
@@ -70,13 +118,13 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
   };
 
   const handleExportCSV = () => {
-    if (!profiles || profiles.length === 0) return;
+    if (!filteredProfiles || filteredProfiles.length === 0) return;
 
-    // CSV Header
-    const headers = ["Usuari", "Email"];
+    // CSV Header (només Nom i Email)
+    const headers = ["Nom", "Email"];
 
     // CSV Rows
-    const rows = profiles.map(p => [
+    const rows = filteredProfiles.map(p => [
       `"${(p.username || 'Anonim').replace(/"/g, '""')}"`,
       `"${(p.email || '').replace(/"/g, '""')}"`
     ]);
@@ -88,7 +136,8 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `usuaris_geocontent_${new Date().toISOString().split('T')[0]}.csv`);
+    const dateSuffix = startDate || endDate ? `_${startDate || 'inici'}_a_${endDate || 'avui'}` : `_${new Date().toISOString().split('T')[0]}`;
+    link.setAttribute("download", `usuaris${dateSuffix}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -97,31 +146,76 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
 
   return (
     <Card className="border-stone-200 shadow-sm bg-white">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="font-serif text-xl text-stone-800">Directori d'Usuaris</CardTitle>
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4">
+        <div>
+          <CardTitle className="font-serif text-xl text-stone-800">Directori d'Usuaris</CardTitle>
+          <p className="text-xs text-stone-500 mt-1">
+            Total: {profiles?.length || 0} usuaris {filteredProfiles.length !== (profiles?.length || 0) && `(Filtrats: ${filteredProfiles.length})`}
+          </p>
+        </div>
         <Button
           variant="outline"
           size="sm"
           onClick={handleExportCSV}
+          disabled={filteredProfiles.length === 0}
           className={`flex items-center gap-2 border-stone-200 transition-all hover:shadow-md ${activeTheme.text}`}
         >
           <DownloadIcon className="w-4 h-4" />
-          Exportar CSV
+          Exportar CSV ({filteredProfiles.length})
         </Button>
       </CardHeader>
-      <CardContent>
+
+      {/* Selector de Període de Dates */}
+      <div className="px-6 py-3 bg-stone-50/80 border-y border-stone-200 flex flex-wrap items-center gap-4 text-xs">
+        <div className="flex items-center gap-1.5 font-medium text-stone-700">
+          <Calendar className="w-4 h-4 text-stone-500" />
+          <span>Consultar per període:</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-stone-500 font-medium">Des de:</label>
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="h-8 w-36 bg-white text-xs text-stone-800 border-stone-300"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-stone-500 font-medium">Fins a:</label>
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="h-8 w-36 bg-white text-xs text-stone-800 border-stone-300"
+          />
+        </div>
+        {(startDate || endDate) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearFilter}
+            className="h-8 px-2 text-xs text-stone-500 hover:text-stone-800 hover:bg-stone-200/60"
+          >
+            <X className="w-3.5 h-3.5 mr-1" />
+            Netejar filtre
+          </Button>
+        )}
+      </div>
+
+      <CardContent className="pt-6">
         <div className="rounded-md border border-stone-200">
           <Table>
             <TableHeader className="border-b" style={{ backgroundColor: `${activeTheme.hex}15` }}>
               <TableRow>
                 <TableHead className="font-serif text-stone-700">Usuari</TableHead>
                 <TableHead className="font-serif text-stone-700">Email</TableHead>
+                <TableHead className="font-serif text-stone-700">Últim Login</TableHead>
                 <TableHead className="font-serif text-stone-700">Nivell</TableHead>
                 <TableHead className="font-serif text-stone-700 text-right">Accions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles?.map((profile) => (
+              {filteredProfiles?.map((profile) => (
                 <TableRow key={profile.id} className="hover:bg-stone-50/50 cursor-pointer" onClick={() => handleUserClick(profile)}>
                   <TableCell className="font-medium text-stone-800">
                     <div className="flex items-center gap-2">
@@ -132,6 +226,9 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
                     </div>
                   </TableCell>
                   <TableCell className="text-stone-600">{profile.email || '-'}</TableCell>
+                  <TableCell className="text-stone-600 text-xs font-mono">
+                    {formatEuropeanDate(profile.lastLoginAt || profile.createdAt || profile.created_at)}
+                  </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-800">
                       Lvl {profile.level || 1}
@@ -144,10 +241,10 @@ export function UsersTable({ profiles, theme }: { profiles: any[], theme?: any }
                   </TableCell>
                 </TableRow>
               ))}
-              {(!profiles || profiles.length === 0) && (
+              {(!filteredProfiles || filteredProfiles.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center text-stone-500">
-                    No s'han trobat usuaris.
+                  <TableCell colSpan={5} className="h-24 text-center text-stone-500">
+                    No s'han trobat usuaris per al període seleccionat.
                   </TableCell>
                 </TableRow>
               )}
