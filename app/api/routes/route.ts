@@ -3,6 +3,9 @@ import { prisma } from "@/lib/database/prisma";
 import { withCors, handleOptions } from "@/lib/api/cors";
 import { rateLimit } from "@/lib/services/ratelimit";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function OPTIONS(request: NextRequest) {
   return handleOptions(request);
 }

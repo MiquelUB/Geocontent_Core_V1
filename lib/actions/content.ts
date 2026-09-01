@@ -916,6 +916,8 @@ export async function updatePoiQuizAction(id: string, manualQuiz: any) {
       where: { id },
       data: { manualQuiz }
     });
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
