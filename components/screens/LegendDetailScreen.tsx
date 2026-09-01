@@ -76,6 +76,22 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   const lat = legend?.latitude ?? legend?.coordinates?.lat ?? 0;
   const lng = legend?.longitude ?? legend?.coordinates?.lng ?? 0;
 
+  const unpackQuiz = (quizObj: any, loc: string) => {
+    if (!quizObj) return null;
+    let q = quizObj;
+    if (typeof q === 'string') {
+      try { q = JSON.parse(q); } catch (e) { return null; }
+    }
+    if (!q || typeof q !== 'object') return null;
+    if (loc !== 'ca' && q.translations && q.translations[loc]) {
+      return {
+        ...q,
+        ...q.translations[loc]
+      };
+    }
+    return q;
+  };
+
   // Fallback for missing legend data with localization
   const safeLegend = {
     ...legend,
@@ -125,7 +141,14 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
       return url;
     }),
     audioUrl: getLocalizedContent(legend, 'audio', locale) || legend?.audioUrl || legend?.audio || legend?.audio_url, 
-    manualQuiz: legend?.manualQuiz,
+    manualQuiz: unpackQuiz(legend?.manualQuiz || legend?.manual_quiz, locale),
+    finalQuiz: unpackQuiz(legend?.finalQuiz || legend?.final_quiz, locale),
+    pois: (legend?.pois || []).map((p: any) => ({
+      ...p,
+      title: getLocalizedContent(p, 'title', locale) || p.title,
+      description: getLocalizedContent(p, 'description', locale) || p.description,
+      manualQuiz: unpackQuiz(p?.manualQuiz || p?.manual_quiz, locale),
+    })),
     userUnlocks: legend?.userUnlocks || [],
     routeName: getLocalizedContent(legend, 'route_name', locale) || getLocalizedContent(legend, 'name', locale) || legend?.routeName
   };

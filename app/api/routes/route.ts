@@ -72,9 +72,7 @@ export async function GET(request: NextRequest) {
         routePois: {
           orderBy: { orderIndex: 'asc' },
           include: {
-            poi: {
-              select: { id: true, title: true, icon: true }
-            }
+            poi: true
           }
         }
       },
@@ -98,12 +96,15 @@ export async function GET(request: NextRequest) {
           ...poi,
           title: getTranslation(poi.title, (poi as any).titleTranslations, lang),
           description: getTranslation(poi.description, (poi as any).descriptionTranslations, lang),
+          textContent: getTranslation(poi.textContent, (poi as any).textContentTranslations, lang),
+          audioUrl: getAudioTranslation(poi.audioUrl, (poi as any).audioTranslations, lang),
+          videoUrls: getVideoTranslations(poi.videoUrls, (poi as any).videoTranslations, lang),
           quiz_question: getTranslation(poi.textContent, (poi as any).textContentTranslations, lang),
           manualQuiz: localizedQuiz,
         };
       });
       
-      let localizedFinalQuiz = route.finalQuiz;
+      let localizedFinalQuiz: any = route.finalQuiz;
       if (lang !== 'ca' && route.finalQuiz && (route.finalQuiz as any).translations && (route.finalQuiz as any).translations[lang]) {
           localizedFinalQuiz = {
               ...(route.finalQuiz as any),
@@ -137,4 +138,56 @@ function getTranslation(
   if (lang === "ca") return original;
   if (translations && translations[lang]) return translations[lang];
   return original;
+}
+
+function getAudioTranslation(
+  original: string | null,
+  translations: Record<string, string> | null,
+  lang: string
+): string | null {
+  if (!original) return null;
+  if (lang === "ca" || !translations) return original;
+  if (typeof translations === "object" && translations[lang]) {
+    return translations[lang];
+  }
+  return original;
+}
+
+function getVideoTranslations(
+  originalUrls: string[] | null,
+  videoTranslations: Record<string, any> | null,
+  lang: string
+): string[] {
+  if (!originalUrls || originalUrls.length === 0) return [];
+  if (lang === "ca" || !videoTranslations) return originalUrls;
+  
+  let vTrans = videoTranslations;
+  if (typeof vTrans === 'string') {
+    try { vTrans = JSON.parse(vTrans); } catch (e) { return originalUrls; }
+  }
+  if (!vTrans || typeof vTrans !== 'object') return originalUrls;
+
+  return originalUrls.map((url) => {
+    let trans = vTrans[url];
+    if (!trans && url) {
+      const urlClean = decodeURIComponent(url.split('?')[0].split('/').pop() || '');
+      for (const key of Object.keys(vTrans)) {
+        const keyClean = decodeURIComponent(key.split('?')[0].split('/').pop() || '');
+        if (key === url || (urlClean && keyClean && urlClean === keyClean)) {
+          trans = vTrans[key];
+          break;
+        }
+      }
+    }
+    if (!trans && Object.keys(vTrans).length === 1 && typeof Object.values(vTrans)[0] === 'object') {
+      trans = Object.values(vTrans)[0];
+    }
+    if (trans && typeof trans === 'object' && trans[lang]) {
+      const tUrl = trans[lang];
+      if (typeof tUrl === 'string' && tUrl.startsWith('http') && !tUrl.includes('/ERROR')) {
+        return tUrl;
+      }
+    }
+    return url;
+  });
 }
