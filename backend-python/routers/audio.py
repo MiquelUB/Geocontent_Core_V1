@@ -57,7 +57,6 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
     uploaded = False
     last_err = None
 
-    # Strategy 1: Plain PutObject
     try:
         with open(file_path, 'rb') as f:
             s3_client.put_object(
@@ -65,27 +64,12 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                 Key=key,
                 Body=f,
                 ContentType=content_type,
+                Tagging=tagging,
             )
         uploaded = True
     except Exception as e:
         last_err = e
-        print(f"[S3 Upload] Plain PutObject failed for {key}: {e}. Retrying with Tagging...")
-
-    # Strategy 2: PutObject with Tagging
-    if not uploaded:
-        try:
-            with open(file_path, 'rb') as f:
-                s3_client.put_object(
-                    Bucket=bucket,
-                    Key=key,
-                    Body=f,
-                    ContentType=content_type,
-                    Tagging=tagging,
-                )
-            uploaded = True
-        except Exception as e:
-            last_err = e
-            print(f"[S3 Upload] PutObject with Tagging failed for {key}: {e}.")
+        print(f"[S3 Upload] PutObject with Tagging failed for {key}: {e}.")
 
     if not uploaded:
         raise last_err
