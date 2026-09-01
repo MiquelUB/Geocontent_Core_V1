@@ -8,8 +8,8 @@ import asyncio
 from routers.audio import upload_to_s3
 from routers.s3 import get_s3_client
 
-async def transcribe_audio_openrouter(audio_path: str) -> str:
-    """Uses OpenRouter's /api/v1/audio/transcriptions endpoint (OpenAI Whisper compatible)."""
+async def transcribe_audio_openrouter(audio_path: str) -> tuple[str, float]:
+    """Uses OpenRouter's /api/v1/audio/transcriptions endpoint (OpenAI Whisper compatible). Returns (text, start_time_ms)"""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY is not set.")
@@ -30,15 +30,31 @@ async def transcribe_audio_openrouter(audio_path: str) -> str:
     with open(audio_path, 'rb') as audio_file:
         transcription = await client.audio.transcriptions.create(
             model="openai/whisper-1",
-            file=audio_file
+            file=audio_file,
+            response_format="verbose_json",
+            timestamp_granularities=["segment"]
         )
-        # By default it returns an object with a .text property
+        
+        start_time_ms = 0.0
+        text = ""
+        
+        if hasattr(transcription, 'segments') and transcription.segments:
+            # Trobar el primer segment que probablement conté veu (per evitar al·lucinacions inicials)
+            for seg in transcription.segments:
+                # no_speech_prob pot no venir sempre depenent de l'API, per defecte 0
+                no_speech = getattr(seg, 'no_speech_prob', 0.0)
+                if no_speech < 0.6:
+                    start_time_ms = seg.start * 1000
+                    break
+        
         if isinstance(transcription, str):
-            return transcription
+            text = transcription
         elif hasattr(transcription, 'text'):
-            return transcription.text
+            text = transcription.text
         else:
-            return str(transcription)
+            text = str(transcription)
+            
+        return text, start_time_ms
 
 async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
     """Translates text using OpenRouter Chat Completions."""
@@ -100,19 +116,20 @@ async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> 
     await communicate.save(temp_path)
     return temp_path
 
-async def merge_audio_video(video_path: str, audio_path: str, output_path: str):
-    """Replaces the audio track of the video with the new audio track using FFmpeg."""
-    print(f"[Video Translator] Merging new audio with original video...")
+async def merge_audio_video(video_path: str, audio_path: str, output_path: str, start_delay_ms: float = 0):
+    """Replaces the audio track of the video with the new audio track using FFmpeg, delaying audio if needed."""
+    print(f"[Video Translator] Merging new audio with original video (delay: {start_delay_ms}ms)...")
+    delay = int(start_delay_ms)
     cmd = [
         "ffmpeg", "-y",
         "-i", video_path,
         "-i", audio_path,
+        "-filter_complex", f"[1:a]adelay={delay}|{delay}[a]",
         "-map", "0:v:0",
-        "-map", "1:a:0",
+        "-map", "[a]",
         "-c:v", "copy",
         "-c:a", "aac",
         "-movflags", "+faststart",
-        "-shortest",
         "-threads", "1",
         output_path
     ]
@@ -173,8 +190,8 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
             raise Exception(f"FFmpeg audio extraction failed with code {ext_proc.returncode}")
 
         # 3. Transcribe
-        transcribed_text = await transcribe_audio_openrouter(orig_audio_path)
-        print(f"[Video Translator] Transcription: {transcribed_text[:50]}...")
+        transcribed_text, start_time_ms = await transcribe_audio_openrouter(orig_audio_path)
+        print(f"[Video Translator] Transcription: {transcribed_text[:50]}... (starts at {start_time_ms}ms)")
 
         # Process each locale
         locales = ['es', 'en', 'fr']
@@ -197,7 +214,7 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
                 tts_audio_path = await generate_local_tts(translated_text, locale=loc, voice_id=voice_id)
 
                 # 6. Merge
-                await merge_audio_video(orig_video_path, tts_audio_path, final_video_path)
+                await merge_audio_video(orig_video_path, tts_audio_path, final_video_path, start_time_ms)
                 
                 # 7. Upload to S3 (usa el bucket configurat a l'entorn d'Easypanel)
                 bucket = os.getenv("S3_BUCKET", "pxx-core-v2-temporal")

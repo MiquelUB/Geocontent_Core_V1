@@ -279,7 +279,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
 
   const handleAddVideoSlot = () => {
     if (videoSlots.length < MAX_VIDEO_SLOTS) {
-      setVideoSlots([...videoSlots, { url: '', file: null, mode: 'url', voiceId: voiceId || 'nova' }]);
+      setVideoSlots([...videoSlots, { url: '', file: null, mode: 'url' }]);
     }
   };
 
