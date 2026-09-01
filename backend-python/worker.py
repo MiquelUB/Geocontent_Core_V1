@@ -253,7 +253,14 @@ async def process_video_translation_job(ctx, poi_id: str, video_url: str, voice_
                     current_video[video_url] = {}
                     
                 # Ensure we don't wipe out existing translations if they exist and are valid
+                import time
+                timestamp = int(time.time())
                 for loc, url in translated_urls.items():
+                    if url and url != "ERROR":
+                        if "?" in url:
+                            url = f"{url}&v={timestamp}"
+                        else:
+                            url = f"{url}?v={timestamp}"
                     current_video[video_url][loc] = url
                     
                 await conn.execute(

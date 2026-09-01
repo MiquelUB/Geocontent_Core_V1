@@ -33,5 +33,7 @@ async def trigger_video_translate(req: Request, payload: VideoTranslationRequest
     arq_pool = req.app.state.arq_pool
     if not arq_pool:
         return {"success": False, "message": "ARQ Pool is not initialized (Redis connection failed)"}
+        
+    print(f"[OmniVoice] Received video translate request for {payload.poi_id} with voice: '{payload.voice_id}'")
     await arq_pool.enqueue_job('process_video_translation_job', payload.poi_id, payload.video_url, payload.voice_id)
     return {"success": True, "message": "Video translation job enqueued"}
