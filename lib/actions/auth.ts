@@ -112,6 +112,12 @@ export async function verifyAdminPassword(municipalityId: string, password: stri
       isValid = password === muni.adminMasterPassword;
     }
 
+    if (!isValid) {
+      if (process.env.SUPER_ADMIN_PASSWORD && password === process.env.SUPER_ADMIN_PASSWORD) {
+        isValid = true;
+      }
+    }
+
     if (!isValid) return { success: false, error: "Invalid password" };
 
     return { success: true };
@@ -200,16 +206,21 @@ export async function loginOrRegister(
 
 // --- Gestió d'Usuaris Administradors (Capa 1) ---
 
+function isUserSuperAdmin(session: any): boolean {
+  if (!session?.user) return false;
+  return session.user.role === 'SUPER_ADMIN' || session.user.email === 'mistic_master' || session.user.username === 'mistic_master';
+}
+
 export async function getAdminUsers() {
   const session = await auth();
-  if (!session || (session.user as any).email !== 'mistic_master') {
+  if (!session || !isUserSuperAdmin(session)) {
     return { success: false, error: "Accés denegat: Només el Super Admin pot llistar gestors." };
   }
 
   try {
     const users = await prisma.user.findMany({
       where: { role: 'ADMIN' },
-      select: { id: true, username: true, email: true, createdAt: true }
+      select: { id: true, username: true, email: true, role: true, createdAt: true }
     });
     return { success: true, users };
   } catch (err: any) {
@@ -220,11 +231,11 @@ export async function getAdminUsers() {
 
 export async function createAdminUser(name: string, email: string, pass: string) {
   const session = await auth();
-  if (!session || (session.user as any).email !== 'mistic_master') {
+  if (!session || !isUserSuperAdmin(session)) {
     return { success: false, error: "Accés denegat: Només el Super Admin pot crear gestors." };
   }
 
-  const rl = await rateLimit(`createAdmin:${(session.user as any).email}`, 10, 3600);
+  const rl = await rateLimit(`createAdmin:${(session.user as any).email || session.user.id}`, 10, 3600);
   if (!rl.success) return { success: false, error: "Massa peticions de creació." };
 
   try {
@@ -256,7 +267,7 @@ export async function createAdminUser(name: string, email: string, pass: string)
 
 export async function deleteAdminUser(userId: string) {
   const session = await auth();
-  if (!session || (session.user as any).email !== 'mistic_master') {
+  if (!session || !isUserSuperAdmin(session)) {
     return { success: false, error: "Accés denegat: Només el Super Admin pot esborrar gestors." };
   }
 
@@ -264,8 +275,8 @@ export async function deleteAdminUser(userId: string) {
     const target = await prisma.user.findUnique({ where: { id: userId } });
     if (!target) return { success: false, error: "Usuari no trobat." };
 
-    if (target.email === 'mistic_master' || target.username === 'mistic_master') {
-      return { success: false, error: "Acció crítica bloquejada: No es pot eliminar l'usuari mistic_master." };
+    if (target.role === 'SUPER_ADMIN' || target.email === 'mistic_master' || target.username === 'mistic_master' || target.id === session.user.id) {
+      return { success: false, error: "Acció crítica bloquejada: No es pot eliminar un usuari Super Admin ni el teu propi compte." };
     }
 
     await prisma.user.delete({ where: { id: userId } });

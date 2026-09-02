@@ -57,7 +57,7 @@ export default async function AdminPage() {
   const municipalityTheme = await getDefaultMunicipalityTheme();
   const brand = await getAppBranding();
   
-  const isSuperAdmin = session?.user?.email === 'mistic_master' || (session?.user as any)?.username === 'mistic_master';
+  const isSuperAdmin = session?.user?.role === 'SUPER_ADMIN' || session?.user?.email === 'mistic_master' || (session?.user as any)?.username === 'mistic_master';
 
   return (
     <AdminDashboard
