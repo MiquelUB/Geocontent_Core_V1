@@ -50,7 +50,7 @@ export async function uploadFile(file: File, folder: string = 'geocontent') {
     const { key } = await response.json();
     
     // Construct and return the public URL
-    const bucket = process.env.S3_BUCKET || "pxx-core-v1";
+    const bucket = process.env.S3_BUCKET || "pxx-core-vox-v1";
     const region = process.env.S3_REGION || "eu-north-1";
     const publicUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
     

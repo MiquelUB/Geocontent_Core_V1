@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const bucketParam = url.searchParams.get('bucket');
 
-  const bucket = bucketParam || 'pxx-core-v1';
+  const bucket = bucketParam || process.env.S3_BUCKET || 'pxx-core-vox-v1';
   const region = process.env.S3_REGION || 'eu-north-1';
   const accessKey = process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || '';
   const secretKey = process.env.S3_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || '';

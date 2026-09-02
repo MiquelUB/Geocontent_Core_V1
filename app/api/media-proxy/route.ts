@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
   }
 
-  let bucket = process.env.S3_BUCKET || 'pxx-core-v1';
+  let bucket = process.env.S3_BUCKET || 'pxx-core-vox-v1';
   let key = url;
 
   if (url.startsWith('http')) {
