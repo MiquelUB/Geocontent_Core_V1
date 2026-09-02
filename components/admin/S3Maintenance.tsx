@@ -40,8 +40,16 @@ export default function S3Maintenance({ municipalityTheme = 'mountain' }: { muni
       const keys = analysisResult.orphans.map((o: any) => o.key);
       const res = await cleanS3Orphans(keys);
       if (res.success) {
-        alert(`S'han esborrat ${res.deleted} arxius orfes de l'S3 amb èxit.`);
-        setAnalysisResult(null);
+        if (res.deleted === 0) {
+          alert(res.message || "No s'ha esborrat cap fitxer (podrien estar protegits per la base de dades).");
+        } else {
+          let msg = `S'han esborrat ${res.deleted} arxius orfes de l'S3 amb èxit.`;
+          if (res.failedCount && res.failedCount > 0) {
+            msg += ` (${res.failedCount} arxius no s'han pogut esborrar)`;
+          }
+          alert(msg);
+          setAnalysisResult(null);
+        }
       } else {
         alert("Error esborrant: " + res.error);
       }

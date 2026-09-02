@@ -2,8 +2,7 @@
 
 import { auth } from '@/auth';
 import { prisma } from '@/lib/database/prisma';
-import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from '@aws-sdk/client-s3';
-import { rateLimit } from '@/lib/services/ratelimit';
+import { S3Client, ListObjectsV2Command, DeleteObjectsCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 function getS3Client(): S3Client {
   const accessKey = process.env.S3_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID || '';
@@ -36,17 +35,12 @@ async function requireSuperAdmin() {
   const role = (session.user as any).role;
   if (role === 'SUPER_ADMIN' || session.user.email === 'mistic_master') {
     // Permès directament per rol a la sessió
-  } else {
-    const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
-    if (dbUser?.role !== 'SUPER_ADMIN') {
-      throw new Error('Forbidden: Requires Super Admin privileges');
-    }
+    return true;
   }
 
-  // Rate Limiting (1 request per 10 segons)
-  const isAllowed = await rateLimit(`s3-maintenance:${session.user.id}`, 1, 10);
-  if (!isAllowed) {
-    throw new Error('Massa peticions. Si us plau, espera una mica.');
+  const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (dbUser?.role !== 'SUPER_ADMIN') {
+    throw new Error('Forbidden: Requires Super Admin privileges');
   }
 
   return true;
@@ -184,8 +178,8 @@ export async function cleanS3Orphans(orphanKeys: string[]) {
   try {
     await requireSuperAdmin();
     
-    if (!orphanKeys || orphanKeys.length === 0) {
-      return { success: true, deleted: 0 };
+    if (!Array.isArray(orphanKeys) || orphanKeys.length === 0) {
+      return { success: false, error: "No s'ha rebut cap llista de claus per esborrar." };
     }
 
     const bucket = getBucketName();
@@ -193,35 +187,93 @@ export async function cleanS3Orphans(orphanKeys: string[]) {
 
     // Double-check against whitelist just before deleting to prevent race conditions
     const whitelist = await getActiveUrlsWhitelist();
-    const safeToDelete = orphanKeys.filter(key => !whitelist.has(key) && !whitelist.has(decodeURIComponent(key)));
+    const safeToDelete = orphanKeys.filter(key => 
+      key && 
+      !whitelist.has(key) && 
+      !whitelist.has(decodeURIComponent(key)) &&
+      !key.endsWith('/')
+    );
 
     if (safeToDelete.length === 0) {
-      return { success: true, deleted: 0 };
+      return { 
+        success: true, 
+        deleted: 0, 
+        message: "Tots els fitxers seleccionats estan actualment en ús a la base de dades (protegits)." 
+      };
     }
 
-    // S3 DeleteObjects allows max 1000 keys per request
-    // Chunking in 500 for safety
-    const chunkSize = 500;
     let totalDeleted = 0;
+    const errors: string[] = [];
 
+    // 1. Intentem DeleteObjectsCommand en lots
+    const chunkSize = 500;
     for (let i = 0; i < safeToDelete.length; i += chunkSize) {
       const chunk = safeToDelete.slice(i, i + chunkSize);
       
-      const cmd = new DeleteObjectsCommand({
-        Bucket: bucket,
-        Delete: {
-          Objects: chunk.map(key => ({ Key: key })),
-          Quiet: false,
-        }
-      });
+      try {
+        const cmd = new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: {
+            Objects: chunk.map(key => ({ Key: key })),
+            Quiet: false,
+          }
+        });
 
-      const res = await s3.send(cmd);
-      totalDeleted += (res.Deleted?.length || 0);
+        const res = await s3.send(cmd);
+        if (res.Deleted && res.Deleted.length > 0) {
+          totalDeleted += res.Deleted.length;
+        }
+
+        // Si AWS S3 ha retornat errors en l'esborrat en bloc:
+        if (res.Errors && res.Errors.length > 0) {
+          for (const err of res.Errors) {
+            console.error(`[S3 Delete Error] Key: ${err.Key}, Code: ${err.Code}, Message: ${err.Message}`);
+            errors.push(`${err.Key}: ${err.Code} (${err.Message || 'Permís denegat'})`);
+            
+            // Intentem esborrat individual com a fallback per a aquesta clau
+            try {
+              await s3.send(new DeleteObjectCommand({
+                Bucket: bucket,
+                Key: err.Key,
+              }));
+              totalDeleted++;
+            } catch (singleErr: any) {
+              console.error(`[S3 Individual Delete Failed] Key: ${err.Key}:`, singleErr.message);
+            }
+          }
+        }
+      } catch (bulkErr: any) {
+        console.warn('[S3 DeleteObjectsCommand failed, provant esborrat individual fallback]:', bulkErr.message);
+        
+        // Fallback total: si DeleteObjects és bloquejat a nivell de comanda, intentem un per un
+        for (const key of chunk) {
+          try {
+            await s3.send(new DeleteObjectCommand({
+              Bucket: bucket,
+              Key: key,
+            }));
+            totalDeleted++;
+          } catch (singleErr: any) {
+            console.error(`[S3 DeleteObject Fallback Failed] Key: ${key}:`, singleErr.message);
+            errors.push(`${key}: ${singleErr.name || 'Error'} (${singleErr.message})`);
+          }
+        }
+      }
+    }
+
+    if (totalDeleted === 0 && errors.length > 0) {
+      return {
+        success: false,
+        deleted: 0,
+        error: `AWS S3 ha rebutjat l'esborrat dels fitxers. Error: ${errors[0]}`
+      };
     }
 
     return {
       success: true,
       deleted: totalDeleted,
+      failedCount: errors.length,
+      errors: errors.length > 0 ? errors.slice(0, 5) : undefined,
     };
 
   } catch (error: any) {
