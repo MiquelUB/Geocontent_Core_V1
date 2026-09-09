@@ -923,3 +923,24 @@ export async function updatePoiQuizAction(id: string, manualQuiz: any) {
     return { success: false, error: err.message };
   }
 }
+
+export async function updatePoiVoiceScriptAction(id: string, voiceScript: string, voiceId?: string) {
+  try {
+    const session = await auth();
+    if (!session) return { success: false, error: "Sessió requerida." };
+    await prisma.poi.update({
+      where: { id },
+      data: {
+        voiceScript: voiceScript || null,
+        ...(voiceId ? { voiceId } : {})
+      }
+    });
+    revalidatePath('/admin', 'layout');
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (err: any) {
+    console.error('[updatePoiVoiceScriptAction error]', err);
+    return { success: false, error: err.message || "Error al desar el guió." };
+  }
+}
+

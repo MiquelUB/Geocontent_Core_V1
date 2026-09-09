@@ -8,7 +8,7 @@ import { GENERIC_ERROR_MESSAGE } from '@/lib/errors';
 /**
  * Envia una petició de generació de Text-to-Speech (Omnivoice) a l'Outbox (ARQ).
  */
-export async function requestTtsGeneration(poiId: string, voiceId?: string) {
+export async function requestTtsGeneration(poiId: string, voiceId?: string, voiceScript?: string) {
   try {
     const session = await auth();
     if (!session || !session.user || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN')) {
@@ -43,6 +43,17 @@ export async function requestTtsGeneration(poiId: string, voiceId?: string) {
       if (!isOwner) {
         return { success: false, error: "Accés denegat: Aquest POI no pertany al teu municipi." };
       }
+    }
+
+    // Si s'ha proporcionat un nou guió o veu, assegurar que queda desat a la BD abans que el worker el llegeixi
+    if (typeof voiceScript === 'string') {
+      await prisma.poi.update({
+        where: { id: poiId },
+        data: {
+          voiceScript: voiceScript || null,
+          ...(voiceId ? { voiceId } : {})
+        }
+      });
     }
 
     // Crida directa al FastAPI Worker per encuar la tasca a ARQ

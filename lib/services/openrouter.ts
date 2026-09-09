@@ -98,14 +98,28 @@ Format JSON: { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }`;
           { role: "user", content: `Punt: ${title}\nContingut: ${content}` }
         ],
         temperature: 0.3,
+        response_format: { type: "json_object" },
       })
     );
 
     let resultText = completion.choices[0]?.message?.content || "{}";
     const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-    if (match) resultText = match[1];
+    if (match) {
+      resultText = match[1];
+    } else {
+      const start = resultText.indexOf('{');
+      const end = resultText.lastIndexOf('}');
+      if (start !== -1 && end > start) {
+        resultText = resultText.substring(start, end + 1);
+      }
+    }
 
-    return JSON.parse(resultText);
+    try {
+      return JSON.parse(resultText);
+    } catch (parseErr) {
+      console.error("[generatePoiQuiz] Error parsing JSON. Raw content was:", completion.choices[0]?.message?.content);
+      return null;
+    }
   } catch (error) {
     console.error("Error generating poi quiz:", error);
     return null;
@@ -130,14 +144,28 @@ Format JSON EXACTE: { "preguntes": [ { "pregunta": "...", "opcions": ["A", "B", 
           { role: "user", content: `Context de la ruta:\n${context}` }
         ],
         temperature: 0.5,
+        response_format: { type: "json_object" },
       })
     );
 
     let resultText = completion.choices[0]?.message?.content || "{}";
     const match = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-    if (match) resultText = match[1];
+    if (match) {
+      resultText = match[1];
+    } else {
+      const start = resultText.indexOf('{');
+      const end = resultText.lastIndexOf('}');
+      if (start !== -1 && end > start) {
+        resultText = resultText.substring(start, end + 1);
+      }
+    }
 
-    return JSON.parse(resultText);
+    try {
+      return JSON.parse(resultText);
+    } catch (parseErr) {
+      console.error("[generateFinalRouteQuiz] Error parsing JSON. Raw content was:", completion.choices[0]?.message?.content);
+      return null;
+    }
   } catch (error) {
     console.error("Error generating final route quiz:", error);
     return null;
