@@ -98,7 +98,6 @@ Format JSON: { "pregunta": "...", "opcions": ["A", "B", "C"], "correcta": 0 }`;
           { role: "user", content: `Punt: ${title}\nContingut: ${content}` }
         ],
         temperature: 0.3,
-        response_format: { type: "json_object" },
       })
     );
 
@@ -144,7 +143,6 @@ Format JSON EXACTE: { "preguntes": [ { "pregunta": "...", "opcions": ["A", "B", 
           { role: "user", content: `Context de la ruta:\n${context}` }
         ],
         temperature: 0.5,
-        response_format: { type: "json_object" },
       })
     );
 
