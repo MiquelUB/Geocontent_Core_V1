@@ -295,15 +295,39 @@ async def optimize_video_job(ctx, poi_id: str, public_url: str):
         unique_id = str(uuid.uuid4())[:8]
         key = f"media/pois/{poi_id}/video/optimized_{unique_id}.mp4"
         
-        print(f"[Worker] Pujant vídeo optimitzat a {key}...")
-        with open(output_path, 'rb') as f:
-            s3_client.put_object(
-                Bucket=bucket,
-                Key=key,
-                Body=f,
-                ContentType="video/mp4",
-                Tagging=f"TenantID=default&Type=video/mp4"
-            )
+        # Fetch real TenantID
+        tenant_id = "default"
+        pool = ctx['db_pool']
+        try:
+            async with pool.acquire() as conn:
+                muni = await conn.fetchrow('SELECT id FROM municipalities ORDER BY created_at ASC LIMIT 1')
+                if muni:
+                    tenant_id = str(muni['id'])
+        except Exception as e:
+            print(f"[Worker] Error fetching TenantID: {e}")
+
+        import urllib.parse
+        encoded_type = urllib.parse.quote_plus("video/mp4")
+        
+        print(f"[Worker] Pujant vídeo optimitzat a {key} amb TenantID {tenant_id}...")
+        try:
+            with open(output_path, 'rb') as f:
+                s3_client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=f,
+                    ContentType="video/mp4",
+                    Tagging=f"TenantID={tenant_id}&Type={encoded_type}"
+                )
+        except Exception as e:
+            print(f"[Worker] PutObject amb Tagging ha fallat per {key}: {e}. Reintentant sense tags...")
+            with open(output_path, 'rb') as f:
+                s3_client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=f,
+                    ContentType="video/mp4"
+                )
             
         optimized_url = f"https://{bucket}.s3.{region}.amazonaws.com/{key}"
         

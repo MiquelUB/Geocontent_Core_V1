@@ -69,7 +69,7 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
     uploaded = False
     last_err = None
 
-    # Strategy 1: Plain PutObject (funciona amb pxx-core-v2-temporal i buckets sense restriccions)
+    # Strategy 1: PutObject amb Tagging (Requerit per pxx-core-v1 amb Bucket Owner Enforced)
     try:
         with open(file_path, 'rb') as f:
             s3_client.put_object(
@@ -77,13 +77,14 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                 Key=key,
                 Body=f,
                 ContentType=content_type,
+                Tagging=tagging,
             )
         uploaded = True
     except Exception as e:
         last_err = e
-        print(f"[S3 Upload] Plain PutObject failed for {key}: {e}. Retrying with Tagging...")
+        print(f"[S3 Upload] PutObject amb Tagging ha fallat per {key}: {e}. Reintentant sense tags...")
 
-    # Strategy 2: PutObject with Tagging (requerit per pxx-core-v1)
+    # Strategy 2: Plain PutObject (Fallback per entorns sense restricció de tags)
     if not uploaded:
         try:
             with open(file_path, 'rb') as f:
@@ -92,12 +93,11 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
                     Key=key,
                     Body=f,
                     ContentType=content_type,
-                    Tagging=tagging,
                 )
             uploaded = True
         except Exception as e:
             last_err = e
-            print(f"[S3 Upload] PutObject with Tagging failed for {key}: {e}.")
+            print(f"[S3 Upload] Plain PutObject ha fallat per {key}: {e}.")
 
     if not uploaded:
         raise last_err
@@ -107,7 +107,7 @@ def upload_to_s3(file_path: str, bucket: str, key: str, region: str, content_typ
         return f"{cdn_url}/{key}"
     return public_url
 
-async def generate_and_upload(poi_id: str, locale: str, text: str, voice_id: str) -> str:
+async def generate_and_upload(poi_id: str, locale: str, text: str, voice_id: str, tenant_id: str = "default") -> str:
     # Map voice_id to edge-tts neural voices based on locale
     # For now, default mappings if voice_id doesn't perfectly match edge-tts
     voice_map = {
@@ -136,7 +136,7 @@ async def generate_and_upload(poi_id: str, locale: str, text: str, voice_id: str
         bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
         region = os.getenv("S3_REGION", "eu-north-1")
         key = f"media/pois/{poi_id}/audio/{locale}.mp3"
-        url = upload_to_s3(temp_path, bucket, key, region)
+        url = upload_to_s3(temp_path, bucket, key, region, content_type="audio/mpeg", tenant_id=tenant_id)
         return url
     finally:
         if os.path.exists(temp_path):
@@ -179,12 +179,21 @@ async def process_tts_job(ctx, poi_id: str, voice_id: str):
                 print(f"[Worker] No hi ha textos per al POI {poi_id}.")
                 return
 
+            # Fetch default municipality (tenant_id)
+            tenant_id = "default"
+            try:
+                muni = await conn.fetchrow('SELECT id FROM municipalities ORDER BY created_at ASC LIMIT 1')
+                if muni:
+                    tenant_id = str(muni['id'])
+            except Exception as e:
+                print(f"[Worker] Error fetching municipality for TenantID: {e}")
+
             results = {}
             tasks = []
             
             async def process_locale(locale: str, text: str):
                 try:
-                    url = await generate_and_upload(poi_id, locale, text, voice_id)
+                    url = await generate_and_upload(poi_id, locale, text, voice_id, tenant_id)
                     results[locale] = url
                 except Exception as e:
                     print(f"[TTS Worker] Error generant {locale}: {e}")
@@ -332,62 +341,8 @@ async def process_hls_video(ctx, poi_id: str, video_path: str):
             shutil.rmtree(temp_dir)
 
 
-async def outbox_poller(ctx):
-    """
-    Poller that queries the PostgreSQL 'outbox_events' table every 5 seconds,
-    enqueues tasks into ARQ, and marks them as PROCESSING.
-    """
-    print("[Worker] Iniciant Outbox Poller...")
-    pool = ctx['db_pool']
-    redis = ctx['redis']
-    
-    while True:
-        try:
-            async with pool.acquire() as conn:
-                # Fetch pending events safely using SKIP LOCKED
-                events = await conn.fetch(
-                    "SELECT id, tipus_event, payload FROM outbox_events WHERE estat = 'PENDING' ORDER BY creat_el ASC LIMIT 10 FOR UPDATE SKIP LOCKED"
-                )
-                
-                for event in events:
-                    event_id = event['id']
-                    topic = event['tipus_event']
-                    
-                    payload = event['payload']
-                    if isinstance(payload, str):
-                        payload = json.loads(payload)
-                        
-                    # Mark as PROCESSING
-                    await conn.execute("UPDATE outbox_events SET estat = 'PROCESSING' WHERE id = $1", event_id)
-                    
-                    # Enqueue to ARQ
-                    if topic == 'GENERATE_TTS':
-                        poi_id = payload.get('poiId')
-                        voice_id = payload.get('voiceId', 'nova')
-                        if poi_id:
-                            await redis.enqueue_job('process_tts_job', poi_id, voice_id)
-                    elif topic == 'TRANSLATE_VIDEO':
-                        poi_id = payload.get('poiId')
-                        video_url = payload.get('videoUrl')
-                        voice_id = payload.get('voiceId', 'nova')
-                        if poi_id and video_url:
-                            await redis.enqueue_job('process_video_translation_job', poi_id, video_url, voice_id)
-                    elif topic == 'video-processing':
-                        poi_id = payload.get('poiId')
-                        public_url = payload.get('publicUrl')
-                        if poi_id and public_url:
-                            await redis.enqueue_job('optimize_video_job', poi_id, public_url)
-                    else:
-                        print(f"[Worker] Topic desconegut: {topic}")
-                        
-                    # For simplicity, we mark COMPLETED immediately after enqueuing.
-                    # In a robust system, the job itself should mark it COMPLETED via a callback or DB update.
-                    await conn.execute("UPDATE outbox_events SET estat = 'COMPLETED' WHERE id = $1", event_id)
-                    
-        except Exception as e:
-            print(f"[Outbox Poller] Error: {e}")
-            
-        await asyncio.sleep(5)
+# outbox_poller s'ha eliminat per evitar "Efecte Forat Negre" i bloquejos (crashes)
+# ara s'enquegen tasques directament a Redis des del Frontend/Backend Next.js
 
 
 async def startup(ctx):

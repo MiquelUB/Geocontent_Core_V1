@@ -1,5 +1,6 @@
 FROM python:3.12-slim
 
+# CACHE BUSTER: 2026-09-11 - Forçar rebuild net a Easypanel
 # Evitar que Python generi fitxers .pyc i forçar output en temps real
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
