@@ -41,6 +41,9 @@ function mergeTranslations(existing: Record<string, string>, incoming: Record<st
     for (const [key, value] of Object.entries(incoming)) {
       if (typeof value === 'string' && value.trim() !== '') {
         result[key] = value.trim();
+      } else if (typeof value === 'object' && value !== null) {
+        // Suport per a videoTranslations (Nested Object)
+        result[key] = value;
       }
     }
   }

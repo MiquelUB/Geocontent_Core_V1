@@ -155,6 +155,8 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
     temp_dir = tempfile.mkdtemp(prefix=f"vid_trans_{poi_id}_")
     
     try:
+        import uuid
+        video_hash = str(uuid.uuid4())[:8]
         orig_video_path = os.path.join(temp_dir, "orig.mp4")
         orig_audio_path = os.path.join(temp_dir, "orig.wav")
         
@@ -219,9 +221,9 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
                 await merge_audio_video(orig_video_path, tts_audio_path, final_video_path, start_time_ms)
                 
                 # 7. Upload to S3 (usa el bucket configurat a l'entorn d'Easypanel)
-                bucket = os.getenv("S3_BUCKET", "pxx-core-v2-temporal")
+                bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
                 region = os.getenv("S3_REGION", "eu-north-1")
-                key = f"media/pois/{poi_id}/video/{loc}.mp4"
+                key = f"media/pois/{poi_id}/video/{video_hash}_{loc}.mp4"
                 
                 print(f"[Video Translator] Uploading {loc} to S3 bucket '{bucket}'...")
                 url = upload_to_s3(final_video_path, bucket, key, region)
