@@ -45,6 +45,11 @@ async def transcribe_audio_openrouter(audio_path: str):
             if text.strip():
                 segments.append({"start": 0.0, "end": 10000.0, "text": text.strip()})
                 
+        if segments:
+            print("[Video Translator] Extracted segments from Whisper:")
+            for i, s in enumerate(segments):
+                print(f"  - Seg {i}: {s['start']}ms -> {s['end']}ms | {s['text']}")
+                
         return segments
 
 async def translate_text_openrouter(segments: list, target_lang: str = "en") -> list:
@@ -142,65 +147,67 @@ async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> 
     return temp_path
 
 async def generate_dubbed_audio(segments: list, temp_dir: str, locale: str, voice_id: str) -> str:
-    """Generates a single synchronized audio track from multiple segments."""
+    """Generates a single synchronized audio track from multiple segments using absolute positioning."""
     from pydub import AudioSegment
     
     print(f"[Video Translator] Generating {len(segments)} TTS segments for {locale}...")
     
-    # Calculate total duration needed
-    total_duration_ms = 0
-    if segments:
-        total_duration_ms = segments[-1]['end'] + 10000 # Add 10 seconds buffer
-        
+    # Calculate total duration needed (last segment end + 5 seconds buffer)
+    total_duration_ms = int(segments[-1]['end']) + 5000 if segments else 10000
     final_audio = AudioSegment.silent(duration=total_duration_ms)
-    
-    current_pos_ms = 0
     
     for seg in segments:
         if not seg['text'].strip():
             continue
             
+        target_ms = int(seg['end'] - seg['start'])
+        if target_ms <= 0:
+            continue
+            
         tts_path = await generate_local_tts(seg['text'], locale, voice_id)
         try:
             seg_audio = AudioSegment.from_file(tts_path)
+            actual_ms = len(seg_audio)
             
-            # Sync algorithm: speed up if TTS is significantly longer than original slot
-            target_duration = int(seg['end'] - seg['start'])
-            actual_duration = len(seg_audio)
+            # Sync algorithm: speed up or slow down to match exactly the target duration
+            ratio = actual_ms / target_ms
             
-            if target_duration > 0 and actual_duration > target_duration * 1.1:
-                speed_factor = actual_duration / target_duration
-                # Cap speedup at 1.75x to preserve intelligibility (prevents chipmunk voices)
-                if speed_factor > 1.75:
-                    speed_factor = 1.75
+            # Apply time-stretch if deviation is > 5%
+            if ratio > 1.05 or ratio < 0.95:
+                # Clamp atempo between 0.5x and 2.0x to avoid extreme distortion
+                atempo = min(max(ratio, 0.5), 2.0)
                 
-                print(f"[Video Translator] Speeding up segment by {speed_factor:.2f}x to fit sync...")
+                print(f"[Video Translator] atempo={atempo:.2f} (actual: {actual_ms}ms, target: {target_ms}ms)")
                 
-                sped_up_path = tts_path.replace(".mp3", "_speed.mp3")
+                sped_up_path = tts_path.replace(".mp3", "_fit.mp3")
                 ext_cmd = [
                     "ffmpeg", "-y", "-i", tts_path, 
-                    "-filter:a", f"atempo={speed_factor}", 
+                    "-filter:a", f"atempo={atempo}", 
                     "-vn", sped_up_path
                 ]
-                proc = await asyncio.create_subprocess_exec(*ext_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                proc = await asyncio.create_subprocess_exec(
+                    *ext_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+                )
                 await proc.wait()
                 
                 if proc.returncode == 0:
                     seg_audio = AudioSegment.from_file(sped_up_path)
                     os.remove(sped_up_path)
             
-            # Place audio at start time, but ensure it doesn't overlap with previous segment
-            start_pos = max(int(seg['start']), current_pos_ms)
+            # Safety net: if it's still slightly longer than target_ms (due to atempo clamping or precision), cut it
+            if len(seg_audio) > target_ms:
+                seg_audio = seg_audio[:target_ms]
+            
+            # Place audio at absolute start time WITHOUT shifting
+            start_pos = int(seg['start'])
             
             # If start_pos exceeds the pre-calculated silent canvas, we need to extend it
             if start_pos + len(seg_audio) > len(final_audio):
-                extra_silence = AudioSegment.silent(duration=(start_pos + len(seg_audio) - len(final_audio) + 5000))
+                extra_silence = AudioSegment.silent(duration=(start_pos + len(seg_audio) - len(final_audio) + 2000))
                 final_audio = final_audio + extra_silence
                 
             final_audio = final_audio.overlay(seg_audio, position=start_pos)
             
-            # Update current position for next segment to prevent overlap (+100ms gap)
-            current_pos_ms = start_pos + len(seg_audio) + 100
         except Exception as e:
             print(f"[Video Translator] Failed to overlay TTS segment: {e}")
         finally:
