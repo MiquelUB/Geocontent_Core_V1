@@ -239,6 +239,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, onDelete, isLoadi
     return slots;
   };
   const [videoSlots, setVideoSlots] = useState<VideoSlot[]>(initVideoSlots);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Sync form states whenever poi prop changes
   useEffect(() => {
@@ -1317,19 +1318,39 @@ export default function ManualPoiForm({ poi, onSave, onCancel, onDelete, isLoadi
           </Button>
           <Button type="button" variant="outline" onClick={onCancel} className={`py-6 h-auto px-8 ${activeTheme.text} border-stone-200 hover:${activeTheme.bg}`} disabled={isUploading}>Cancel·lar</Button>
           {poi && onDelete && (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                if (confirm("Estàs segur d'eliminar definitivament aquest punt (POI)? Aquesta acció no es pot desfer i eliminarà el POI de totes les rutes associades.")) {
-                  onDelete(poi.id);
-                }
-              }}
-              className="py-6 h-auto px-8"
-              disabled={isUploading || isLoading}
-            >
-              Eliminar POI
-            </Button>
+            <div className="relative flex items-center">
+              {!showDeleteConfirm ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="py-6 h-auto px-8"
+                  disabled={isUploading || isLoading}
+                >
+                  Eliminar POI
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-200">
+                  <span className="text-sm text-red-600 font-bold px-2">Segur que vols esborrar-ho tot?</span>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => onDelete(poi.id)}
+                    className="py-6 h-auto px-6 font-bold"
+                  >
+                    Sí, Destruir
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="py-6 h-auto px-6"
+                  >
+                    No
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
