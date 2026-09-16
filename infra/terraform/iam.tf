@@ -7,7 +7,7 @@ resource "aws_iam_user" "pxx_worker_media" {
   }
 }
 
-# Política JSON específica per al Worker (Sense permisos d'esborrat)
+# Política JSON específica per al Worker i Manteniment (pujar, llegir i purgar orfes)
 resource "aws_iam_user_policy" "pxx_worker_media_policy" {
   name = "pxx-worker-media-s3-policy"
   user = aws_iam_user.pxx_worker_media.name
@@ -20,7 +20,8 @@ resource "aws_iam_user_policy" "pxx_worker_media_policy" {
         Action = [
           "s3:PutObject",
           "s3:PutObjectTagging",
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:DeleteObject"
         ]
         Resource = "arn:aws:s3:::${aws_s3_bucket.pxx_media.id}/*"
       },

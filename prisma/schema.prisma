@@ -25,6 +25,7 @@ model User {
   municipalityId String?             @map("municipality_id") @db.Uuid
   emailConsent    Boolean?            @default(true) @map("email_consent")
   termsAcceptedAt DateTime?           @map("terms_accepted_at")
+  lastLoginAt     DateTime?           @map("last_login_at")
   accounts       Account[]
   sessions       Session[]
   routeProgress  UserRouteProgress[]

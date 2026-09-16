@@ -365,10 +365,6 @@ export async function getUserRouteReviews(userId: string) {
     const reviews = await prisma.userRouteProgress.findMany({
       where: {
         userId,
-        OR: [
-          { rating: { gt: 0 } },
-          { comment: { not: "" } }
-        ]
       },
       include: {
         route: {
@@ -378,13 +374,15 @@ export async function getUserRouteReviews(userId: string) {
       orderBy: { createdAt: 'desc' }
     });
 
-    return reviews.map(r => ({
-      id: r.id,
-      routeName: r.route?.name || 'Ruta',
-      rating: r.rating || 0,
-      comment: r.comment || '',
-      completedAt: r.completedAt ? r.completedAt.toISOString() : r.createdAt.toISOString()
-    }));
+    return reviews
+      .filter(r => (r.rating && r.rating > 0) || (r.comment && r.comment.trim().length > 0))
+      .map(r => ({
+        id: r.id,
+        routeName: r.route?.name || 'Ruta',
+        rating: r.rating || 0,
+        comment: r.comment || '',
+        completedAt: r.completedAt ? r.completedAt.toISOString() : r.createdAt.toISOString()
+      }));
   } catch (error) {
     console.error('Error fetching user route reviews:', error);
     return [];

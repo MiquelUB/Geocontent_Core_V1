@@ -220,7 +220,7 @@ export function LegendDetailScreen({ legend, onNavigate, brand, userLocation, cu
   const isRouteContainer = isRoute && !safeLegend.routeId && !safeLegend.poiId;
 
   // Master Admin bypass: Can see everything if role is admin or superadmin master name OR admin_master_unlocked in session
-  const isMasterAdmin = currentUser?.role === 'admin' || currentUser?.username === 'mistic_master' || currentUser?.email === 'mistic_master' || isAdminSession;
+  const isMasterAdmin = currentUser?.role === 'admin' || currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN' || currentUser?.username === 'mistic_master' || currentUser?.email === 'mistic_master' || isAdminSession;
 
   // Normalitzem l'URL de l'àudio (pot venir com 'audioUrl', 'audio' o 'audio_url' depenent de l'origen)
   const effectiveAudioUrl = safeLegend.audioUrl || safeLegend.audio || safeLegend.audio_url;

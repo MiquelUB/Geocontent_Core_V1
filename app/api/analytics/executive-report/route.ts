@@ -59,23 +59,26 @@ export async function GET(req: Request) {
     });
     const routeFilter = muniRoutes.length > 0 ? { municipalityId } : {};
 
-    // 4. Heatmap Data & Real-Time User Condensation
+    // 4. Heatmap Data per Període Històric (startDate - endDate)
     let heatmapPoints: any[] = [];
     try {
-      // a) Punts GPS de la taula user_telemetry
+      // a) Punts GPS de la taula user_telemetry en l'interval de dates
       const telemetry = await prisma.$queryRaw<any[]>`
         SELECT 
           ST_X(location::geometry) as longitude, 
           ST_Y(location::geometry) as latitude, 
           timestamp
         FROM user_telemetry
-        LIMIT 2000
+        WHERE timestamp >= ${startDate} AND timestamp <= ${endDate}
+        LIMIT 5000
       `;
 
-      // b) Punts de desbloqueig de POIs en temps real pels usuaris
+      // b) Punts de desbloqueig de POIs en l'interval de dates
+      const hasMuniRoutes = muniRoutes.length > 0;
       const unlocks = await prisma.userUnlock.findMany({
         where: {
-          poi: { routePois: { some: { route: routeFilter } } }
+          unlockedAt: { gte: startDate, lte: endDate },
+          ...(hasMuniRoutes ? { poi: { routePois: { some: { route: { municipalityId } } } } } : {})
         },
         select: {
           unlockedAt: true,

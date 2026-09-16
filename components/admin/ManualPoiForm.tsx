@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, X, Plus, Music, Film, ImageIcon, History, MapPin, FolderIcon, Upload, Link2, Trash2, MapIcon, CloudUpload, Sparkles, ExternalLink, CheckCircle2 } from "lucide-react";
 import iconsMapping from '@/lib/icons-mapping.json';
 import { getAdminTheme } from "@/lib/adminTheme";
-import { getPoiTranslations, updatePoiQuizAction } from '@/lib/actions/content';
+import { getPoiTranslations, updatePoiQuizAction, updatePoiVoiceScriptAction } from '@/lib/actions/content';
 import { compressImage } from "@/lib/imageOptimization";
 import { uploadFileClient } from "@/lib/upload-client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -405,7 +405,17 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
         return;
       }
       
-      const res = await requestTtsGeneration(poi.id, voiceId);
+      // Opció A: Assegurar que el guió queda guardat a la BD abans que el worker el llegeixi
+      if (voiceScript) {
+        const saveRes = await updatePoiVoiceScriptAction(poi.id, voiceScript, voiceId);
+        if (!saveRes.success) {
+          alert("Error desant el guió: " + saveRes.error);
+          setIsGeneratingAudio(false);
+          return;
+        }
+      }
+
+      const res = await requestTtsGeneration(poi.id, voiceId, voiceScript);
       if (res.success) {
         alert("Generació d'àudio encuada correctament. El procés es farà en segon pla (pot trigar uns minuts). Torna a carregar la pàgina més tard per veure l'àudio.");
       } else {
@@ -427,7 +437,12 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
         setIsGeneratingAudio(false);
         return;
       }
-      const res = await requestTtsGeneration(poi.id, voiceId);
+
+      if (voiceScript) {
+        await updatePoiVoiceScriptAction(poi.id, voiceScript, voiceId);
+      }
+
+      const res = await requestTtsGeneration(poi.id, voiceId, voiceScript);
       if (res.success) {
         alert("Petició enviada! Es generarà l'audioguia en segon pla.");
         setPendingTranslations(prev => ({ ...prev, '__audio__': true }));

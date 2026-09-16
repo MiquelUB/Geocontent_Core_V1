@@ -126,7 +126,7 @@ export function AdminUserManager() {
                       variant="ghost" 
                       size="sm" 
                       onClick={() => handleDelete(u.id, u.email)}
-                      disabled={isDeleting === u.id || u.email === 'mistic_master'}
+                      disabled={isDeleting === u.id || u.email === 'mistic_master' || u.role === 'SUPER_ADMIN'}
                       className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     >
                       {isDeleting === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
