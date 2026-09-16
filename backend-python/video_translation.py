@@ -8,19 +8,13 @@ import asyncio
 from routers.audio import upload_to_s3
 from routers.s3 import get_s3_client
 
-async def transcribe_audio_openrouter(audio_path: str) -> tuple[str, float]:
-    """Uses OpenRouter's /api/v1/audio/transcriptions endpoint (OpenAI Whisper compatible). Returns (text, start_time_ms)"""
+async def transcribe_audio_openrouter(audio_path: str):
+    """Uses OpenRouter's /api/v1/audio/transcriptions endpoint (OpenAI Whisper compatible). Returns list of segments."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY is not set.")
 
-    url = "https://openrouter.ai/api/v1/audio/transcriptions"
-    headers = {
-        "Authorization": f"Bearer {api_key}"
-    }
-
     from openai import AsyncOpenAI
-
     print(f"[Video Translator] Transcribing audio with OpenRouter using OpenAI library...")
     client = AsyncOpenAI(
         base_url="https://openrouter.ai/api/v1",
@@ -35,32 +29,30 @@ async def transcribe_audio_openrouter(audio_path: str) -> tuple[str, float]:
             timestamp_granularities=["segment"]
         )
         
-        start_time_ms = 0.0
-        text = ""
-        
+        segments = []
         if hasattr(transcription, 'segments') and transcription.segments:
-            # Trobar el primer segment que probablement conté veu (per evitar al·lucinacions inicials)
             for seg in transcription.segments:
-                # no_speech_prob pot no venir sempre depenent de l'API, per defecte 0
                 no_speech = getattr(seg, 'no_speech_prob', 0.0)
-                if no_speech < 0.6:
-                    start_time_ms = seg.start * 1000
-                    break
-        
-        if isinstance(transcription, str):
-            text = transcription
-        elif hasattr(transcription, 'text'):
-            text = transcription.text
+                if no_speech < 0.6 and seg.text.strip():
+                    segments.append({
+                        "start": seg.start * 1000,
+                        "end": seg.end * 1000,
+                        "text": seg.text.strip()
+                    })
         else:
-            text = str(transcription)
-            
-        return text, start_time_ms
+            # Fallback if segments aren't supported
+            text = transcription.text if hasattr(transcription, 'text') else str(transcription)
+            if text.strip():
+                segments.append({"start": 0.0, "end": 10000.0, "text": text.strip()})
+                
+        return segments
 
-async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
-    """Translates text using OpenRouter Chat Completions."""
+async def translate_text_openrouter(segments: list, target_lang: str = "en") -> list:
+    """Translates a list of segment dictionaries using OpenRouter Chat Completions, keeping JSON array structure."""
+    if not segments:
+        return []
+        
     api_key = os.getenv("OPENROUTER_API_KEY")
-    
-    # Use the dedicated translation model ID if provided, otherwise fallback to gpt-4o-mini
     model = os.getenv("AI_MODEL_TRANSLATE_ID", "openai/gpt-4o-mini")
     if model == "google/gemini-2.0-flash-001" or "gemini-2.0-flash-001" in model:
         model = "openai/gpt-4o-mini"
@@ -71,22 +63,48 @@ async def translate_text_openrouter(text: str, target_lang: str = "en") -> str:
         "Content-Type": "application/json"
     }
 
-    prompt = f"Translate the following text to {target_lang}. Return ONLY the translated text, without any additional comments, markdown, or quotes.\n\nText: {text}"
+    texts = [seg['text'] for seg in segments]
+    
+    prompt = f"Translate the following JSON array of strings to {target_lang}. Return ONLY a valid JSON array of translated strings with the exact same number of elements, without any additional markdown or comments.\n\nInput: {json.dumps(texts)}"
 
     data = {
         "model": model,
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.3
+        "temperature": 0.1
     }
 
-    print(f"[Video Translator] Translating text to {target_lang} using {model}...")
+    print(f"[Video Translator] Translating {len(texts)} segments to {target_lang} using {model}...")
     async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data, timeout=30.0)
+        response = await client.post(url, headers=headers, json=data, timeout=60.0)
         response.raise_for_status()
         result = response.json()
-        return result['choices'][0]['message']['content'].strip()
+        content = result['choices'][0]['message']['content'].strip()
+        
+        # Clean up markdown if model ignored instructions
+        if content.startswith("```json"):
+            content = content.replace("```json", "", 1)
+        if content.endswith("```"):
+            content = content[:-3]
+            
+        try:
+            translated_texts = json.loads(content.strip())
+        except json.JSONDecodeError:
+            print(f"[Video Translator] JSON parse error on translation: {content}")
+            translated_texts = texts # Fallback to original text if JSON parsing fails
+            
+        # If the model didn't return exactly the same number of elements, we just map what we can
+        translated_segments = []
+        for i, seg in enumerate(segments):
+            t_text = translated_texts[i] if i < len(translated_texts) else seg['text']
+            translated_segments.append({
+                "start": seg['start'],
+                "end": seg['end'],
+                "text": t_text
+            })
+            
+        return translated_segments
 
 async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> str:
     print(f"[Video Translator] Generating TTS for locale {locale} with voice {voice_id}...")
@@ -115,6 +133,40 @@ async def generate_local_tts(text: str, locale: str, voice_id: str = "nova") -> 
     
     await communicate.save(temp_path)
     return temp_path
+
+async def generate_dubbed_audio(segments: list, temp_dir: str, locale: str, voice_id: str) -> str:
+    """Generates a single synchronized audio track from multiple segments."""
+    from pydub import AudioSegment
+    
+    print(f"[Video Translator] Generating {len(segments)} TTS segments for {locale}...")
+    
+    # Calculate total duration needed
+    total_duration_ms = 0
+    if segments:
+        total_duration_ms = segments[-1]['end'] + 10000 # Add 10 seconds buffer
+        
+    final_audio = AudioSegment.silent(duration=total_duration_ms)
+    
+    for seg in segments:
+        if not seg['text'].strip():
+            continue
+            
+        tts_path = await generate_local_tts(seg['text'], locale, voice_id)
+        try:
+            seg_audio = AudioSegment.from_file(tts_path)
+            
+            # Place audio exactly at start time
+            start_pos = int(seg['start'])
+            final_audio = final_audio.overlay(seg_audio, position=start_pos)
+        except Exception as e:
+            print(f"[Video Translator] Failed to overlay TTS segment: {e}")
+        finally:
+            if os.path.exists(tts_path):
+                os.remove(tts_path)
+                
+    out_path = os.path.join(temp_dir, f"dubbed_{locale}.mp3")
+    final_audio.export(out_path, format="mp3")
+    return out_path
 
 async def merge_audio_video(video_path: str, audio_path: str, output_path: str, start_delay_ms: float = 0):
     """Replaces the audio track of the video with the new audio track using FFmpeg, delaying audio if needed."""
@@ -194,8 +246,8 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
             raise Exception(f"FFmpeg audio extraction failed with code {ext_proc.returncode}")
 
         # 3. Transcribe
-        transcribed_text, start_time_ms = await transcribe_audio_openrouter(orig_audio_path)
-        print(f"[Video Translator] Transcription: {transcribed_text[:50]}... (starts at {start_time_ms}ms)")
+        segments = await transcribe_audio_openrouter(orig_audio_path)
+        print(f"[Video Translator] Transcribed {len(segments)} segments.")
 
         # Process each locale
         locales = ['es', 'en', 'fr']
@@ -207,18 +259,18 @@ async def translate_video_pipeline(video_url: str, poi_id: str, voice_id: str = 
             
             try:
                 # 4. Translate
-                if not transcribed_text.strip():
+                if not segments:
                     print(f"[Video Translator] No text transcribed. Skipping translation for {loc}.")
-                    translated_text = "No audio detected."
+                    continue
                 else:
-                    translated_text = await translate_text_openrouter(transcribed_text, target_lang=loc)
-                    print(f"[Video Translator] Translation to {loc}: {translated_text[:50]}...")
+                    translated_segments = await translate_text_openrouter(segments, target_lang=loc)
+                    print(f"[Video Translator] Translated {len(translated_segments)} segments to {loc}.")
 
-                # 5. Generate TTS
-                tts_audio_path = await generate_local_tts(translated_text, locale=loc, voice_id=voice_id)
+                # 5. Generate Synchronized Dubbed Audio
+                tts_audio_path = await generate_dubbed_audio(translated_segments, temp_dir, locale=loc, voice_id=voice_id)
 
-                # 6. Merge
-                await merge_audio_video(orig_video_path, tts_audio_path, final_video_path, start_time_ms)
+                # 6. Merge with 0 delay (pydub already placed audio at correct absolute time)
+                await merge_audio_video(orig_video_path, tts_audio_path, final_video_path, start_delay_ms=0)
                 
                 # 7. Upload to S3 (usa el bucket configurat a l'entorn d'Easypanel)
                 bucket = os.getenv("S3_BUCKET", "pxx-core-v1")
