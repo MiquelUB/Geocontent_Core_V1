@@ -164,6 +164,31 @@ async def generate_dubbed_audio(segments: list, temp_dir: str, locale: str, voic
         try:
             seg_audio = AudioSegment.from_file(tts_path)
             
+            # Sync algorithm: speed up if TTS is significantly longer than original slot
+            target_duration = int(seg['end'] - seg['start'])
+            actual_duration = len(seg_audio)
+            
+            if target_duration > 0 and actual_duration > target_duration * 1.1:
+                speed_factor = actual_duration / target_duration
+                # Cap speedup at 1.75x to preserve intelligibility (prevents chipmunk voices)
+                if speed_factor > 1.75:
+                    speed_factor = 1.75
+                
+                print(f"[Video Translator] Speeding up segment by {speed_factor:.2f}x to fit sync...")
+                
+                sped_up_path = tts_path.replace(".mp3", "_speed.mp3")
+                ext_cmd = [
+                    "ffmpeg", "-y", "-i", tts_path, 
+                    "-filter:a", f"atempo={speed_factor}", 
+                    "-vn", sped_up_path
+                ]
+                proc = await asyncio.create_subprocess_exec(*ext_cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                await proc.wait()
+                
+                if proc.returncode == 0:
+                    seg_audio = AudioSegment.from_file(sped_up_path)
+                    os.remove(sped_up_path)
+            
             # Place audio at start time, but ensure it doesn't overlap with previous segment
             start_pos = max(int(seg['start']), current_pos_ms)
             
@@ -174,8 +199,8 @@ async def generate_dubbed_audio(segments: list, temp_dir: str, locale: str, voic
                 
             final_audio = final_audio.overlay(seg_audio, position=start_pos)
             
-            # Update current position for next segment to prevent overlap (+200ms gap)
-            current_pos_ms = start_pos + len(seg_audio) + 200
+            # Update current position for next segment to prevent overlap (+100ms gap)
+            current_pos_ms = start_pos + len(seg_audio) + 100
         except Exception as e:
             print(f"[Video Translator] Failed to overlay TTS segment: {e}")
         finally:
