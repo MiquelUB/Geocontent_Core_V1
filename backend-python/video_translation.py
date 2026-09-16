@@ -54,8 +54,10 @@ async def translate_text_openrouter(segments: list, target_lang: str = "en") -> 
         
     api_key = os.getenv("OPENROUTER_API_KEY")
     model = os.getenv("AI_MODEL_TRANSLATE_ID", "openai/gpt-4o-mini")
-    if model == "google/gemini-2.0-flash-001" or "gemini-2.0-flash-001" in model:
-        model = "openai/gpt-4o-mini"
+    
+    # Fix invalid gemini model IDs for OpenRouter
+    if "gemini-flash-1.5" in model or "gemini-1.5-flash" in model or "gemini-2.0-flash" in model:
+        model = "google/gemini-2.5-flash"
         
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -82,14 +84,19 @@ async def translate_text_openrouter(segments: list, target_lang: str = "en") -> 
         result = response.json()
         content = result['choices'][0]['message']['content'].strip()
         
-        # Clean up markdown if model ignored instructions
-        if content.startswith("```json"):
-            content = content.replace("```json", "", 1)
-        if content.endswith("```"):
-            content = content[:-3]
+        # Robust JSON extraction
+        import re
+        match = re.search(r'\[.*\]', content.replace('\n', ' '))
+        if match:
+            content = match.group(0)
             
         try:
             translated_texts = json.loads(content.strip())
+            if not isinstance(translated_texts, list):
+                if isinstance(translated_texts, str):
+                    translated_texts = [translated_texts]
+                else:
+                    translated_texts = texts
         except json.JSONDecodeError:
             print(f"[Video Translator] JSON parse error on translation: {content}")
             translated_texts = texts # Fallback to original text if JSON parsing fails
