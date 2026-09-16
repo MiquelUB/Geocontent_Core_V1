@@ -147,6 +147,8 @@ async def generate_dubbed_audio(segments: list, temp_dir: str, locale: str, voic
         
     final_audio = AudioSegment.silent(duration=total_duration_ms)
     
+    current_pos_ms = 0
+    
     for seg in segments:
         if not seg['text'].strip():
             continue
@@ -155,9 +157,18 @@ async def generate_dubbed_audio(segments: list, temp_dir: str, locale: str, voic
         try:
             seg_audio = AudioSegment.from_file(tts_path)
             
-            # Place audio exactly at start time
-            start_pos = int(seg['start'])
+            # Place audio at start time, but ensure it doesn't overlap with previous segment
+            start_pos = max(int(seg['start']), current_pos_ms)
+            
+            # If start_pos exceeds the pre-calculated silent canvas, we need to extend it
+            if start_pos + len(seg_audio) > len(final_audio):
+                extra_silence = AudioSegment.silent(duration=(start_pos + len(seg_audio) - len(final_audio) + 5000))
+                final_audio = final_audio + extra_silence
+                
             final_audio = final_audio.overlay(seg_audio, position=start_pos)
+            
+            # Update current position for next segment to prevent overlap (+200ms gap)
+            current_pos_ms = start_pos + len(seg_audio) + 200
         except Exception as e:
             print(f"[Video Translator] Failed to overlay TTS segment: {e}")
         finally:
