@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -488,9 +488,12 @@ export default function ManualPoiForm({ poi, onSave, onCancel, onDelete, isLoadi
     setCarouselCaptions(carouselCaptions.filter((_, i) => i !== index));
   };
 
+  const isSubmittingRef = useRef(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || isUploading) return;
+    if (isLoading || isUploading || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
 
     setIsUploading(true);
     setUploadStatus("Comprimint i pujant arxius...");
@@ -591,6 +594,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, onDelete, isLoadi
     } finally {
       setIsUploading(false);
       setUploadStatus("");
+      isSubmittingRef.current = false;
     }
   };
 
