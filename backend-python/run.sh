@@ -2,23 +2,10 @@
 
 echo "=== INICIANT EL CONTENIDOR PXX-BACKEND ==="
 
-# Trap per netejar processos de fons si el contenidor s'atura
-cleanup() {
-    echo "Aturant processos de fons..."
-    kill $(jobs -p) 2>/dev/null || true
-    exit 0
-}
-trap cleanup SIGINT SIGTERM EXIT
-
-# Supervisió del worker ARQ amb reinici automàtic si cau
-(while true; do
-  echo "[Supervisor] Arrencant ARQ Worker..."
-  python3 -m arq worker.WorkerSettings
-  EXIT_CODE=$?
-  echo "[Supervisor] ARQ Worker ha finalitzat amb codi $EXIT_CODE. Reiniciant en 5s..."
-  sleep 5
-done) &
-
+# Arrencar el worker d'ARQ en segon pla
+echo "Arrencant l'ARQ Worker..."
+python3 -m arq worker.WorkerSettings &
+ARQ_PID=$!
 
 # Arrencar l'API FastAPI en primer pla
 echo "Arrencant FastAPI (Uvicorn)..."

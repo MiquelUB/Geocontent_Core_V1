@@ -11,8 +11,7 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         where: { municipalityId },
         select: { id: true }
     });
-    const hasMuniRoutes = muniRoutes.length > 0;
-    const routeProgressFilter = hasMuniRoutes ? { route: { municipalityId } } : {};
+    const routeFilter = muniRoutes.length > 0 ? { municipalityId } : {};
 
     // 1. Fetch Users Count (Total i Actius)
     const baseUsers = await prisma.user.findMany({
@@ -28,11 +27,11 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const [allTimeUnlocks, allTimeProgress] = await Promise.all([
         prisma.userUnlock.groupBy({
             by: ['userId'],
-            where: hasMuniRoutes ? { poi: { routePois: { some: { route: { municipalityId } } } } } : {}
+            where: { poi: { routePois: { some: { route: routeFilter } } } }
         }),
         prisma.userRouteProgress.groupBy({
             by: ['userId'],
-            where: routeProgressFilter
+            where: { route: routeFilter }
         })
     ]);
 
@@ -47,14 +46,14 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         prisma.userUnlock.groupBy({
             by: ['userId'],
             where: {
-                ...(hasMuniRoutes ? { poi: { routePois: { some: { route: { municipalityId } } } } } : {}),
+                poi: { routePois: { some: { route: routeFilter } } },
                 unlockedAt: { gte: startDate, lte: endDate }
             }
         }),
         prisma.userRouteProgress.groupBy({
             by: ['userId'],
             where: {
-                ...routeProgressFilter,
+                route: routeFilter,
                 createdAt: { gte: startDate, lte: endDate }
             }
         })
@@ -74,14 +73,14 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         prisma.userUnlock.groupBy({
             by: ['userId'],
             where: {
-                ...(hasMuniRoutes ? { poi: { routePois: { some: { route: { municipalityId } } } } } : {}),
+                poi: { routePois: { some: { route: routeFilter } } },
                 unlockedAt: { gte: prevStart, lte: prevEnd }
             }
         }),
         prisma.userRouteProgress.groupBy({
             by: ['userId'],
             where: {
-                ...routeProgressFilter,
+                route: routeFilter,
                 createdAt: { gte: prevStart, lte: prevEnd }
             }
         })
@@ -94,37 +93,24 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     // 2. Route Statistics
     const routesStartedInPeriod = await prisma.userRouteProgress.count({
-        where: routeProgressFilter
+        where: {
+            route: routeFilter
+        }
     });
 
-    let routeCompletionsInPeriod = await prisma.userRouteProgress.findMany({
+    const routeCompletionsInPeriod = await prisma.userRouteProgress.findMany({
         where: {
-            ...routeProgressFilter,
+            route: routeFilter,
             OR: [
                 { completedAt: { not: null } },
                 { rating: { gt: 0 } },
-                { comment: { not: null } }
+                { comment: { not: "" } }
             ]
         },
         include: {
             route: { select: { name: true } }
         }
     });
-
-    if (routeCompletionsInPeriod.length === 0 && !hasMuniRoutes) {
-        routeCompletionsInPeriod = await prisma.userRouteProgress.findMany({
-            where: {
-                OR: [
-                    { completedAt: { not: null } },
-                    { rating: { gt: 0 } },
-                    { comment: { not: null } }
-                ]
-            },
-            include: {
-                route: { select: { name: true } }
-            }
-        });
-    }
 
     const totalCompleted = routeCompletionsInPeriod.length;
     const abandonmentRate = routesStartedInPeriod > 0 ? Math.round((Math.max(0, routesStartedInPeriod - totalCompleted) / routesStartedInPeriod) * 100) : 0;
@@ -138,31 +124,23 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         completionsPerRoute[p.routeId].count++;
     });
 
-    // 3. Quiz Statistics (Lectura real dels reptes de POIs)
+    // 3. Quiz Statistics
     let allUnlocksData = await prisma.userUnlock.findMany({
-        where: hasMuniRoutes ? { 
-            poi: { routePois: { some: { route: { municipalityId } } } }
-        } : {},
+        where: { 
+            poi: { routePois: { some: { route: routeFilter } } }
+        },
         include: { poi: { select: { title: true } } }
     });
 
-    // Si el filtre per municipi no troba desbloquejos, consultar tots els desbloquejos existents
-    if (allUnlocksData.length === 0) {
-        allUnlocksData = await prisma.userUnlock.findMany({
-            include: { poi: { select: { title: true } } }
-        });
-    }
-
     const totalUnlocks = allUnlocksData.length;
     const totalSolved = allUnlocksData.filter(u => u.quizSolved).length;
-    const quizSuccessRate = totalUnlocks > 0 ? Math.round((totalSolved / totalUnlocks) * 100) : (totalSolved > 0 ? 100 : 0);
+    const quizSuccessRate = totalUnlocks > 0 ? Math.round((totalSolved / totalUnlocks) * 100) : 0;
 
     const quizBreakdown: Record<string, { title: string; solved: number; total: number }> = {};
     allUnlocksData.forEach(u => {
         const poiId = u.poiId;
-        const poiTitle = u.poi?.title || 'Punt d\'Interès';
         if (!quizBreakdown[poiId]) {
-            quizBreakdown[poiId] = { title: poiTitle, solved: 0, total: 0 };
+            quizBreakdown[poiId] = { title: u.poi.title, solved: 0, total: 0 };
         }
         quizBreakdown[poiId].total++;
         if (u.quizSolved) quizBreakdown[poiId].solved++;
@@ -171,15 +149,14 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
     const quizDetails = Object.values(quizBreakdown).sort((a, b) => b.total - a.total);
 
     // 3.5. Route Ratings & Reviews Statistics
-    let allRouteProgressWithReviews: Array<{
-        id: string;
-        createdAt: Date;
-        rating: number | null;
-        comment: string | null;
-        route?: { id: string; name: string | null } | null;
-        user?: { username: string | null } | null;
-    }> = await prisma.userRouteProgress.findMany({
-        where: routeProgressFilter,
+    const allRouteProgressWithReviews = await prisma.userRouteProgress.findMany({
+        where: {
+            route: routeFilter,
+            OR: [
+                { rating: { gt: 0 } },
+                { comment: { not: "" } }
+            ]
+        },
         include: {
             route: { select: { id: true, name: true } },
             user: { select: { username: true } }
@@ -187,27 +164,13 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         orderBy: { createdAt: 'desc' }
     });
 
-    if (allRouteProgressWithReviews.length === 0 && !hasMuniRoutes) {
-        allRouteProgressWithReviews = await prisma.userRouteProgress.findMany({
-            include: {
-                route: { select: { id: true, name: true } },
-                user: { select: { username: true } }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-    }
-
-    const reviewsFiltered = allRouteProgressWithReviews.filter(
-        r => (r.rating && r.rating > 0) || (r.comment && r.comment.trim().length > 0)
-    );
-
-    const ratedProgress = reviewsFiltered.filter(r => (r.rating || 0) > 0);
-    const totalReviewsCount = reviewsFiltered.length;
+    const ratedProgress = allRouteProgressWithReviews.filter(r => (r.rating || 0) > 0);
+    const totalReviewsCount = allRouteProgressWithReviews.length;
     const avgRatingNumber = ratedProgress.length > 0
         ? Math.round((ratedProgress.reduce((sum, r) => sum + (r.rating || 0), 0) / ratedProgress.length) * 10) / 10
         : 0;
 
-    const reviewsDetails = reviewsFiltered.map(r => ({
+    const reviewsDetails = allRouteProgressWithReviews.map(r => ({
         id: r.id,
         routeName: r.route?.name || 'Ruta',
         username: r.user?.username || 'Anònim',
@@ -218,9 +181,9 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
 
     // 4. Daily Traffic (for the chart) - Real grouping by day
     const allPeriodUnlocks = await prisma.userUnlock.findMany({
-        where: hasMuniRoutes ? {
-            poi: { routePois: { some: { route: { municipalityId } } } }
-        } : {},
+        where: {
+            poi: { routePois: { some: { route: routeFilter } } }
+        },
         select: { unlockedAt: true, userId: true }
     });
 
@@ -244,6 +207,20 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
         value: userSet.size
     }));
 
+    const generateInsights = (users: number, completes: number, quizRate: number, abandonment: number, avgRating: number, reviewCount: number): string => {
+        if (users === 0) return "S'espera aplegar dades del primer visitant per generar conclusions.";
+        let insight = `S'han registrat ${users} visitants interactuant en aquest període. `;
+        if (reviewCount > 0 && avgRating > 0) {
+            insight += `La satisfacció mitjana dels visitants és de ${avgRating}/5 estrelles (basat en ${reviewCount} valoracions). `;
+        }
+        if (completes > 0) {
+            insight += `S'han segellat ${completes} passaports de ruta completats. `;
+        }
+        if (abandonment > 40) insight += `L'abandonament és del ${abandonment}%. `;
+        if (quizRate > 0) insight += `L'èxit als reptes és del ${quizRate}%.`;
+        return insight;
+    };
+
     return {
         metrics: {
             users: {
@@ -266,7 +243,8 @@ export async function getExecutiveAnalytics(municipalityId: string, startDate: D
             }
         },
         routeCompletions: Object.values(completionsPerRoute),
-        weeklyTraffic: weeklyTrafficData
+        weeklyTraffic: weeklyTrafficData,
+        aiInsights: generateInsights(activeUserCount, totalCompleted, quizSuccessRate, abandonmentRate, avgRatingNumber, totalReviewsCount)
     };
 }
 
