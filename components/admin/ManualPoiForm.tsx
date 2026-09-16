@@ -162,7 +162,7 @@ export default function ManualPoiForm({ poi, onSave, onCancel, onDelete, isLoadi
 
     const intervalId = setInterval(async () => {
       try {
-        const res = await fetch(`/api/pois/${poi.id}/status`);
+        const res = await fetch(`/api/pois/${poi.id}/status?t=${Date.now()}`);
         if (!res.ok) return;
         const freshPoi = await res.json();
         
