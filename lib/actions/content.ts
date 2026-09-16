@@ -20,6 +20,20 @@ export async function getRouteWithPois(routeId: string) {
   return _getRouteWithPois(routeId);
 }
 
+export async function deletePoi(id: string) {
+  await requireAdmin();
+  try {
+    await prisma.poi.delete({
+      where: { id }
+    });
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting POI:", error);
+    return { error: "No s'ha pogut esborrar el POI. Assegura't que no tingui dependències crítiques." };
+  }
+}
+
 function mergeTranslations(existing: Record<string, string>, incoming: Record<string, string>): Record<string, string> {
   if (!existing || typeof existing !== 'object') existing = {};
   const result = { ...existing };

@@ -324,6 +324,26 @@ export default function AdminDashboard({
       setIsLoading(false);
     }
   }
+  async function handleDeletePoi(poiId: string) {
+    setIsLoading(true);
+    try {
+      const { deletePoi } = await import("@/lib/actions/content");
+      const res = await deletePoi(poiId);
+      if (res.success) {
+        alert("POI eliminat correctament!");
+        setEditingPoi(null);
+        setRefreshRouteCounter(c => c + 1);
+        const updated = await getAdminLegends();
+        setLegends(updated as any);
+      } else {
+        alert("Error: " + res.error);
+      }
+    } catch (error) {
+      alert("Error de connexió a l'eliminar POI");
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
 
   return (
@@ -643,6 +663,7 @@ export default function AdminDashboard({
                       poi={editingPoi ?? null}
                       onSave={handleSavePoi}
                       onCancel={resetRouteForm}
+                       onDelete={handleDeletePoi}
                       isLoading={isLoading}
                       routes={legends}
                       defaultRouteId={managingRoute?.id ?? (editingLegend?.id ?? undefined)}

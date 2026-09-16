@@ -10,6 +10,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'tile.openstreetmap.org' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: '**.cartocdn.com' },
+      { protocol: 'https', hostname: '**.amazonaws.com' },
     ],
   },
   experimental: {

@@ -38,6 +38,7 @@ interface ManualPoiFormProps {
   poi?: any;
   onSave: (data: FormData) => void;
   onCancel: () => void;
+  onDelete?: (poiId: string) => void;
   isLoading?: boolean;
   routes?: any[];
   defaultRouteId?: string;
@@ -79,7 +80,7 @@ const getInitialTranslations = (translations: any, baseValue: string = '', secon
   return res;
 };
 
-export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes = [], defaultRouteId, municipalityTheme }: ManualPoiFormProps) {
+export default function ManualPoiForm({ poi, onSave, onCancel, onDelete, isLoading, routes = [], defaultRouteId, municipalityTheme }: ManualPoiFormProps) {
   const router = useRouter();
   const activeTheme = getAdminTheme(municipalityTheme);
   
@@ -1315,6 +1316,21 @@ export default function ManualPoiForm({ poi, onSave, onCancel, isLoading, routes
             ) : (poi ? 'Actualitzar Punt Territorial' : 'Crear Nou Punt Territorial')}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel} className={`py-6 h-auto px-8 ${activeTheme.text} border-stone-200 hover:${activeTheme.bg}`} disabled={isUploading}>Cancel·lar</Button>
+          {poi && onDelete && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (confirm("Estàs segur d'eliminar definitivament aquest punt (POI)? Aquesta acció no es pot desfer i eliminarà el POI de totes les rutes associades.")) {
+                  onDelete(poi.id);
+                }
+              }}
+              className="py-6 h-auto px-8"
+              disabled={isUploading || isLoading}
+            >
+              Eliminar POI
+            </Button>
+          )}
         </div>
       </div>
     </form >
