@@ -117,7 +117,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
         }
         setGenerating(true);
         try {
-            const res = await generateReport(municipalityId);
+            const res = await generateReport(municipalityId, startDate, endDate);
             if (res.success) {
                 toast.success("Informe en cua de generació.");
                 router.refresh(); // Trigger server refresh for initialReports

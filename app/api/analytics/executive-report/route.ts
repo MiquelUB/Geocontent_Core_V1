@@ -57,34 +57,21 @@ export async function GET(req: Request) {
       where: { municipalityId },
       select: { id: true }
     });
-    const routeFilter = muniRoutes.length > 0 ? { municipalityId } : {};
 
     // 4. Heatmap Data per Període Històric (startDate - endDate)
     let heatmapPoints: any[] = [];
     try {
-      // a) Punts GPS de la taula user_telemetry en l'interval de dates
-      const telemetry = await prisma.$queryRaw<any[]>`
-        SELECT 
-          ST_X(location::geometry) as longitude, 
-          ST_Y(location::geometry) as latitude, 
-          timestamp
-        FROM user_telemetry
-        WHERE timestamp >= ${startDate} AND timestamp <= ${endDate}
-        LIMIT 5000
-      `;
-
-      // b) Punts de desbloqueig de POIs en l'interval de dates
       const hasMuniRoutes = muniRoutes.length > 0;
-      const unlocks = await prisma.userUnlock.findMany({
+      const unlocks = hasMuniRoutes ? await prisma.userUnlock.findMany({
         where: {
           unlockedAt: { gte: startDate, lte: endDate },
-          ...(hasMuniRoutes ? { poi: { routePois: { some: { route: { municipalityId } } } } } : {})
+          poi: { routePois: { some: { route: { municipalityId } } } }
         },
         select: {
           unlockedAt: true,
           poi: { select: { id: true, title: true, latitude: true, longitude: true } }
         }
-      });
+      }) : [];
 
       const unlockPoints = unlocks
         .filter(u => u.poi?.latitude && u.poi?.longitude)
@@ -95,16 +82,7 @@ export async function GET(req: Request) {
           weight: 2 // Major pes visual per activitats directes
         }));
 
-      const telemetryPoints = (telemetry || [])
-        .filter(t => t.latitude && t.longitude)
-        .map(t => ({
-          latitude: Number(t.latitude),
-          longitude: Number(t.longitude),
-          timestamp: t.timestamp,
-          weight: 1
-        }));
-
-      heatmapPoints = [...telemetryPoints, ...unlockPoints];
+      heatmapPoints = unlockPoints;
     } catch (err: any) {
       console.error("Error fetching heatmap points:", err);
       heatmapPoints = [];
@@ -116,7 +94,7 @@ export async function GET(req: Request) {
       let poisRaw = await prisma.poi.findMany({
         where: {
           routePois: {
-            some: { route: routeFilter }
+            some: { route: { municipalityId } }
           }
         },
         select: {
@@ -126,13 +104,6 @@ export async function GET(req: Request) {
           longitude: true
         }
       });
-
-      if (poisRaw.length === 0) {
-        poisRaw = await prisma.poi.findMany({
-          select: { id: true, title: true, latitude: true, longitude: true },
-          take: 100
-        });
-      }
 
       municipalityPois = poisRaw.filter(p => typeof p.latitude === 'number' && typeof p.longitude === 'number' && (p.latitude !== 0 || p.longitude !== 0));
     } catch (err: any) {
