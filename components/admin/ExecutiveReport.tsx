@@ -617,30 +617,45 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                                             </td>
                                             <td className="px-6 py-4 font-medium text-stone-800">{report.title}</td>
                                             <td className="px-6 py-4">
-                                                <Badge className={
-                                                    report.status === 'COMPLETED' ? `${activeTheme.bg} ${activeTheme.text} ${activeTheme.hover}` :
-                                                        report.status === 'ERROR' ? "bg-red-100 text-red-700 hover:bg-red-100" :
-                                                            "bg-stone-100 text-stone-600 animate-pulse"
-                                                }>
-                                                    {report.status === 'COMPLETED' ? 'Llest' :
-                                                        report.status === 'PENDING' ? 'En cua...' :
-                                                            report.status === 'PROCESSING' ? 'Processant...' : 'Error'}
-                                                </Badge>
+                                                <div className="flex flex-col gap-1">
+                                                    <Badge className={
+                                                        report.status === 'COMPLETED' ? `${activeTheme.bg} ${activeTheme.text} ${activeTheme.hover}` :
+                                                            report.status === 'FAILED' ? "bg-red-100 text-red-700 hover:bg-red-100 w-fit" :
+                                                                "bg-stone-100 text-stone-600 animate-pulse w-fit"
+                                                    }>
+                                                        {report.status === 'COMPLETED' ? 'Llest' :
+                                                            report.status === 'PENDING' ? 'En cua...' :
+                                                                report.status === 'PROCESSING' ? 'Processant...' : 'Error'}
+                                                    </Badge>
+                                                    {report.status === 'FAILED' && report.data?.error && (
+                                                        <span className="text-[10px] text-red-500 max-w-[200px] truncate" title={report.data.error}>
+                                                            {report.data.error}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    disabled={report.status !== 'COMPLETED'}
-                                                    onClick={() => {
-                                                        const url = report.resultUrl.startsWith('http') ? report.resultUrl : `${window.location.origin}${report.resultUrl}`;
-                                                        window.open(url, '_blank');
-                                                    }}
-                                                    className="text-stone-400 hover:text-stone-800 h-8"
-                                                >
-                                                    <Download className="w-4 h-4 mr-2" />
-                                                    PDF
-                                                </Button>
+                                                {report.status === 'COMPLETED' ? (
+                                                    <a
+                                                        href={`/api/admin/reports/${report.id}/download`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center text-xs px-2.5 py-1.5 rounded-md font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors h-8"
+                                                    >
+                                                        <Download className="w-4 h-4 mr-1.5" />
+                                                        PDF
+                                                    </a>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        disabled
+                                                        className="text-stone-300 h-8 opacity-50 cursor-not-allowed"
+                                                    >
+                                                        <Download className="w-4 h-4 mr-2" />
+                                                        PDF
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"

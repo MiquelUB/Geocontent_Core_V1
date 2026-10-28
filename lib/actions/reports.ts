@@ -1,13 +1,11 @@
 'use server';
 
-
-
-
 import { reportQueue } from '@/lib/queue/client';
 import { prisma } from '@/lib/database/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireAuth, requireAdmin } from '@/lib/auth-guard';
-// Note: processReport is imported dynamically in the fallback to avoid bundling issues
+import * as fs from 'fs';
+import * as path from 'path';
 
 export async function generateReport(municipalityId: string) {
   console.log(`[generateReport] Request for municipality: ${municipalityId}`);
@@ -78,7 +76,10 @@ export async function getReports(municipalityId?: string) {
       where: whereClause,
       orderBy: { createdAt: 'desc' }
     });
-    return reports;
+    return reports.map(r => ({
+      ...r,
+      resultUrl: `/api/admin/reports/${r.id}/download`
+    }));
   } catch (error) {
     console.error("Error fetching reports:", error);
     return [];
@@ -93,6 +94,19 @@ export async function deleteReport(reportId: string) {
     await prisma.report.delete({
       where: { id: reportId }
     });
+
+    // Netejar fitxers PDF locals
+    const fileName = `report-${reportId}.pdf`;
+    const paths = [
+      path.join(process.cwd(), 'public', 'reports', fileName),
+      path.join('/tmp', 'reports', fileName)
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        try { fs.unlinkSync(p); } catch {}
+      }
+    }
+
     revalidatePath('/admin');
     return { success: true };
   } catch (error: any) {

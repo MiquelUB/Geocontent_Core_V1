@@ -128,9 +128,9 @@ export function ReportsDashboard({ initialReports, municipalityId }: ReportsDash
                                         {new Date(report.createdAt).toLocaleDateString()}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        {report.status === 'COMPLETED' && report.resultUrl && (
+                                        {report.status === 'COMPLETED' && (
                                             <a
-                                                href={report.resultUrl}
+                                                href={`/api/admin/reports/${report.id}/download`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center text-[#568F72] hover:text-[#3e6b53] font-medium text-sm"

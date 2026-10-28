@@ -1,9 +1,16 @@
 import puppeteer from 'puppeteer';
+import * as fs from 'fs';
 
 export async function generatePdf(html: string): Promise<Buffer> {
+  let browser = null;
   try {
-    const browser = await puppeteer.launch({ 
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+      (fs.existsSync('/usr/bin/chromium-browser') ? '/usr/bin/chromium-browser' :
+       fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
+
+    browser = await puppeteer.launch({ 
       headless: true,
+      executablePath,
       args: [
         '--no-sandbox',              // Necessari en Docker (rootless)
         '--disable-setuid-sandbox',
@@ -35,7 +42,7 @@ export async function generatePdf(html: string): Promise<Buffer> {
     // Set viewport to A4 size roughly for better rendering simulation
     await page.setViewport({ width: 794, height: 1123 }); // A4 at 96 DPI
     
-    await page.setContent(html, { waitUntil: 'networkidle0' as any });
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
     
     // Generate PDF
     const pdf = await page.pdf({ 
@@ -50,9 +57,17 @@ export async function generatePdf(html: string): Promise<Buffer> {
     });
     
     await browser.close();
+    browser = null;
     return Buffer.from(pdf);
-  } catch (error) {
+  } catch (error: any) {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error("Error closing browser after failure:", closeErr);
+      }
+    }
     console.error("Error generating PDF:", error);
-    throw new Error("Failed to generate PDF");
+    throw new Error(`Failed to generate PDF: ${error.message || error}`);
   }
 }
