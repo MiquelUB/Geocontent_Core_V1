@@ -90,7 +90,14 @@ const OUTPUT_JSON_SCHEMA_STR = `{
     "on": { "ruta_id": "string|null", "poi_id": "string|null" },
     "refs": ["string"], "esforc": "baix|mitja|alt", "kpi_a_mirar": "string"
   } ],
-  "grafiques": [ { "id": "string", "titular": "string", "lectura": "string" } ],
+  "grafiques": [
+    { "id": "g_usuaris", "titular": "string", "lectura": "string" },
+    { "id": "g_rutes", "titular": "string", "lectura": "string" },
+    { "id": "g_estrelles", "titular": "string", "lectura": "string" },
+    { "id": "g_quiz", "titular": "string", "lectura": "string" },
+    { "id": "g_embut", "titular": "string", "lectura": "string" },
+    { "id": "g_comentaris", "titular": "string", "lectura": "string" }
+  ],
   "limitacions": ["string"]
 }`;
 

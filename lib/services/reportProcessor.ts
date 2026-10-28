@@ -3,488 +3,489 @@ import { generateExecutiveReportAi } from './openrouter';
 import { generatePdf } from './pdf';
 import { getExecutiveAnalytics } from '../analytics';
 import { ExecutiveReportInputData, ExecutiveReportOutputJson } from '../types/executiveReport';
+import { EXECUTIVE_REPORT_MUSTACHE_TEMPLATE } from '../templates/executiveReportTemplate';
+import { ADMIN_THEMES } from '@/lib/adminTheme';
+import Mustache from 'mustache';
 import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * Construeix l'HTML A4 per a l'Informe Executiu d'Impacte de Geocontent
- * d'acord amb la Spec 002 i el Prompt de l'Agent d'Informe Executiu.
+ * Mapeig de temes a colors secundaris suaus per a les capçaleres i fons de targetes
+ */
+const THEME_BG_MAP: Record<string, string> = {
+  mountain: '#eef3ef',
+  coast: '#e6eef5',
+  interior: '#f9ede9',
+  bloom: '#faf0f5',
+  city: '#f0f0f0'
+};
+
+/**
+ * Textos d'estat per al seguiment de propostes
+ */
+const ESTAT_TEXTS: Record<string, string> = {
+  millora: 'Millora',
+  empitjora: 'Empitjora',
+  sense_canvi: 'Sense canvi',
+  no_valorable: 'No valorable'
+};
+
+/**
+ * Textos descriptius de les palanques digitals
+ */
+const PALANCA_TEXTS: Record<string, string> = {
+  contingut: 'Contingut',
+  quiz: 'Quiz',
+  estructura_ruta: 'Estructura de la ruta',
+  traduccions: 'Traduccions',
+  dates: 'Dates i temporada',
+  offline: 'Mode offline',
+  difusio_digital: 'Difusió digital',
+  nova_ruta: 'Nova ruta'
+};
+
+/**
+ * Textos dels semàfors de salut de les rutes
+ */
+const SEMAFOR_TEXTS: Record<string, string> = {
+  consolidada: 'Consolidada',
+  a_vigilar: 'A vigilar',
+  a_revisar: 'A revisar',
+  sense_dades: 'Sense dades'
+};
+
+/**
+ * Genera un SVG inline del mapa de calor anònim a partir de les coordenades dels POIs
+ */
+function generateHeatmapSvg(pois: Array<{ nom: string; lat?: number | null; lng?: number | null; desbloquejos: number }>): string | null {
+  const validPois = pois.filter(p => typeof p.lat === 'number' && typeof p.lng === 'number' && (p.lat !== 0 || p.lng !== 0));
+  if (validPois.length === 0) return null;
+
+  const minLat = Math.min(...validPois.map(p => p.lat!));
+  const maxLat = Math.max(...validPois.map(p => p.lat!));
+  const minLng = Math.min(...validPois.map(p => p.lng!));
+  const maxLng = Math.max(...validPois.map(p => p.lng!));
+
+  const latSpan = Math.max(0.005, maxLat - minLat);
+  const lngSpan = Math.max(0.005, maxLng - minLng);
+
+  const maxUnlocks = Math.max(1, ...validPois.map(p => p.desbloquejos));
+
+  const circles = validPois.map(p => {
+    const x = Math.round(50 + ((p.lng! - minLng) / lngSpan) * 600);
+    const y = Math.round(150 - ((p.lat! - minLat) / latSpan) * 120);
+    const radius = Math.max(8, Math.min(24, Math.round(8 + (p.desbloquejos / maxUnlocks) * 16)));
+    const opacity = (0.35 + (p.desbloquejos / maxUnlocks) * 0.45).toFixed(2);
+    return `<circle cx="${x}" cy="${y}" r="${radius}" fill="#2f8f5b" opacity="${opacity}" />
+            <circle cx="${x}" cy="${y}" r="3" fill="#1f2933" />
+            <text x="${x}" y="${y + radius + 11}" font-size="9" text-anchor="middle" fill="#555" font-family="system-ui">${p.nom.slice(0, 18)}</text>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 700 180" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: auto; background: #FAF8F5; border-radius: 6px; border: 1px solid #ECE7DB;">
+    <rect width="100%" height="100%" fill="#F9F7F2"/>
+    ${circles}
+  </svg>`;
+}
+
+/**
+ * Construeix l'HTML per a l'informe executiu usant el motor Mustache i la plantilla estàndard.
+ * El backend calcula tots els percentatges, sparklines i textos d'estat.
+ * La IA només aporta titulars i interpretacions textuals referenciades per ID.
  */
 export function buildExecutiveReportHtml(
   contract: ExecutiveReportInputData,
-  aiReport: ExecutiveReportOutputJson
+  aiReport: ExecutiveReportOutputJson,
+  municipalityThemeId: string = 'mountain',
+  municipalityLogoUrl: string | null = null,
+  poiCoordinates: Array<{ nom: string; lat?: number | null; lng?: number | null; desbloquejos: number }> = []
 ): string {
-  const { client, periode, periode_anterior, nivell_dades, kpis, rutes } = contract;
+  const themeConfig = ADMIN_THEMES[municipalityThemeId] || ADMIN_THEMES.mountain;
+  const color_primari = themeConfig.hex || '#2D4636';
+  const color_secundari = THEME_BG_MAP[municipalityThemeId] || '#eef3ef';
 
-  const nivellBadgeColor =
-    nivell_dades === 'suficient' ? '#2e7d32' : nivell_dades === 'preliminar' ? '#ed6c02' : '#d32f2f';
-  const nivellBadgeBg =
-    nivell_dades === 'suficient' ? '#e8f5e9' : nivell_dades === 'preliminar' ? '#fff3e0' : '#ffebee';
-
-  const semaforColor: Record<string, { bg: string; text: string; label: string }> = {
-    consolidada: { bg: '#e8f5e9', text: '#2e7d32', label: 'Consolidada' },
-    a_vigilar: { bg: '#fff3e0', text: '#ed6c02', label: 'A vigilar' },
-    a_revisar: { bg: '#ffebee', text: '#d32f2f', label: 'A revisar' },
-    sense_dades: { bg: '#f5f5f5', text: '#757575', label: 'Sense dades' }
+  // 1. Dades de marca
+  const marca = {
+    color_primari,
+    color_secundari,
+    logo_url: municipalityLogoUrl
   };
 
-  const deltaFormat = (delta_pct: number | null, delta_abs: number | null) => {
-    if (!periode_anterior.disponible || delta_pct === null) return `<span style="color: #888;">-</span>`;
-    const isPos = delta_pct >= 0;
-    const color = isPos ? '#2e7d32' : '#d32f2f';
-    const sign = isPos ? '+' : '';
-    return `<span style="color: ${color}; font-weight: 600;">${sign}${delta_pct}%</span>`;
+  // 2. Data de generació en format dd/mm/aaaa
+  const dNow = new Date();
+  const generat_el = `${String(dNow.getDate()).padStart(2, '0')}/${String(dNow.getMonth() + 1).padStart(2, '0')}/${dNow.getFullYear()}`;
+
+  // 3. Mapa de gràfiques (IA titular + lectura per ID)
+  const defaultGrafiques: Record<string, { titular: string; lectura: string }> = {
+    g_usuaris: {
+      titular: "Evolució d'usuaris nous i recurrents",
+      lectura: "Captació de nous visitants i taxa de retorn al municipi."
+    },
+    g_rutes: {
+      titular: "Finalització i abandonament per ruta",
+      lectura: "Proporció d'itineraris completats respecte als iniciats."
+    },
+    g_estrelles: {
+      titular: "Valoració dels visitants per ruta",
+      lectura: "Puntuacions en estrelles assignades pels usuaris."
+    },
+    g_quiz: {
+      titular: "Distribució d'intents en els quizzes",
+      lectura: "Dificultat percebuda en els reptes patrimonials."
+    },
+    g_embut: {
+      titular: "Desbloquejos en ordre d'itinerari",
+      lectura: "Retenció de visitants al llarg dels punts d'interès."
+    },
+    g_comentaris: {
+      titular: "Classificació dels comentaris dels usuaris",
+      lectura: "Tipologia de les opinions i incidències reportades."
+    }
   };
 
-  const fiabilitatBadge = (f: 'baixa' | 'mitjana' | 'alta', n: number) => {
-    const bg = f === 'alta' ? '#e8f5e9' : f === 'mitjana' ? '#fff8e1' : '#f5f5f5';
-    const text = f === 'alta' ? '#2e7d32' : f === 'mitjana' ? '#f57f17' : '#757575';
-    return `<span style="background: ${bg}; color: ${text}; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 600;">n=${n} (${f})</span>`;
+  const grafiques: Record<string, { titular: string; lectura: string }> = { ...defaultGrafiques };
+  if (Array.isArray(aiReport.grafiques)) {
+    for (const g of aiReport.grafiques) {
+      if (g && g.id) {
+        grafiques[g.id] = {
+          titular: g.titular || defaultGrafiques[g.id]?.titular || "",
+          lectura: g.lectura || defaultGrafiques[g.id]?.lectura || ""
+        };
+      }
+    }
+  }
+
+  // 4. Formatar canvis (deltes) dels KPIs
+  const formatCanvi = (deltaPct: number | null): string | null => {
+    if (!contract.periode_anterior.disponible || deltaPct === null) return null;
+    const sign = deltaPct >= 0 ? '+' : '';
+    return `${sign}${deltaPct}%`;
   };
 
-  return `
-    <!DOCTYPE html>
-    <html lang="ca">
-    <head>
-      <meta charset="utf-8" />
-      <title>Informe Executiu - ${client.nom}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        @page { size: A4; margin: 15mm; }
-        * { box-sizing: border-box; }
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-          color: #1e2b25;
-          line-height: 1.5;
-          margin: 0;
-          padding: 0;
-          font-size: 11px;
-        }
-        h1, h2, h3, h4 {
-          font-family: 'Playfair Display', Georgia, serif;
-          color: #2D4636;
-          margin-top: 0;
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          border-bottom: 2px solid #568F72;
-          padding-bottom: 12px;
-          margin-bottom: 20px;
-        }
-        .logo-title {
-          font-size: 20px;
-          font-weight: 700;
-          color: #2D4636;
-          letter-spacing: -0.5px;
-        }
-        .subtitle {
-          font-size: 11px;
-          color: #568F72;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          font-weight: 600;
-        }
-        .period-info {
-          text-align: right;
-          font-size: 10px;
-          color: #666;
-        }
-        .badge {
-          display: inline-block;
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-weight: 600;
-          font-size: 10px;
-        }
-        .section {
-          margin-bottom: 22px;
-          page-break-inside: avoid;
-        }
-        .card {
-          background: #F9F7F2;
-          border: 1px solid #E5E1D5;
-          border-radius: 8px;
-          padding: 14px 16px;
-          margin-bottom: 14px;
-        }
-        .summary-box {
-          background: #FFFFFF;
-          border-left: 4px solid #568F72;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-          padding: 16px;
-          border-radius: 0 6px 6px 0;
-          margin-bottom: 18px;
-        }
-        .summary-title {
-          font-family: 'Playfair Display', serif;
-          font-size: 15px;
-          font-weight: 700;
-          color: #2D4636;
-          margin-bottom: 8px;
-        }
-        .summary-p {
-          font-size: 11px;
-          color: #333;
-          margin-bottom: 6px;
-          line-height: 1.55;
-        }
-        .kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-          margin-bottom: 16px;
-        }
-        .kpi-card {
-          background: #FFFFFF;
-          border: 1px solid #E5E1D5;
-          border-radius: 6px;
-          padding: 10px;
-          text-align: center;
-        }
-        .kpi-label {
-          font-size: 9px;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          margin-bottom: 4px;
-          display: block;
-        }
-        .kpi-val {
-          font-size: 20px;
-          font-weight: 700;
-          color: #2D4636;
-          display: block;
-        }
-        .kpi-meta {
-          margin-top: 4px;
-          display: flex;
-          justify-content: center;
-          gap: 6px;
-          align-items: center;
-          font-size: 9px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 8px;
-          font-size: 10.5px;
-        }
-        th {
-          background: #F0ECE1;
-          color: #2D4636;
-          font-weight: 600;
-          text-align: left;
-          padding: 7px 10px;
-          border-bottom: 1px solid #D5CEBE;
-          font-size: 10px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        td {
-          padding: 7px 10px;
-          border-bottom: 1px solid #ECE7DB;
-          vertical-align: top;
-        }
-        tr:nth-child(even) td {
-          background: #FAF8F5;
-        }
-        .tag-pill {
-          display: inline-block;
-          padding: 2px 6px;
-          border-radius: 3px;
-          font-size: 9px;
-          font-weight: 600;
-        }
-        .action-card {
-          background: #FFFFFF;
-          border: 1px solid #DCE3DE;
-          border-left: 4px solid #568F72;
-          border-radius: 4px;
-          padding: 10px 12px;
-          margin-bottom: 8px;
-        }
-        .quote-box {
-          font-style: italic;
-          background: #FAF8F5;
-          border-left: 3px solid #C4B9A3;
-          padding: 6px 10px;
-          margin: 4px 0;
-          border-radius: 0 4px 4px 0;
-          color: #444;
-          font-size: 10px;
-        }
-        .footer {
-          margin-top: 25px;
-          padding-top: 10px;
-          border-top: 1px solid #D5CEBE;
-          display: flex;
-          justify-content: space-between;
-          font-size: 8.5px;
-          color: #777;
-        }
-      </style>
-    </head>
-    <body>
-      <!-- Header -->
-      <div class="header">
-        <div>
-          <div class="subtitle">Geocontent · Plataforma Digital de Turisme Patrimonial</div>
-          <div class="logo-title">${client.nom}</div>
-        </div>
-        <div class="period-info">
-          <div>Període: <strong>${periode.inici} – ${periode.final}</strong> (${periode.dies} dies)</div>
-          <div style="margin-top: 3px;">
-            Nivell de dades:
-            <span class="badge" style="background: ${nivellBadgeBg}; color: ${nivellBadgeColor};">
-              ${nivell_dades.toUpperCase()}
-            </span>
-          </div>
-        </div>
-      </div>
+  const findAiKpiState = (key: string, deltaPct: number | null): string => {
+    const matched = aiReport.lectura_kpis?.find(lk => lk.kpi.toLowerCase().includes(key) || lk.refs.some(r => r.includes(key)));
+    if (matched?.estat) return matched.estat;
+    if (deltaPct === null) return 'neutre';
+    return deltaPct >= 0 ? 'positiu' : 'atencio';
+  };
 
-      <!-- Resum Executiu -->
-      <div class="section">
-        <div class="summary-box">
-          <div class="summary-title">${aiReport?.resum_executiu?.titular || 'Resum Executiu d\'Impacte'}</div>
-          ${(aiReport?.resum_executiu?.paragrafs || []).map(p => `<p class="summary-p">${p}</p>`).join('')}
-        </div>
-      </div>
+  const findAiKpiLectura = (key: string, fallback: string): string => {
+    const matched = aiReport.lectura_kpis?.find(lk => lk.kpi.toLowerCase().includes(key) || lk.refs.some(r => r.includes(key)));
+    return matched?.lectura || fallback;
+  };
 
-      <!-- 1. KPIs Clau del Període -->
-      <div class="section">
-        <h3 style="font-size: 13px; margin-bottom: 8px;">1. Indicadors Clau de Rendiment (KPIs)</h3>
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <span class="kpi-label">Usuaris Totals</span>
-            <span class="kpi-val">${kpis.usuaris.totals.disponible ? kpis.usuaris.totals.valor : 'no disp.'}</span>
-            <div class="kpi-meta">
-              ${deltaFormat(kpis.usuaris.totals.delta_pct, kpis.usuaris.totals.delta_abs)}
-              ${fiabilitatBadge(kpis.usuaris.totals.fiabilitat, kpis.usuaris.totals.n)}
-            </div>
-          </div>
-          <div class="kpi-card">
-            <span class="kpi-label">Rutes Completades</span>
-            <span class="kpi-val">${kpis.rutes.completades.disponible ? kpis.rutes.completades.valor : '0'}</span>
-            <div class="kpi-meta">
-              ${deltaFormat(kpis.rutes.completades.delta_pct, kpis.rutes.completades.delta_abs)}
-              ${fiabilitatBadge(kpis.rutes.completades.fiabilitat, kpis.rutes.completades.n)}
-            </div>
-          </div>
-          <div class="kpi-card">
-            <span class="kpi-label">Taxa Abandonament</span>
-            <span class="kpi-val">${kpis.rutes.taxa_abandonament.disponible ? `${kpis.rutes.taxa_abandonament.valor}%` : 'no disp.'}</span>
-            <div class="kpi-meta">
-              ${deltaFormat(kpis.rutes.taxa_abandonament.delta_pct, kpis.rutes.taxa_abandonament.delta_abs)}
-              ${fiabilitatBadge(kpis.rutes.taxa_abandonament.fiabilitat, kpis.rutes.taxa_abandonament.n)}
-            </div>
-          </div>
-          <div class="kpi-card">
-            <span class="kpi-label">Valoració Mitjana</span>
-            <span class="kpi-val">${kpis.valoracio.global.disponible ? `${kpis.valoracio.global.valor} ★` : 'no disp.'}</span>
-            <div class="kpi-meta">
-              ${deltaFormat(kpis.valoracio.global.delta_pct, kpis.valoracio.global.delta_abs)}
-              ${fiabilitatBadge(kpis.valoracio.global.fiabilitat, kpis.valoracio.global.n)}
-            </div>
-          </div>
-        </div>
+  // 5. Preparació de KPIs per a la plantilla
+  const kpis = [
+    {
+      nom: "Usuaris totals",
+      disponible: contract.kpis.usuaris.totals.disponible,
+      valor: contract.kpis.usuaris.totals.disponible ? String(contract.kpis.usuaris.totals.valor) : null,
+      canvi: formatCanvi(contract.kpis.usuaris.totals.delta_pct),
+      estat: findAiKpiState('usuaris', contract.kpis.usuaris.totals.delta_pct),
+      fiabilitat: contract.kpis.usuaris.totals.fiabilitat,
+      n: contract.kpis.usuaris.totals.n,
+      lectura: findAiKpiLectura('usuaris', "Volum total d'usuaris que han interactuat amb el municipi.")
+    },
+    {
+      nom: "Usuaris nous (captació)",
+      disponible: contract.kpis.usuaris.nous.disponible,
+      valor: contract.kpis.usuaris.nous.disponible ? String(contract.kpis.usuaris.nous.valor) : null,
+      canvi: formatCanvi(contract.kpis.usuaris.nous.delta_pct),
+      estat: findAiKpiState('nous', contract.kpis.usuaris.nous.delta_pct),
+      fiabilitat: contract.kpis.usuaris.nous.fiabilitat,
+      n: contract.kpis.usuaris.nous.n,
+      lectura: findAiKpiLectura('nous', "Visitants que interactuen per primera vegada.")
+    },
+    {
+      nom: "Rutes completades",
+      disponible: contract.kpis.rutes.completades.disponible,
+      valor: contract.kpis.rutes.completades.disponible ? String(contract.kpis.rutes.completades.valor) : '0',
+      canvi: formatCanvi(contract.kpis.rutes.completades.delta_pct),
+      estat: findAiKpiState('completades', contract.kpis.rutes.completades.delta_pct),
+      fiabilitat: contract.kpis.rutes.completades.fiabilitat,
+      n: contract.kpis.rutes.completades.n,
+      lectura: findAiKpiLectura('completades', "Itineraris recorreguts fins a l'últim punt.")
+    },
+    {
+      nom: "Taxa d'abandonament",
+      disponible: contract.kpis.rutes.taxa_abandonament.disponible,
+      valor: contract.kpis.rutes.taxa_abandonament.disponible ? `${contract.kpis.rutes.taxa_abandonament.valor}%` : null,
+      canvi: formatCanvi(contract.kpis.rutes.taxa_abandonament.delta_pct),
+      estat: contract.kpis.rutes.taxa_abandonament.valor && contract.kpis.rutes.taxa_abandonament.valor > 40 ? 'atencio' : 'positiu',
+      fiabilitat: contract.kpis.rutes.taxa_abandonament.fiabilitat,
+      n: contract.kpis.rutes.taxa_abandonament.n,
+      lectura: findAiKpiLectura('abandonament', "Visitants sense connexió passades 24 hores.")
+    },
+    {
+      nom: "Participació quizzes",
+      disponible: contract.kpis.quiz.participacio_pct.disponible,
+      valor: contract.kpis.quiz.participacio_pct.disponible ? `${contract.kpis.quiz.participacio_pct.valor}%` : null,
+      canvi: formatCanvi(contract.kpis.quiz.participacio_pct.delta_pct),
+      estat: findAiKpiState('quiz', contract.kpis.quiz.participacio_pct.delta_pct),
+      fiabilitat: contract.kpis.quiz.participacio_pct.fiabilitat,
+      n: contract.kpis.quiz.participacio_pct.n,
+      lectura: findAiKpiLectura('quiz', "Percentatge de desbloquejos amb repte superat.")
+    },
+    {
+      nom: "Valoració global",
+      disponible: contract.kpis.valoracio.global.disponible,
+      valor: contract.kpis.valoracio.global.disponible ? `${contract.kpis.valoracio.global.valor} ★` : null,
+      canvi: formatCanvi(contract.kpis.valoracio.global.delta_pct),
+      estat: findAiKpiState('valoracio', contract.kpis.valoracio.global.delta_pct),
+      fiabilitat: contract.kpis.valoracio.global.fiabilitat,
+      n: contract.kpis.valoracio.global.n,
+      lectura: findAiKpiLectura('valoracio', "Mitjana de satisfacció recollida a les rutes.")
+    }
+  ];
 
-        ${aiReport?.lectura_kpis?.length ? `
-          <div class="card" style="padding: 10px 14px;">
-            <h4 style="font-size: 11px; margin-bottom: 6px; color: #2D4636;">Lectura i Anàlisi Metodològica dels KPIs</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 20%;">KPI / Valor</th>
-                  <th style="width: 25%;">Fet comprovat</th>
-                  <th style="width: 30%;">Lectura analítica</th>
-                  <th style="width: 25%;">Hipòtesi causal</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${aiReport.lectura_kpis.map(lk => `
-                  <tr>
-                    <td>
-                      <strong>${lk.kpi}</strong><br/>
-                      <span style="font-size: 11px; font-weight: 700; color: #2D4636;">${lk.valor}</span>
-                      ${lk.canvi ? `<span style="font-size: 9px; color: #666;"> (${lk.canvi})</span>` : ''}
-                    </td>
-                    <td>${lk.fet}</td>
-                    <td>${lk.lectura}</td>
-                    <td style="color: #666; font-style: italic;">${lk.hipotesi || 'Cap hipòtesi addicional'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        ` : ''}
-      </div>
+  // 6. Gràfica d'Usuaris (barres actual vs anterior)
+  const maxUsers = Math.max(
+    1,
+    contract.kpis.usuaris.totals.valor || 0,
+    contract.kpis.usuaris.totals.anterior || 0,
+    (contract.kpis.usuaris.nous.valor || 0) + (contract.kpis.usuaris.recurrents.valor || 0)
+  );
 
-      <!-- 2. Estat de les Rutes i Semàfor -->
-      <div class="section">
-        <h3 style="font-size: 13px; margin-bottom: 8px;">2. Rendiment dels Itineraris i Semàfor de Salut</h3>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 30%;">Ruta</th>
-              <th style="width: 15%;">Semàfor</th>
-              <th style="width: 15%;">Completades</th>
-              <th style="width: 15%;">Valoració</th>
-              <th style="width: 25%;">Diagnòstic</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rutes.map(r => {
-              const sem = semaforColor[r.semafor] || semaforColor.sense_dades;
-              const aiRuta = aiReport?.rutes?.find(ar => ar.ruta_id === r.ruta_id);
-              return `
-                <tr>
-                  <td>
-                    <strong>${r.nom}</strong><br/>
-                    <span style="font-size: 9px; color: #777;">${r.pois.length} POIs configurats</span>
-                  </td>
-                  <td>
-                    <span class="tag-pill" style="background: ${sem.bg}; color: ${sem.text};">
-                      ${sem.label}
-                    </span>
-                  </td>
-                  <td>
-                    <strong>${r.completades}</strong>
-                    <span style="font-size: 9px; color: #777;">(aband.: ${r.abandonades})</span>
-                  </td>
-                  <td>
-                    ${r.valoracio.mitjana !== null ? `<strong>${r.valoracio.mitjana} ★</strong> <span style="font-size: 9px; color: #777;">(n=${r.valoracio.n})</span>` : '<span style="color: #888;">Sense valoracions</span>'}
-                  </td>
-                  <td style="font-size: 10px;">
-                    ${aiRuta?.lectura || (r.semafor === 'sense_dades' ? 'Sense dades de trànsit.' : 'Ruta operativa.')}
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-            ${rutes.length === 0 ? `
-              <tr>
-                <td colspan="5" style="text-align: center; color: #888; padding: 16px;">
-                  El municipi no té cap ruta donada d'alta actualment.
-                </td>
-              </tr>
-            ` : ''}
-          </tbody>
-        </table>
-      </div>
+  const g_usuaris = [
+    {
+      etiqueta: "Usuaris nous (captació)",
+      pct_actual: Math.round(((contract.kpis.usuaris.nous.valor || 0) / maxUsers) * 100),
+      pct_anterior: Math.round(((contract.kpis.usuaris.nous.anterior || 0) / maxUsers) * 100),
+      te_anterior: contract.periode_anterior.disponible && contract.kpis.usuaris.nous.anterior !== null,
+      actual: contract.kpis.usuaris.nous.valor || 0,
+      anterior: contract.kpis.usuaris.nous.anterior || 0
+    },
+    {
+      etiqueta: "Usuaris recurrents (retorn)",
+      pct_actual: Math.round(((contract.kpis.usuaris.recurrents.valor || 0) / maxUsers) * 100),
+      pct_anterior: Math.round(((contract.kpis.usuaris.recurrents.anterior || 0) / maxUsers) * 100),
+      te_anterior: contract.periode_anterior.disponible && contract.kpis.usuaris.recurrents.anterior !== null,
+      actual: contract.kpis.usuaris.recurrents.valor || 0,
+      anterior: contract.kpis.usuaris.recurrents.anterior || 0
+    },
+    {
+      etiqueta: "Usuaris totals actius",
+      pct_actual: Math.round(((contract.kpis.usuaris.totals.valor || 0) / maxUsers) * 100),
+      pct_anterior: Math.round(((contract.kpis.usuaris.totals.anterior || 0) / maxUsers) * 100),
+      te_anterior: contract.periode_anterior.disponible && contract.kpis.usuaris.totals.anterior !== null,
+      actual: contract.kpis.usuaris.totals.valor || 0,
+      anterior: contract.kpis.usuaris.totals.anterior || 0
+    }
+  ];
 
-      <!-- 3. Quizzes i Resolució de Reptes -->
-      <div class="section">
-        <h3 style="font-size: 13px; margin-bottom: 8px;">3. Quizzes i Participació Lúdica</h3>
-        <div class="card" style="padding: 10px 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div>
-              <strong>Participació global:</strong> ${kpis.quiz.participacio_pct.disponible ? `${kpis.quiz.participacio_pct.valor}% dels desbloquejos` : 'Sense dades'} ·
-              <strong>Intents mitjans:</strong> ${kpis.quiz.intents_mitjans.disponible ? `${kpis.quiz.intents_mitjans.valor} intents per quiz` : 'no disp.'}
-            </div>
-            <div style="font-size: 9px; color: #555;">
-              Distribució d'intents:
-              <strong>1r:</strong> ${kpis.quiz.distribucio_intents["1"]} |
-              <strong>2n:</strong> ${kpis.quiz.distribucio_intents["2"]} |
-              <strong>3r:</strong> ${kpis.quiz.distribucio_intents["3"]} |
-              <strong>4t+:</strong> ${kpis.quiz.distribucio_intents["4"]}
-            </div>
-          </div>
-          <p style="margin: 0; font-size: 10.5px; color: #333;">${aiReport?.quiz?.lectura_global || 'Sense incidències detectades en la resolució de quizzes.'}</p>
+  // 7. Gràfica de Rutes (completades vs abandonades)
+  const g_rutes = contract.rutes.map(r => {
+    const total = r.completades + r.abandonades;
+    const pct_completades = total > 0 ? Math.round((r.completades / total) * 100) : 0;
+    const pct_abandonades = total > 0 ? 100 - pct_completades : 0;
+    return {
+      nom: r.nom,
+      pct_completades,
+      pct_abandonades,
+      completades: r.completades,
+      abandonades: r.abandonades
+    };
+  });
 
-          ${aiReport?.quiz?.pois_a_revisar?.length ? `
-            <div style="margin-top: 8px; border-top: 1px dashed #D5CEBE; padding-top: 6px;">
-              <strong style="font-size: 10px; color: #b71c1c;">Punts d'Interès a revisar per dificultat excessiva o ambigüitat:</strong>
-              <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 10px;">
-                ${aiReport.quiz.pois_a_revisar.map(p => `
-                  <li><strong>${p.nom}:</strong> ${p.motiu}</li>
-                `).join('')}
-              </ul>
-            </div>
-          ` : ''}
-        </div>
-      </div>
+  // 8. Rutes amb valoració, sparkline i semàfor
+  const rutes = contract.rutes.map(r => {
+    const aiRuta = aiReport.rutes?.find(ar => ar.ruta_id === r.ruta_id);
+    const isDispon = r.valoracio.mitjana !== null && r.valoracio.n > 0;
+    const pct_estrelles = isDispon ? Math.round((r.valoracio.mitjana! / 5) * 100) : 0;
 
-      <!-- 4. Sensibilitat i Ressenyes dels Usuaris -->
-      <div class="section">
-        <h3 style="font-size: 13px; margin-bottom: 8px;">4. Sensibilitat dels Turistes i Punts Forts</h3>
-        <div class="card" style="padding: 12px 14px;">
-          <p style="margin-top: 0; margin-bottom: 8px; font-size: 10.5px;">
-            ${aiReport?.comentaris?.sensibilitat || 'No s\'han registrat comentaris ni suggeriments per part dels usuaris en aquest període.'}
-          </p>
+    // Sparkline: nomes si te 2 o mes punts d'historial
+    let sparkline: string | null = null;
+    if (r.valoracio.historial && r.valoracio.historial.length >= 2) {
+      const h = r.valoracio.historial;
+      const points = h.map((pt, idx) => {
+        const x = Math.round((idx / (h.length - 1)) * 100);
+        const val = Math.max(1, Math.min(5, pt.mitjana));
+        const y = Math.round(26 - ((val - 1) / 4) * 22);
+        return `${x},${y}`;
+      });
+      sparkline = points.join(' ');
+    }
 
-          ${aiReport?.ben_fet?.length ? `
-            <div style="margin-bottom: 10px;">
-              <strong style="font-size: 10px; color: #2e7d32;">Elements ben valorats que cal mantenir:</strong>
-              <ul style="margin: 4px 0 0 16px; padding: 0; font-size: 10px;">
-                ${aiReport.ben_fet.map(bf => `
-                  <li><strong>${bf.tema}:</strong> ${bf.evidencia}</li>
-                `).join('')}
-              </ul>
-            </div>
-          ` : ''}
+    return {
+      nom: r.nom,
+      lectura: aiRuta?.lectura || (r.semafor === 'sense_dades' ? 'Sense dades d\'activitat en el període.' : 'Ruta operativa.'),
+      valoracio: {
+        disponible: isDispon,
+        pct_estrelles,
+        mitjana: r.valoracio.mitjana,
+        n: r.valoracio.n,
+        sparkline
+      },
+      evolucio: aiRuta?.evolucio || (r.valoracio.historial.length >= 2 ? 'estable' : 'sense_historial'),
+      semafor: r.semafor,
+      semafor_text: SEMAFOR_TEXTS[r.semafor] || 'Sense dades'
+    };
+  });
 
-          ${aiReport?.comentaris?.citacions?.length ? `
-            <div style="margin-top: 6px;">
-              <strong style="font-size: 10px; color: #555;">Citacions literals destacades (anònimes):</strong>
-              ${aiReport.comentaris.citacions.slice(0, 3).map(cit => `
-                <div class="quote-box">&ldquo;${cit}&rdquo;</div>
-              `).join('')}
-            </div>
-          ` : ''}
-        </div>
-      </div>
+  // 9. Quizzes (distribució d'intents)
+  const dist = contract.kpis.quiz.distribucio_intents;
+  const totalSolved = dist["1"] + dist["2"] + dist["3"] + dist["4"];
+  const g_quiz: any[] = [];
 
-      <!-- 5. Propostes de Millora Prioritzades (Màxim 5) -->
-      <div class="section">
-        <h3 style="font-size: 13px; margin-bottom: 8px;">5. Propostes d'Acció Prioritzades (Palanques Digitals Geocontent)</h3>
-        ${(aiReport?.propostes || []).map((prop, idx) => `
-          <div class="action-card">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-              <strong style="font-size: 11px; color: #2D4636;">
-                #${prop.prioritat || idx + 1} · ${prop.titol}
-              </strong>
-              <span class="tag-pill" style="background: #e0f2f1; color: #00695c; font-size: 9px;">
-                Palanca: ${prop.palanca} · Esforç: ${prop.esforc}
-              </span>
-            </div>
-            <p style="margin: 0 0 4px 0; font-size: 10.5px; color: #333;">${prop.accio}</p>
-            <div style="font-size: 9px; color: #666;">
-              <strong>KPI objectiu al proper informe:</strong> ${prop.kpi_a_mirar}
-            </div>
-          </div>
-        `).join('')}
+  if (totalSolved > 0) {
+    const p1 = Math.round((dist["1"] / totalSolved) * 100);
+    const p2 = Math.round((dist["2"] / totalSolved) * 100);
+    const p3 = Math.round((dist["3"] / totalSolved) * 100);
+    const p4 = Math.max(0, 100 - p1 - p2 - p3);
+    g_quiz.push({
+      etiqueta: "Distribució global",
+      pct1: p1,
+      pct2: p2,
+      pct3: p3,
+      pct4: p4,
+      n: totalSolved
+    });
+  }
 
-        ${(!aiReport?.propostes || aiReport.propostes.length === 0) ? `
-          <p style="font-style: italic; color: #777;">No hi ha prou dades per recomanar canvis en aquest període. Es recomana continuar registrant trànsit.</p>
-        ` : ''}
-      </div>
+  contract.rutes.forEach(r => {
+    r.pois.forEach(p => {
+      if (p.quiz.n > 0) {
+        const nPoi = p.quiz.n;
+        const pd = p.quiz.distribucio_intents;
+        const q1 = Math.round((pd["1"] / nPoi) * 100);
+        const q2 = Math.round((pd["2"] / nPoi) * 100);
+        const q3 = Math.round((pd["3"] / nPoi) * 100);
+        const q4 = Math.max(0, 100 - q1 - q2 - q3);
+        g_quiz.push({
+          etiqueta: `${p.nom} (${r.nom})`,
+          pct1: q1,
+          pct2: q2,
+          pct3: q3,
+          pct4: q4,
+          n: nPoi
+        });
+      }
+    });
+  });
 
-      <!-- 6. Limitacions Metodològiques -->
-      ${aiReport?.limitacions?.length ? `
-        <div class="section">
-          <h4 style="font-size: 11px; margin-bottom: 4px; color: #666;">Limitacions i Consideracions Tècniques</h4>
-          <ul style="margin: 0 0 0 16px; padding: 0; font-size: 9.5px; color: #666;">
-            ${aiReport.limitacions.map(lim => `<li>${lim}</li>`).join('')}
-          </ul>
-        </div>
-      ` : ''}
+  if (g_quiz.length === 0) {
+    g_quiz.push({
+      etiqueta: "Distribució global",
+      pct1: 0,
+      pct2: 0,
+      pct3: 0,
+      pct4: 0,
+      n: 0
+    });
+  }
 
-      <!-- Footer -->
-      <div class="footer">
-        <div>Document oficial generat automàticament per Geocontent Core V1 · Ús intern i presentació a alcaldia.</div>
-        <div>Generat: ${new Date().toLocaleDateString('ca-ES')} · RLS & Tenant Guard Actiu</div>
-      </div>
-    </body>
-    </html>
-  `;
+  // 10. Embut per ruta (desbloquejos per POI en ordre)
+  const g_embut = contract.rutes
+    .filter(r => r.pois.length > 0)
+    .map(r => {
+      const maxDesbloquejos = Math.max(1, ...r.pois.map(p => p.desbloquejos));
+      return {
+        ruta_nom: r.nom,
+        pois: r.pois.map(p => ({
+          ordre: p.ordre,
+          nom: p.nom,
+          desbloquejos: p.desbloquejos,
+          pct: Math.round((p.desbloquejos / maxDesbloquejos) * 100)
+        }))
+      };
+    });
+
+  // 11. Comentaris (barres per tipus)
+  const totCom = contract.kpis.comentaris.positius + contract.kpis.comentaris.negatius + contract.kpis.comentaris.documentacio_acces;
+  const g_comentaris = [
+    {
+      etiqueta: "Positius",
+      pct: totCom > 0 ? Math.round((contract.kpis.comentaris.positius / totCom) * 100) : 0,
+      n: contract.kpis.comentaris.positius
+    },
+    {
+      etiqueta: "Negatius",
+      pct: totCom > 0 ? Math.round((contract.kpis.comentaris.negatius / totCom) * 100) : 0,
+      n: contract.kpis.comentaris.negatius
+    },
+    {
+      etiqueta: "Documentació i accés",
+      pct: totCom > 0 ? Math.round((contract.kpis.comentaris.documentacio_acces / totCom) * 100) : 0,
+      n: contract.kpis.comentaris.documentacio_acces
+    }
+  ];
+
+  // 12. Seguiment informe anterior
+  const seguiment_anterior = (aiReport.seguiment_anterior || []).map(s => ({
+    proposta: s.proposta,
+    estat_text: ESTAT_TEXTS[s.estat_kpi] || s.estat_kpi,
+    nota: s.nota
+  }));
+
+  // 13. Propostes d'acció amb palanca_text i on_text
+  const propostes = (aiReport.propostes || []).map(p => {
+    let on_text: string | null = null;
+    if (p.on?.poi_id) {
+      let foundPoi: { nom: string } | undefined;
+      for (const r of contract.rutes) {
+        const match = r.pois.find(poi => poi.poi_id === p.on.poi_id);
+        if (match) { foundPoi = match; break; }
+      }
+      on_text = foundPoi ? `Punt: ${foundPoi.nom}` : `Punt: ${p.on.poi_id.slice(0, 8)}`;
+    } else if (p.on?.ruta_id) {
+      const match = contract.rutes.find(r => r.ruta_id === p.on.ruta_id);
+      on_text = match ? `Ruta: ${match.nom}` : `Ruta: ${p.on.ruta_id.slice(0, 8)}`;
+    }
+
+    return {
+      prioritat: p.prioritat,
+      titol: p.titol,
+      accio: p.accio,
+      palanca_text: PALANCA_TEXTS[p.palanca] || p.palanca,
+      esforc: p.esforc,
+      on_text,
+      kpi_a_mirar: p.kpi_a_mirar
+    };
+  });
+
+  // 14. Mapa de calor SVG anònim
+  const mapa_calor_svg = generateHeatmapSvg(poiCoordinates);
+
+  // Model de dades complet per a Mustache
+  const viewModel = {
+    client: { nom: contract.client.nom },
+    marca,
+    periode: {
+      inici: contract.periode.inici,
+      final: contract.periode.final
+    },
+    periode_anterior: {
+      inici: contract.periode_anterior.inici,
+      final: contract.periode_anterior.final,
+      disponible: contract.periode_anterior.disponible
+    },
+    preliminar: contract.nivell_dades === 'preliminar',
+    resum_executiu: aiReport.resum_executiu,
+    kpis,
+    grafiques,
+    g_usuaris,
+    g_rutes,
+    rutes,
+    g_quiz,
+    quiz: aiReport.quiz,
+    g_embut,
+    g_comentaris,
+    comentaris: aiReport.comentaris,
+    ben_fet: aiReport.ben_fet,
+    seguiment_anterior,
+    propostes,
+    mapa_calor_svg,
+    limitacions: aiReport.limitacions || [],
+    generat_el
+  };
+
+  return Mustache.render(EXECUTIVE_REPORT_MUSTACHE_TEMPLATE, viewModel);
 }
 
 /**
  * Processa un informe executiu complet de punta a punta:
  * 1. Calcula mètriques i contracte de la Secció 3 via getExecutiveAnalytics.
  * 2. Genera l'anàlisi de l'Agent d'Informe Executiu via generateExecutiveReportAi.
- * 3. Renderitza l'informe en PDF A4 via Puppeteer.
+ * 3. Renderitza l'informe en PDF A4 via Puppeteer i la plantilla estàndard Mustache.
  * 4. Desa l'arxiu i actualitza l'estat a PostgreSQL.
  */
 export async function processReport(
@@ -511,13 +512,51 @@ export async function processReport(
     const analytics = await getExecutiveAnalytics(municipalityId, startDate, endDate);
     const { contract } = analytics;
 
+    // Dades de marca i coordenades del municipi
+    const municipality = await prisma.municipality.findUnique({
+      where: { id: municipalityId },
+      select: { themeId: true, logoUrl: true }
+    });
+
+    const poisRaw = await prisma.poi.findMany({
+      where: {
+        routePois: {
+          some: { route: { municipalityId } }
+        }
+      },
+      select: {
+        title: true,
+        latitude: true,
+        longitude: true,
+        userUnlocks: {
+          where: {
+            unlockedAt: { gte: startDate, lte: endDate }
+          },
+          select: { userId: true }
+        }
+      }
+    });
+
+    const poiCoordinates = poisRaw.map(p => ({
+      nom: p.title,
+      lat: p.latitude,
+      lng: p.longitude,
+      desbloquejos: p.userUnlocks.length
+    }));
+
     // 4. Execució de l'Agent d'Informe Executiu (Prompt Seccions 4 i 5 + Guardes Secció 9)
     console.log(`[Processor] Executant Agent d'Informe Executiu (nivell de dades: ${contract.nivell_dades})...`);
     const aiReport = await generateExecutiveReportAi(contract);
 
-    // 5. Generació de l'HTML A4 per al PDF (retirat Rendiment setmanal tal com mana la Secció 8)
-    console.log("[Processor] Maquetant HTML per al PDF executiu...");
-    const html = buildExecutiveReportHtml(contract, aiReport);
+    // 5. Generació de l'HTML A4 per al PDF mitjançant la plantilla Mustache estàndard
+    console.log("[Processor] Maquetant HTML per al PDF executiu amb Mustache...");
+    const html = buildExecutiveReportHtml(
+      contract,
+      aiReport,
+      municipality?.themeId || 'mountain',
+      municipality?.logoUrl || null,
+      poiCoordinates
+    );
 
     // 6. Renderitzat del PDF amb Puppeteer
     console.log("[Processor] Renderitzant PDF amb Puppeteer...");
