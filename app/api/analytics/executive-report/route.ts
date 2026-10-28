@@ -3,6 +3,41 @@ import { prisma } from '@/lib/database/prisma';
 import { getExecutiveAnalytics } from '@/lib/analytics';
 import { auth } from '@/auth';
 
+function parseDateParam(dateStr?: string | null, isEnd = false): Date {
+  if (!dateStr) {
+    const d = new Date();
+    if (isEnd) {
+      d.setHours(23, 59, 59, 999);
+    } else {
+      d.setDate(d.getDate() - 30);
+      d.setHours(0, 0, 0, 0);
+    }
+    return d;
+  }
+
+  if (dateStr.includes('T')) {
+    const d = new Date(dateStr);
+    if (isEnd && !dateStr.includes('23:59:59')) {
+      d.setHours(23, 59, 59, 999);
+    }
+    return d;
+  }
+
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    const [y, m, d] = parts;
+    if (isEnd) {
+      return new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+
+  const parsed = new Date(dateStr);
+  if (isEnd) parsed.setHours(23, 59, 59, 999);
+  else parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
 export async function GET(req: Request) {
   try {
     // SEC-02: Auth guard — dades d'analítica protegides
@@ -35,9 +70,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Accés denegat.' }, { status: 403 });
     }
 
-    const now = new Date();
-    const startDate = startDateParam ? new Date(startDateParam) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = endDateParam ? new Date(endDateParam) : now;
+    const startDate = parseDateParam(startDateParam, false);
+    const endDate = parseDateParam(endDateParam, true);
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       return NextResponse.json({ success: false, error: "Dates no vàlides" }, { status: 400 });

@@ -60,8 +60,11 @@ export async function GET(
     if (!pdfBuffer) {
       console.log(`[PDF Download] Fitxer no trobat a disc per a ${reportId}. Regenerant...`);
       try {
+        const rawData = report.data as any;
+        const startDate = rawData?.startDate ? new Date(rawData.startDate) : undefined;
+        const endDate = rawData?.endDate ? new Date(rawData.endDate) : undefined;
         const { processReport } = await import('@/lib/services/reportProcessor');
-        const regen = await processReport(report.id, report.municipalityId);
+        const regen = await processReport(report.id, report.municipalityId, startDate, endDate);
         if (regen.success) {
           for (const p of pathsToCheck) {
             if (fs.existsSync(p)) {

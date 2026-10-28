@@ -7,6 +7,45 @@ import { requireAuth, requireAdmin } from '@/lib/auth-guard';
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * Converteix una cadena de data (YYYY-MM-DD o ISO) a un objecte Date segur,
+ * assegurant que l'inici comenci a les 00:00:00.000 i el final cobreixi fins a les 23:59:59.999.
+ */
+function parseDateParam(dateStr?: string, isEnd = false): Date {
+  if (!dateStr) {
+    const d = new Date();
+    if (isEnd) {
+      d.setHours(23, 59, 59, 999);
+    } else {
+      d.setDate(d.getDate() - 30);
+      d.setHours(0, 0, 0, 0);
+    }
+    return d;
+  }
+
+  if (dateStr.includes('T')) {
+    const d = new Date(dateStr);
+    if (isEnd && !dateStr.includes('23:59:59')) {
+      d.setHours(23, 59, 59, 999);
+    }
+    return d;
+  }
+
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    const [y, m, d] = parts;
+    if (isEnd) {
+      return new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
+    return new Date(y, m - 1, d, 0, 0, 0, 0);
+  }
+
+  const parsed = new Date(dateStr);
+  if (isEnd) parsed.setHours(23, 59, 59, 999);
+  else parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
 export async function generateReport(
   municipalityId: string,
   startDateParam?: string,
@@ -27,9 +66,8 @@ export async function generateReport(
     });
     const muniName = muni?.name || 'Municipi';
 
-    const now = new Date();
-    const startDate = startDateParam ? new Date(startDateParam) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = endDateParam ? new Date(endDateParam) : now;
+    const startDate = parseDateParam(startDateParam, false);
+    const endDate = parseDateParam(endDateParam, true);
 
     const formattedStart = `${String(startDate.getDate()).padStart(2, '0')}/${String(startDate.getMonth() + 1).padStart(2, '0')}/${startDate.getFullYear()}`;
     const formattedEnd = `${String(endDate.getDate()).padStart(2, '0')}/${String(endDate.getMonth() + 1).padStart(2, '0')}/${endDate.getFullYear()}`;
@@ -38,11 +76,15 @@ export async function generateReport(
       data: {
         municipalityId,
         status: 'PENDING',
-        title: `Informe Impacte - ${muniName} (${formattedStart} – ${formattedEnd})`
+        title: `Informe Impacte - ${muniName} (${formattedStart} – ${formattedEnd})`,
+        data: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        } as any
       }
     });
 
-    console.log(`[generateReport] Creat registre a la BD: ${report.id}`);
+    console.log(`[generateReport] Creat registre a la BD: ${report.id} (${formattedStart} – ${formattedEnd})`);
 
     try {
       await reportQueue.add('generate-report', {

@@ -63,31 +63,44 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
         }
     }, [reports, router]);
 
-    // Filters
-    const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
-    const [period, setPeriod] = useState('month'); // 'week', 'month', 'year', 'custom'
+    // Helpers per al càlcul de dates
+    const formatDateInput = (d: Date): string => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
-    // Update dates when period changes
-    useEffect(() => {
+    const getDatesForPeriod = (p: string): { start: string; end: string } => {
         const end = new Date();
         let start = new Date();
-
-        if (period === 'day') {
-            start.setHours(0, 0, 0, 0);
-        } else if (period === 'week') {
+        if (p === 'day') {
+            start = new Date();
+        } else if (p === 'week') {
             start.setDate(end.getDate() - 7);
-        } else if (period === 'month') {
-            start.setMonth(end.getMonth() - 1);
-        } else if (period === 'year') {
-            start.setFullYear(end.getFullYear() - 1);
-        } else {
-            return; // Custom is handled by inputs
+        } else if (p === 'month') {
+            start.setDate(end.getDate() - 30);
+        } else if (p === 'year') {
+            start.setDate(end.getDate() - 365);
         }
+        return {
+            start: formatDateInput(start),
+            end: formatDateInput(end)
+        };
+    };
 
-        setStartDate(start.toISOString().split('T')[0]);
-        setEndDate(end.toISOString().split('T')[0]);
-    }, [period]);
+    // Filters inicialitzats a l'últim mes (30 dies)
+    const initialDates = getDatesForPeriod('month');
+    const [startDate, setStartDate] = useState(initialDates.start);
+    const [endDate, setEndDate] = useState(initialDates.end);
+    const [period, setPeriod] = useState('month'); // 'day', 'week', 'month', 'year', 'custom'
+
+    const handleSelectPeriod = (p: string) => {
+        setPeriod(p);
+        const { start, end } = getDatesForPeriod(p);
+        setStartDate(start);
+        setEndDate(end);
+    };
 
     const fetchData = async () => {
         if (!municipalityId || municipalityId === 'null') {
@@ -119,7 +132,7 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
         try {
             const res = await generateReport(municipalityId, startDate, endDate);
             if (res.success) {
-                toast.success("Informe en cua de generació.");
+                toast.success(`Informe per al període (${startDate} – ${endDate}) en cua de generació.`);
                 router.refresh(); // Trigger server refresh for initialReports
             } else {
                 toast.error(res.error || "Error al generar l'informe");
@@ -191,28 +204,28 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                         <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Període d'Anàlisi</label>
                         <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-stone-200 shadow-sm">
                             <button
-                                onClick={() => setPeriod('day')}
+                                onClick={() => handleSelectPeriod('day')}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${period === 'day' ? `text-white shadow-md scale-105` : 'text-stone-600 hover:bg-stone-50'}`}
                                 style={period === 'day' ? { backgroundColor: activeTheme.hex } : {}}
                             >
                                 Avui
                             </button>
                             <button
-                                onClick={() => setPeriod('week')}
+                                onClick={() => handleSelectPeriod('week')}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${period === 'week' ? `text-white shadow-md scale-105` : 'text-stone-600 hover:bg-stone-50'}`}
                                 style={period === 'week' ? { backgroundColor: activeTheme.hex } : {}}
                             >
                                 Setmana
                             </button>
                             <button
-                                onClick={() => setPeriod('month')}
+                                onClick={() => handleSelectPeriod('month')}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${period === 'month' ? `text-white shadow-md scale-105` : 'text-stone-600 hover:bg-stone-50'}`}
                                 style={period === 'month' ? { backgroundColor: activeTheme.hex } : {}}
                             >
                                 Mes
                             </button>
                             <button
-                                onClick={() => setPeriod('year')}
+                                onClick={() => handleSelectPeriod('year')}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${period === 'year' ? `text-white shadow-md scale-105` : 'text-stone-600 hover:bg-stone-50'}`}
                                 style={period === 'year' ? { backgroundColor: activeTheme.hex } : {}}
                             >
@@ -221,6 +234,34 @@ export default function ExecutiveReport({ municipalityId, theme, reports: initia
                         </div>
                     </div>
 
+                    {/* Selector interactiu de rang de dates visible */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            Rang Seleccionat
+                        </label>
+                        <div className="flex items-center gap-2 bg-white p-1 px-3 rounded-lg border border-stone-200 shadow-sm">
+                            <Input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => {
+                                    setStartDate(e.target.value);
+                                    setPeriod('custom');
+                                }}
+                                className="h-7 w-32 text-xs border-none bg-transparent p-0 focus-visible:ring-0 cursor-pointer text-stone-700"
+                            />
+                            <span className="text-stone-300 font-light">→</span>
+                            <Input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => {
+                                    setEndDate(e.target.value);
+                                    setPeriod('custom');
+                                }}
+                                className="h-7 w-32 text-xs border-none bg-transparent p-0 focus-visible:ring-0 cursor-pointer text-stone-700"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">

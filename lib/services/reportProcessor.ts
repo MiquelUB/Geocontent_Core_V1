@@ -504,9 +504,35 @@ export async function processReport(
     });
 
     // 2. Determinar període d'anàlisi
+    let startDate = startDateParam;
+    let endDate = endDateParam;
+
+    if (!startDate || !endDate) {
+      const existingReport = await prisma.report.findUnique({
+        where: { id: reportId },
+        select: { data: true }
+      });
+      const rawData = existingReport?.data as any;
+      if (!startDate && rawData?.startDate) {
+        startDate = new Date(rawData.startDate);
+      }
+      if (!endDate && rawData?.endDate) {
+        endDate = new Date(rawData.endDate);
+      }
+    }
+
     const now = new Date();
-    const startDate = startDateParam || new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = endDateParam || now;
+    if (!startDate) {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 30);
+      startDate.setHours(0, 0, 0, 0);
+    }
+    if (!endDate) {
+      endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (endDate.getHours() === 0 && endDate.getMinutes() === 0 && endDate.getSeconds() === 0) {
+      endDate.setHours(23, 59, 59, 999);
+    }
 
     // 3. Obtenir analítica del municipi respectant el contracte de la Secció 3 (Sense leaks globals)
     const analytics = await getExecutiveAnalytics(municipalityId, startDate, endDate);
